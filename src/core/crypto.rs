@@ -24,10 +24,9 @@ use crate::error::{CryptoError, Result};
 ///
 /// Returns `CryptoError` if encryption fails at any stage.
 pub fn encrypt(plaintext: &str, recipients: &[x25519::Recipient]) -> Result<String> {
-    let encryptor = age::Encryptor::with_recipients(
-        recipients.iter().map(|r| r as &dyn age::Recipient),
-    )
-    .map_err(|e| CryptoError::EncryptionFailed(format!("{}", e)))?;
+    let encryptor =
+        age::Encryptor::with_recipients(recipients.iter().map(|r| r as &dyn age::Recipient))
+            .map_err(|e| CryptoError::EncryptionFailed(format!("{}", e)))?;
 
     let mut encrypted = Vec::new();
     let mut writer = encryptor
@@ -65,8 +64,8 @@ pub fn encrypt(plaintext: &str, recipients: &[x25519::Recipient]) -> Result<Stri
 /// Returns `CryptoError` if decryption fails or the key doesn't match.
 pub fn decrypt(encrypted: &str, identity: &x25519::Identity) -> Result<String> {
     let reader = age::armor::ArmoredReader::new(encrypted.as_bytes());
-    let decryptor = age::Decryptor::new(reader)
-        .map_err(|e| CryptoError::DecryptionFailed(format!("{}", e)))?;
+    let decryptor =
+        age::Decryptor::new(reader).map_err(|e| CryptoError::DecryptionFailed(format!("{}", e)))?;
 
     let mut decrypted = Vec::new();
     let mut reader = decryptor

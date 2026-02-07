@@ -12,16 +12,16 @@ pub struct KeyStore;
 
 impl KeyStore {
     /// Base directory for all burrow keys (`~/.burrow/keys`).
-    fn base_dir() -> PathBuf {
-        dirs::home_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join(".burrow")
-            .join("keys")
+    fn base_dir() -> Result<PathBuf> {
+        let home = dirs::home_dir().ok_or_else(|| {
+            KeyError::GenerationFailed("unable to determine home directory".to_string())
+        })?;
+        Ok(home.join(".burrow").join("keys"))
     }
 
     /// Directory for a specific project's keys.
-    fn project_dir(project_id: &str) -> PathBuf {
-        Self::base_dir().join(project_id)
+    fn project_dir(project_id: &str) -> Result<PathBuf> {
+        Ok(Self::base_dir()?.join(project_id))
     }
 
     /// Generate a new age keypair for a project.
@@ -44,9 +44,8 @@ impl KeyStore {
         let identity = age::x25519::Identity::generate();
         let public_key = identity.to_public().to_string();
 
-        let dir = Self::project_dir(project_id);
-        fs::create_dir_all(&dir)
-            .map_err(KeyError::WriteFailed)?;
+        let dir = Self::project_dir(project_id)?;
+        fs::create_dir_all(&dir).map_err(KeyError::WriteFailed)?;
 
         let key_path = dir.join("identity.key");
 
@@ -82,18 +81,27 @@ impl KeyStore {
     /// Returns `KeyError::NoPrivateKey` if the key doesn't exist,
     /// or `KeyError::InvalidFormat` if the key is malformed.
     pub fn load_identity(project_id: &str) -> Result<age::x25519::Identity> {
-        let key_path = Self::project_dir(project_id).join("identity.key");
+        let key_path = Self::project_dir(project_id)?.join("identity.key");
         if !key_path.exists() {
             return Err(KeyError::NoPrivateKey(project_id.to_string()).into());
         }
 
-        let contents = fs::read_to_string(&key_path)
-            .map_err(KeyError::ReadFailed)?;
-        
+        // Verify permissions on Unix
+        #[cfg(unix)]
+        {
+            use crate::core::validation;
+            if let Err(e) = validation::validate_file_permissions(&key_path, 0o600) {
+                eprintln!("Warning: {}", e);
+                eprintln!("  Run: chmod 600 {}", key_path.display());
+            }
+        }
+
+        let contents = fs::read_to_string(&key_path).map_err(KeyError::ReadFailed)?;
+
         let identity: age::x25519::Identity = contents
             .trim()
             .parse()
-            .map_err(|e| KeyError::InvalidFormat(format!("{}", e)))?;
+            .map_err(|e: &str| KeyError::InvalidFormat(e.to_string()))?;
 
         Ok(identity)
     }
@@ -108,6 +116,8 @@ impl KeyStore {
     ///
     /// `true` if an identity key file exists, `false` otherwise.
     pub fn has_key(project_id: &str) -> bool {
-        Self::project_dir(project_id).join("identity.key").exists()
+        Self::project_dir(project_id)
+            .map(|dir| dir.join("identity.key").exists())
+            .unwrap_or(false)
     }
 }

@@ -24,10 +24,12 @@ use crate::error::{ConfigError, Result};
 /// Returns `CryptoError` if the public key is invalid.
 /// Returns error if re-encryption fails.
 pub fn add_member(config: &mut BurrowConfig, name: &str, public_key: &str) -> Result<()> {
-    // Validate the key first
+    // Validate the key format first - this will return a clear error if invalid
     crypto::parse_recipient(public_key)?;
 
-    config.recipients.insert(name.to_string(), public_key.to_string());
+    config
+        .recipients
+        .insert(name.to_string(), public_key.to_string());
     config.save()?;
 
     // Re-encrypt all secrets for the new recipient set

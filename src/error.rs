@@ -22,7 +22,7 @@ pub enum ConfigError {
     #[error("failed to read config file: {0}")]
     ReadFile(#[source] std::io::Error),
 
-    #[error("failed to parse config: {0}")]
+    #[error("config file is malformed: {0}")]
     Parse(#[source] toml::de::Error),
 
     #[error("failed to serialize config: {0}")]
@@ -92,6 +92,26 @@ pub enum SecretError {
     RemoveFailed(String),
 }
 
+/// Input validation errors.
+#[derive(Error, Debug)]
+pub enum ValidationError {
+    #[error("invalid secret key '{key}': {reason}")]
+    InvalidKey { key: String, reason: String },
+
+    #[error("empty key is not allowed")]
+    EmptyKey,
+
+    #[error("empty value is not allowed for key '{0}'")]
+    EmptyValue(String),
+
+    #[error("invalid file permissions on '{path}': expected {expected}, got {actual}")]
+    InvalidPermissions {
+        path: String,
+        expected: String,
+        actual: String,
+    },
+}
+
 /// Top-level Burrow error type.
 #[derive(Error, Debug)]
 pub enum Error {
@@ -106,6 +126,9 @@ pub enum Error {
 
     #[error(transparent)]
     Secret(#[from] SecretError),
+
+    #[error(transparent)]
+    Validation(#[from] ValidationError),
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),

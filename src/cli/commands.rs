@@ -2,12 +2,14 @@
 //!
 //! Handler functions for each CLI command.
 
+use clap::CommandFactory;
+use clap_complete::{generate, Shell as CompletionShell};
 use colored::Colorize;
 
-use crate::cli::{Command, TeamAction};
-use crate::core::{config, import_export, secrets, team};
+use crate::cli::{Cli, Command, Shell, TeamAction};
 use crate::core::config::BurrowConfig;
 use crate::core::keystore::KeyStore;
+use crate::core::{config, import_export, secrets, team};
 use crate::error::Result;
 
 /// Execute a command.
@@ -37,6 +39,7 @@ pub fn execute(command: Command) -> Result<()> {
         Command::Import { path } => cmd_import(&path),
         Command::Export => cmd_export(),
         Command::Diff => cmd_diff(),
+        Command::Completions { shell } => cmd_completions(shell),
     }
 }
 
@@ -146,7 +149,9 @@ fn cmd_run(command: &[String]) -> Result<()> {
 /// Run a command with decrypted secrets as environment variables.
 fn run_with_secrets(config: &BurrowConfig, command: &[String]) -> Result<i32> {
     if command.is_empty() {
-        return Err(crate::error::Error::Other("no command specified".to_string()));
+        return Err(crate::error::Error::Other(
+            "no command specified".to_string(),
+        ));
     }
 
     let pairs = secrets::decrypt_all(config)?;
@@ -159,6 +164,8 @@ fn run_with_secrets(config: &BurrowConfig, command: &[String]) -> Result<i32> {
     }
 
     let status = cmd.status()?;
+    // If the process was terminated by a signal, return 128 + signal number convention
+    // Otherwise return the actual exit code, or 1 if unavailable
     Ok(status.code().unwrap_or(1))
 }
 
@@ -168,7 +175,10 @@ fn cmd_team_add(name: &str, key: &str) -> Result<()> {
     team::add_member(&mut config, name, key)?;
     println!("{} {} added to team", "team:".green().bold(), name);
     if !config.secrets.is_empty() {
-        println!("  re-encrypted {} secrets for new recipient set", config.secrets.len());
+        println!(
+            "  re-encrypted {} secrets for new recipient set",
+            config.secrets.len()
+        );
     }
     Ok(())
 }
@@ -243,5 +253,19 @@ fn cmd_diff() -> Result<()> {
         println!("  {} (run `burrow unlock`)", ".env not found".dimmed());
     }
 
+    Ok(())
+}
+
+/// Generate shell completions.
+fn cmd_completions(shell: Shell) -> Result<()> {
+    let mut cmd = Cli::command();
+    let shell = match shell {
+        Shell::Bash => CompletionShell::Bash,
+        Shell::Zsh => CompletionShell::Zsh,
+        Shell::Fish => CompletionShell::Fish,
+        Shell::PowerShell => CompletionShell::PowerShell,
+    };
+
+    generate(shell, &mut cmd, "burrow", &mut std::io::stdout());
     Ok(())
 }

@@ -64,10 +64,8 @@ impl BurrowConfig {
         if !path.exists() {
             return Err(ConfigError::NotInitialized.into());
         }
-        let contents = std::fs::read_to_string(&path)
-            .map_err(ConfigError::ReadFile)?;
-        let config: Self = toml::from_str(&contents)
-            .map_err(ConfigError::Parse)?;
+        let contents = std::fs::read_to_string(&path).map_err(ConfigError::ReadFile)?;
+        let config: Self = toml::from_str(&contents).map_err(ConfigError::Parse)?;
         Ok(config)
     }
 
@@ -77,8 +75,7 @@ impl BurrowConfig {
     ///
     /// Returns error if serialization or file write fails.
     pub fn save(&self) -> Result<()> {
-        let contents = toml::to_string_pretty(self)
-            .map_err(ConfigError::Serialize)?;
+        let contents = toml::to_string_pretty(self).map_err(ConfigError::Serialize)?;
         std::fs::write(Self::config_path(), contents)?;
         Ok(())
     }

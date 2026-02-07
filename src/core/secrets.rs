@@ -5,6 +5,7 @@
 use crate::core::config::BurrowConfig;
 use crate::core::crypto;
 use crate::core::keystore::KeyStore;
+use crate::core::validation;
 use crate::error::{ConfigError, Result, SecretError};
 
 use age::x25519;
@@ -33,9 +34,14 @@ fn get_recipients(config: &BurrowConfig) -> Result<Vec<x25519::Recipient>> {
 ///
 /// # Errors
 ///
+/// Returns `ValidationError` if key or value is invalid.
 /// Returns `SecretError::AlreadyExists` if key exists and `force` is false.
 /// Returns `ConfigError::NoRecipients` if no recipients are configured.
 pub fn set_secret(config: &mut BurrowConfig, key: &str, value: &str, force: bool) -> Result<()> {
+    // Validate input
+    validation::validate_key(key)?;
+    validation::validate_value(key, value)?;
+
     if config.secrets.contains_key(key) && !force {
         return Err(SecretError::AlreadyExists(key.to_string()).into());
     }

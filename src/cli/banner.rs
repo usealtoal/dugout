@@ -15,13 +15,13 @@ struct Colors {
 }
 
 const COLOR: Colors = Colors {
-    dirt_dark: "\x1b[38;2;101;67;33m",    // Dark brown
-    dirt_light: "\x1b[38;2;139;90;43m",   // Lighter brown
-    fur: "\x1b[38;2;88;88;88m",           // Dark gray
-    nose: "\x1b[38;2;255;182;193m",       // Pink nose
-    paws: "\x1b[38;2;139;115;85m",        // Tan paws
-    title: "\x1b[1;38;2;205;133;63m",     // Bold peru
-    subtitle: "\x1b[38;2;120;120;140m",   // Gray-blue
+    dirt_dark: "\x1b[38;2;101;67;33m",  // Dark brown
+    dirt_light: "\x1b[38;2;139;90;43m", // Lighter brown
+    fur: "\x1b[38;2;88;88;88m",         // Dark gray
+    nose: "\x1b[38;2;255;182;193m",     // Pink nose
+    paws: "\x1b[38;2;139;115;85m",      // Tan paws
+    title: "\x1b[1;38;2;205;133;63m",   // Bold peru
+    subtitle: "\x1b[38;2;120;120;140m", // Gray-blue
     reset: "\x1b[0m",
 };
 

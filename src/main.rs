@@ -3,7 +3,7 @@
 use clap::Parser;
 use colored::Colorize;
 
-use burrow::cli::{Cli, execute};
+use burrow::cli::{execute, Cli};
 
 fn main() {
     let cli = Cli::parse();

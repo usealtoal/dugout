@@ -18,8 +18,12 @@ fn test_config_save_and_load() {
     std::env::set_current_dir(&temp_dir).unwrap();
 
     let mut config = BurrowConfig::new();
-    config.recipients.insert("alice".to_string(), "age1test123".to_string());
-    config.secrets.insert("KEY".to_string(), "encrypted_value".to_string());
+    config
+        .recipients
+        .insert("alice".to_string(), "age1test123".to_string());
+    config
+        .secrets
+        .insert("KEY".to_string(), "encrypted_value".to_string());
 
     // Save
     config.save().unwrap();

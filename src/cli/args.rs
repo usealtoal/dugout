@@ -84,6 +84,22 @@ pub enum Command {
 
     /// Show diff since last lock
     Diff,
+
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        #[arg(value_enum)]
+        shell: Shell,
+    },
+}
+
+/// Supported shells for completions.
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum Shell {
+    Bash,
+    Zsh,
+    Fish,
+    PowerShell,
 }
 
 /// Team subcommands.

@@ -2,8 +2,8 @@
 
 use burrow::core::{config::BurrowConfig, import_export, keystore::KeyStore};
 use std::fs;
-use tempfile::TempDir;
 use std::path::PathBuf;
+use tempfile::TempDir;
 
 struct TestEnv {
     _dir: TempDir,
@@ -24,7 +24,7 @@ fn setup_test_env() -> TestEnv {
 
     let mut config = BurrowConfig::new();
     let project_id = config.project_id();
-    
+
     // Generate keypair
     let public_key = KeyStore::generate_keypair(&project_id).unwrap();
     config.recipients.insert("test".to_string(), public_key);
@@ -46,7 +46,7 @@ fn test_import_env_basic() {
     fs::write("test.env", env_content).unwrap();
 
     let imported = import_export::import_env(&mut env.config, "test.env").unwrap();
-    
+
     assert_eq!(imported.len(), 2);
     assert!(imported.contains(&"DATABASE_URL".to_string()));
     assert!(imported.contains(&"API_KEY".to_string()));
@@ -65,7 +65,7 @@ KEY3=no_quotes
     fs::write("test.env", env_content).unwrap();
 
     let imported = import_export::import_env(&mut env.config, "test.env").unwrap();
-    
+
     assert_eq!(imported.len(), 3);
 }
 
@@ -83,7 +83,7 @@ KEY2=value2
     fs::write("test.env", env_content).unwrap();
 
     let imported = import_export::import_env(&mut env.config, "test.env").unwrap();
-    
+
     assert_eq!(imported.len(), 2);
 }
 
@@ -103,7 +103,7 @@ fn test_export_env() {
 
     // Export directly (without reloading)
     let exported = import_export::export_env(&env.config).unwrap();
-    
+
     assert!(exported.contains("KEY1=value1"));
     assert!(exported.contains("KEY2=value_with_underscores"));
 }
@@ -123,10 +123,10 @@ fn test_unlock_to_file() {
 
     // Unlock to .env (use env.config directly, not reloaded)
     let count = import_export::unlock_to_file(&env.config).unwrap();
-    
+
     assert_eq!(count, 2);
     assert!(fs::metadata(".env").unwrap().is_file());
-    
+
     let unlocked = fs::read_to_string(".env").unwrap();
     assert!(unlocked.contains("DB_URL=postgres://test"));
     assert!(unlocked.contains("API_KEY=secret"));

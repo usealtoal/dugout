@@ -9,3 +9,4 @@ pub mod import_export;
 pub mod keystore;
 pub mod secrets;
 pub mod team;
+pub mod validation;
