@@ -1,6 +1,5 @@
 //! Command-line interface.
 
-pub mod audit;
 pub mod banner;
 pub mod completions;
 pub mod init;
@@ -8,10 +7,9 @@ pub mod output;
 pub mod run;
 pub mod secrets;
 pub mod shell;
-pub mod status;
 pub mod team;
 
-// Import submodule folders
+// Subcommand groups
 pub mod check;
 pub mod secrets_mgmt;
 
