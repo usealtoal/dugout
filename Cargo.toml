@@ -7,11 +7,22 @@ authors = ["Rob Dekovich <rob@altoal.com>"]
 description = "An extremely fast secrets manager for developers, written in Rust"
 license = "MIT"
 repository = "https://github.com/usealtoal/burrow"
+homepage = "https://github.com/usealtoal/burrow"
+documentation = "https://github.com/usealtoal/burrow#readme"
+readme = "README.md"
 keywords = ["secrets", "encryption", "dotenv", "cli", "security"]
-categories = ["command-line-utilities", "cryptography"]
+categories = ["command-line-utilities", "cryptography", "development-tools"]
+exclude = [
+    ".github/",
+    ".git/",
+    ".burrow.toml",
+    ".env",
+    "tests/fixtures/",
+]
 
 [dependencies]
 age = { version = "0.11", features = ["armor"] }
+chrono = "0.4"
 clap = { version = "4", features = ["derive", "env"] }
 clap_complete = "4"
 colored = "3"

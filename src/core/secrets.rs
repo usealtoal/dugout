@@ -121,10 +121,10 @@ pub fn set(config: &mut Config, key: &str, value: &str, force: bool) -> Result<(
 /// Returns `SecretError::NotFound` if the key doesn't exist.
 /// Returns `CipherError` if decryption fails.
 pub fn get(config: &Config, key: &str) -> Result<Zeroizing<String>> {
-    let encrypted = config
-        .secrets
-        .get(key)
-        .ok_or_else(|| SecretError::NotFound(key.to_string()))?;
+    let encrypted = config.secrets.get(key).ok_or_else(|| {
+        let available: Vec<String> = config.secrets.keys().cloned().collect();
+        SecretError::not_found_with_suggestions(key.to_string(), &available)
+    })?;
 
     let identity = store::load_identity(&config.project_id())?;
     let plaintext = cipher::decrypt(encrypted, &identity)?;
@@ -144,7 +144,8 @@ pub fn get(config: &Config, key: &str) -> Result<Zeroizing<String>> {
 /// Returns `SecretError::NotFound` if the key doesn't exist.
 pub fn remove(config: &mut Config, key: &str) -> Result<()> {
     if config.secrets.remove(key).is_none() {
-        return Err(SecretError::NotFound(key.to_string()).into());
+        let available: Vec<String> = config.secrets.keys().cloned().collect();
+        return Err(SecretError::not_found_with_suggestions(key.to_string(), &available).into());
     }
     config.save()?;
     Ok(())

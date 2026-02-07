@@ -7,7 +7,7 @@ use thiserror::Error;
 /// Configuration-related errors.
 #[derive(Error, Debug)]
 pub enum ConfigError {
-    #[error("not initialized: run `burrow init` first")]
+    #[error("not initialized\n  → Run `burrow init` to get started")]
     NotInitialized,
 
     #[error("already initialized: .burrow.toml exists")]
@@ -57,7 +57,7 @@ pub enum CipherError {
 /// Key storage and management errors.
 #[derive(Error, Debug)]
 pub enum StoreError {
-    #[error("no private key found for project '{0}'")]
+    #[error("no private key found for project '{0}'\n  → Ask a team member to share the project key, or run `burrow init` to start fresh")]
     NoPrivateKey(String),
 
     #[error("failed to generate keypair: {0}")]
@@ -76,8 +76,8 @@ pub enum StoreError {
 /// Secret operation errors.
 #[derive(Error, Debug)]
 pub enum SecretError {
-    #[error("secret not found: {0}")]
-    NotFound(String),
+    #[error("secret not found: {key}{suggestion}")]
+    NotFound { key: String, suggestion: String },
 
     #[error("secret already exists: {0} (use --force to overwrite)")]
     AlreadyExists(String),
@@ -90,6 +90,23 @@ pub enum SecretError {
 
     #[error("failed to remove secret: {0}")]
     RemoveFailed(String),
+}
+
+impl SecretError {
+    /// Create a NotFound error with suggestions based on available keys.
+    pub fn not_found_with_suggestions(key: String, available_keys: &[String]) -> Self {
+        let suggestion = if available_keys.is_empty() {
+            "\n  → No secrets stored yet. Use `burrow set KEY VALUE` to add one".to_string()
+        } else {
+            let keys_list = available_keys.join(", ");
+            format!(
+                "\n  → Available keys: {}\n  → Did you mean one of these?",
+                keys_list
+            )
+        };
+
+        Self::NotFound { key, suggestion }
+    }
 }
 
 /// Input validation errors.

@@ -7,6 +7,7 @@ pub mod env;
 pub mod init;
 pub mod lock;
 pub mod output;
+pub mod rotate;
 pub mod run;
 pub mod secrets;
 pub mod shell;
@@ -111,6 +112,9 @@ pub enum Command {
     /// Audit git history for leaked secrets
     Audit,
 
+    /// Rotate the project keypair and re-encrypt all secrets
+    Rotate,
+
     /// Generate shell completions
     Completions {
         /// Shell to generate completions for
@@ -177,6 +181,7 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
         Diff => env::diff(),
         Status => status::execute(),
         Audit => audit::execute(),
+        Rotate => rotate::execute(),
         Completions { shell } => completions::execute(shell),
     }
 }
