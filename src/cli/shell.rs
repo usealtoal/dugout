@@ -16,7 +16,7 @@ pub fn execute() -> Result<()> {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
 
     output::success(&format!(
-        "Entering burrow shell. {} secrets loaded. Type 'exit' to leave.",
+        "Entering shell. {} secrets loaded. Type 'exit' to leave.",
         pairs.len()
     ));
     output::blank();
@@ -33,7 +33,7 @@ pub fn execute() -> Result<()> {
     let status = cmd.status()?;
 
     output::blank();
-    output::success("Left burrow shell. Secrets cleared.");
+    output::success("Left shell. Secrets cleared.");
 
     // Return the shell's exit code
     std::process::exit(status.code().unwrap_or(0));

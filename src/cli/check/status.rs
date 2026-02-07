@@ -10,7 +10,7 @@ use crate::error::Result;
 pub fn execute() -> Result<()> {
     let vault = Vault::open()?;
 
-    output::section("Burrow Status");
+    output::section("Status");
 
     // Project name
     let project = vault.project_id();

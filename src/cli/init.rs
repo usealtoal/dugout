@@ -17,14 +17,14 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
 
     let name = name.unwrap_or_else(whoami::username);
 
-    info!("Initializing burrow for user: {}", name);
+    info!("Initializing for user: {}", name);
 
     // Generate keypair with spinner
     let sp = output::spinner("Generating keypair...");
     let vault = Vault::init(&name)?;
     output::spinner_success(&sp, "Generated keypair");
 
-    info!("Burrow initialized successfully");
+    info!("Initialized successfully");
 
     // Get the first recipient's public key for display
     let recipients = vault.recipients();
@@ -34,7 +34,7 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
         .unwrap_or("unknown");
 
     output::blank();
-    output::success("burrow initialized");
+    output::success("initialized");
     output::kv("recipient", format!("{} ({})", name, &public_key[..20]));
     output::kv(
         "config",
