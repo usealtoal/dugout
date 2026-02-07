@@ -3,6 +3,7 @@
 use crate::core::config::Config;
 use crate::core::secrets;
 use crate::error::Result;
+use zeroize::Zeroizing;
 
 /// Run a command with secrets injected as environment variables.
 pub fn execute(command: &[String]) -> Result<()> {
@@ -24,9 +25,13 @@ fn run_with_secrets(config: &Config, command: &[String]) -> Result<i32> {
     let mut cmd = std::process::Command::new(&command[0]);
     cmd.args(&command[1..]);
 
+    // Inject secrets as environment variables
+    // Use Zeroizing to ensure secrets are wiped from memory after use
     for (key, value) in pairs {
-        cmd.env(key, value);
+        let zeroized_value = Zeroizing::new(value);
+        cmd.env(key, zeroized_value.as_str());
     }
+    // Secrets are now zeroized as they go out of scope
 
     let status = cmd.status()?;
     // If the process was terminated by a signal, return 128 + signal number convention

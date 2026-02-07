@@ -61,7 +61,11 @@ pub enum Command {
     },
 
     /// List all secret keys
-    List,
+    List {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
 
     /// Encrypt all secrets (lock the burrow)
     Lock,
@@ -123,7 +127,11 @@ pub enum TeamAction {
     },
 
     /// List team members
-    List,
+    List {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
 
     /// Remove a team member
     Rm {
@@ -141,13 +149,13 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
         Set { key, value, force } => secrets::set(&key, &value, force),
         Get { key } => secrets::get(&key),
         Rm { key } => secrets::rm(&key),
-        List => secrets::list(),
+        List { json } => secrets::list(json),
         Lock => lock::lock(),
         Unlock => lock::unlock(),
         Run { command } => run::execute(&command),
         Team { action } => match action {
             TeamAction::Add { name, key } => team::add(&name, &key),
-            TeamAction::List => team::list(),
+            TeamAction::List { json } => team::list(json),
             TeamAction::Rm { name } => team::rm(&name),
         },
         Import { path } => env::import(&path),

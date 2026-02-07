@@ -68,13 +68,15 @@ pub fn export(config: &Config) -> Result<String> {
     let mut output = String::new();
 
     for (key, value) in pairs {
+        let value_str = value.as_str();
         // Quote values that contain spaces or special chars
-        if value.contains(' ') || value.contains('#') || value.contains('=') {
-            output.push_str(&format!("{}=\"{}\"\n", key, value));
+        if value_str.contains(' ') || value_str.contains('#') || value_str.contains('=') {
+            output.push_str(&format!("{}=\"{}\"\n", key, value_str));
         } else {
-            output.push_str(&format!("{}={}\n", key, value));
+            output.push_str(&format!("{}={}\n", key, value_str));
         }
     }
+    // Secrets are zeroized as they go out of scope
 
     Ok(output)
 }

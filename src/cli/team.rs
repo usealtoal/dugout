@@ -21,11 +21,27 @@ pub fn add(name: &str, key: &str) -> Result<()> {
 }
 
 /// List team members.
-pub fn list() -> Result<()> {
+pub fn list(json: bool) -> Result<()> {
     let config = Config::load()?;
     let members = team::list(&config);
 
-    if members.is_empty() {
+    if json {
+        let members_json: Vec<_> = members
+            .iter()
+            .map(|(name, key)| {
+                serde_json::json!({
+                    "name": name,
+                    "public_key": key
+                })
+            })
+            .collect();
+
+        let output = serde_json::json!({
+            "members": members_json,
+            "count": members.len()
+        });
+        println!("{}", serde_json::to_string_pretty(&output)?);
+    } else if members.is_empty() {
         println!("{}", "no team members".dimmed());
     } else {
         println!("{} members:", members.len().to_string().green().bold());

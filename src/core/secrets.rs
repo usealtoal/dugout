@@ -7,6 +7,7 @@ use crate::core::{cipher, store};
 use crate::error::{ConfigError, Result, SecretError, ValidationError};
 
 use age::x25519;
+use zeroize::Zeroizing;
 
 /// Validate a secret key name.
 ///
@@ -113,13 +114,13 @@ pub fn set(config: &mut Config, key: &str, value: &str, force: bool) -> Result<(
 ///
 /// # Returns
 ///
-/// The decrypted plaintext value.
+/// The decrypted plaintext value wrapped in Zeroizing for secure memory cleanup.
 ///
 /// # Errors
 ///
 /// Returns `SecretError::NotFound` if the key doesn't exist.
 /// Returns `CipherError` if decryption fails.
-pub fn get(config: &Config, key: &str) -> Result<String> {
+pub fn get(config: &Config, key: &str) -> Result<Zeroizing<String>> {
     let encrypted = config
         .secrets
         .get(key)
@@ -128,7 +129,7 @@ pub fn get(config: &Config, key: &str) -> Result<String> {
     let identity = store::load_identity(&config.project_id())?;
     let plaintext = cipher::decrypt(encrypted, &identity)?;
 
-    Ok(plaintext)
+    Ok(Zeroizing::new(plaintext))
 }
 
 /// Remove a secret.
@@ -170,18 +171,18 @@ pub fn list(config: &Config) -> Vec<String> {
 ///
 /// # Returns
 ///
-/// Vector of (key, plaintext_value) pairs.
+/// Vector of (key, plaintext_value) pairs with values in Zeroizing for secure cleanup.
 ///
 /// # Errors
 ///
 /// Returns error if decryption of any secret fails.
-pub fn decrypt_all(config: &Config) -> Result<Vec<(String, String)>> {
+pub fn decrypt_all(config: &Config) -> Result<Vec<(String, Zeroizing<String>)>> {
     let identity = store::load_identity(&config.project_id())?;
 
     let mut pairs = Vec::new();
     for (key, encrypted) in &config.secrets {
         let plaintext = cipher::decrypt(encrypted, &identity)?;
-        pairs.push((key.clone(), plaintext));
+        pairs.push((key.clone(), Zeroizing::new(plaintext)));
     }
 
     Ok(pairs)
@@ -205,7 +206,8 @@ pub fn reencrypt_all(config: &mut Config) -> Result<()> {
 
     let mut updated = std::collections::BTreeMap::new();
     for (key, encrypted) in &config.secrets {
-        let plaintext = cipher::decrypt(encrypted, &identity)?;
+        // Use Zeroizing to ensure plaintext is wiped after re-encryption
+        let plaintext = Zeroizing::new(cipher::decrypt(encrypted, &identity)?);
         let reencrypted = cipher::encrypt(&plaintext, &recipients)?;
         updated.insert(key.clone(), reencrypted);
     }

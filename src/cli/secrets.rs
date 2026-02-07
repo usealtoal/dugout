@@ -18,7 +18,7 @@ pub fn set(key: &str, value: &str, force: bool) -> Result<()> {
 pub fn get(key: &str) -> Result<()> {
     let config = Config::load()?;
     let value = secrets::get(&config, key)?;
-    println!("{}", value);
+    println!("{}", value.as_str());
     Ok(())
 }
 
@@ -31,11 +31,17 @@ pub fn rm(key: &str) -> Result<()> {
 }
 
 /// List all secret keys.
-pub fn list() -> Result<()> {
+pub fn list(json: bool) -> Result<()> {
     let config = Config::load()?;
     let keys = secrets::list(&config);
 
-    if keys.is_empty() {
+    if json {
+        let output = serde_json::json!({
+            "keys": keys,
+            "count": keys.len()
+        });
+        println!("{}", serde_json::to_string_pretty(&output)?);
+    } else if keys.is_empty() {
         println!("{}", "no secrets stored".dimmed());
     } else {
         println!("{} secrets:", keys.len().to_string().green().bold());
