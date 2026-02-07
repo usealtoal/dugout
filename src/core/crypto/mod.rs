@@ -27,9 +27,9 @@
 use crate::error::Result;
 use ::age::x25519;
 
-mod backend;
+mod age;
 
-pub use backend::{parse_recipient, AgeBackend};
+pub use age::{parse_recipient, AgeBackend};
 
 /// Cryptographic backend trait.
 ///

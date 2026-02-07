@@ -5,7 +5,7 @@
 
 use std::io::{Read, Write};
 
-use age::x25519;
+use ::age::x25519;
 
 use super::CryptoBackend;
 use crate::error::{CryptoError, Result};
