@@ -1,0 +1,26 @@
+[package]
+name = "burrow"
+version = "0.1.0"
+edition = "2024"
+description = "An extremely fast secrets manager for developers, written in Rust"
+license = "MIT"
+repository = "https://github.com/usealtoal/burrow"
+keywords = ["secrets", "encryption", "dotenv", "cli", "security"]
+categories = ["command-line-utilities", "cryptography"]
+
+[dependencies]
+age = { version = "0.11", features = ["armor"] }
+clap = { version = "4", features = ["derive", "env"] }
+colored = "3"
+dirs = "6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+thiserror = "2"
+anyhow = "1"
+whoami = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
