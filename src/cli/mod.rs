@@ -1,8 +1,158 @@
-//! Command-line interface definitions.
+//! Command-line interface.
 
-pub mod args;
 pub mod banner;
-pub mod commands;
+pub mod completions;
+pub mod env;
+pub mod init;
+pub mod lock;
+pub mod run;
+pub mod secrets;
+pub mod team;
 
-pub use args::{Cli, Command, Shell, TeamAction};
-pub use commands::execute;
+use clap::{Parser, Subcommand};
+
+/// Burrow - An extremely fast secrets manager for developers.
+#[derive(Parser)]
+#[command(
+    name = "burrow",
+    about = "An extremely fast secrets manager for developers",
+    version,
+    after_help = "Dig deep. Ship safe. 🐀"
+)]
+pub struct Cli {
+    #[command(subcommand)]
+    pub command: Command,
+}
+
+/// Top-level commands.
+#[derive(Subcommand)]
+pub enum Command {
+    /// Initialize burrow in the current directory
+    Init {
+        /// Your name (used as recipient identifier)
+        #[arg(short, long)]
+        name: Option<String>,
+        /// Skip ASCII art banner
+        #[arg(long)]
+        no_banner: bool,
+    },
+
+    /// Set a secret value
+    Set {
+        /// Secret key (e.g., DATABASE_URL)
+        key: String,
+        /// Secret value
+        value: String,
+        /// Overwrite if exists
+        #[arg(short, long)]
+        force: bool,
+    },
+
+    /// Get a secret value
+    Get {
+        /// Secret key
+        key: String,
+    },
+
+    /// Remove a secret
+    Rm {
+        /// Secret key
+        key: String,
+    },
+
+    /// List all secret keys
+    List,
+
+    /// Encrypt all secrets (lock the burrow)
+    Lock,
+
+    /// Decrypt secrets to local .env file
+    Unlock,
+
+    /// Run a command with secrets injected as env vars
+    Run {
+        /// Command and arguments to run
+        #[arg(trailing_var_arg = true)]
+        command: Vec<String>,
+    },
+
+    /// Manage team members
+    Team {
+        #[command(subcommand)]
+        action: TeamAction,
+    },
+
+    /// Import secrets from a .env file
+    Import {
+        /// Path to .env file
+        path: String,
+    },
+
+    /// Export secrets as .env format
+    Export,
+
+    /// Show diff since last lock
+    Diff,
+
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        #[arg(value_enum)]
+        shell: Shell,
+    },
+}
+
+/// Supported shells for completions.
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum Shell {
+    Bash,
+    Zsh,
+    Fish,
+    PowerShell,
+}
+
+/// Team subcommands.
+#[derive(Subcommand)]
+pub enum TeamAction {
+    /// Add a team member by their public key
+    Add {
+        /// Member name
+        name: String,
+        /// age public key
+        key: String,
+    },
+
+    /// List team members
+    List,
+
+    /// Remove a team member
+    Rm {
+        /// Member name
+        name: String,
+    },
+}
+
+/// Execute a command.
+pub fn execute(command: Command) -> crate::error::Result<()> {
+    use Command::*;
+
+    match command {
+        Init { name, no_banner } => init::execute(name, no_banner),
+        Set { key, value, force } => secrets::set(&key, &value, force),
+        Get { key } => secrets::get(&key),
+        Rm { key } => secrets::rm(&key),
+        List => secrets::list(),
+        Lock => lock::lock(),
+        Unlock => lock::unlock(),
+        Run { command } => run::execute(&command),
+        Team { action } => match action {
+            TeamAction::Add { name, key } => team::add(&name, &key),
+            TeamAction::List => team::list(),
+            TeamAction::Rm { name } => team::rm(&name),
+        },
+        Import { path } => env::import(&path),
+        Export => env::export(),
+        Diff => env::diff(),
+        Completions { shell } => completions::execute(shell),
+    }
+}

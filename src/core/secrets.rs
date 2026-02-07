@@ -4,11 +4,58 @@
 
 use crate::core::config::BurrowConfig;
 use crate::core::crypto;
-use crate::core::keystore::KeyStore;
-use crate::core::validation;
-use crate::error::{ConfigError, Result, SecretError};
+use crate::core::keys::KeyStore;
+use crate::error::{ConfigError, Result, SecretError, ValidationError};
 
 use age::x25519;
+
+/// Validate a secret key name.
+///
+/// Secret keys must be valid environment variable names:
+/// - Only A-Z, 0-9, and underscore
+/// - Cannot start with a digit
+/// - Cannot be empty
+fn validate_key(key: &str) -> Result<()> {
+    if key.is_empty() {
+        return Err(ValidationError::EmptyKey.into());
+    }
+
+    if let Some(first_char) = key.chars().next() {
+        if first_char.is_ascii_digit() {
+            return Err(ValidationError::InvalidKey {
+                key: key.to_string(),
+                reason: "cannot start with a digit".to_string(),
+            }
+            .into());
+        }
+    }
+
+    for (i, ch) in key.chars().enumerate() {
+        if !ch.is_ascii_alphanumeric() && ch != '_' {
+            return Err(ValidationError::InvalidKey {
+                key: key.to_string(),
+                reason: format!(
+                    "invalid character '{}' at position {}. Only A-Z, 0-9, and underscore are allowed",
+                    ch, i + 1
+                ),
+            }
+            .into());
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate a secret value.
+///
+/// Secret values cannot be empty.
+fn validate_value(key: &str, value: &str) -> Result<()> {
+    if value.is_empty() {
+        return Err(ValidationError::EmptyValue(key.to_string()).into());
+    }
+
+    Ok(())
+}
 
 /// Get all recipient public keys from config.
 ///
@@ -39,8 +86,8 @@ fn get_recipients(config: &BurrowConfig) -> Result<Vec<x25519::Recipient>> {
 /// Returns `ConfigError::NoRecipients` if no recipients are configured.
 pub fn set_secret(config: &mut BurrowConfig, key: &str, value: &str, force: bool) -> Result<()> {
     // Validate input
-    validation::validate_key(key)?;
-    validation::validate_value(key, value)?;
+    validate_key(key)?;
+    validate_value(key, value)?;
 
     if config.secrets.contains_key(key) && !force {
         return Err(SecretError::AlreadyExists(key.to_string()).into());

@@ -5,7 +5,29 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::error::{KeyError, Result};
+use crate::error::{KeyError, Result, ValidationError};
+
+/// Validate file permissions (Unix only).
+///
+/// Checks that a file has the expected permissions mode.
+#[cfg(unix)]
+fn validate_file_permissions(path: &std::path::Path, expected_mode: u32) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let metadata = std::fs::metadata(path)?;
+    let actual_mode = metadata.permissions().mode() & 0o777;
+
+    if actual_mode != expected_mode {
+        return Err(ValidationError::InvalidPermissions {
+            path: path.display().to_string(),
+            expected: format!("{:o}", expected_mode),
+            actual: format!("{:o}", actual_mode),
+        }
+        .into());
+    }
+
+    Ok(())
+}
 
 /// Key storage manager for age identities.
 pub struct KeyStore;
@@ -89,8 +111,7 @@ impl KeyStore {
         // Verify permissions on Unix
         #[cfg(unix)]
         {
-            use crate::core::validation;
-            if let Err(e) = validation::validate_file_permissions(&key_path, 0o600) {
+            if let Err(e) = validate_file_permissions(&key_path, 0o600) {
                 eprintln!("Warning: {}", e);
                 eprintln!("  Run: chmod 600 {}", key_path.display());
             }

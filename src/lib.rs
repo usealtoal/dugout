@@ -4,12 +4,21 @@
 //!
 //! ```text
 //! src/
-//! ├── core/             # Core library components
-//! │   ├── crypto/       # Encryption/decryption logic
-//! │   ├── config/       # Configuration management
-//! │   ├── keystore/     # Key generation and storage
-//! │   └── secrets/      # Secret operations
-//! └── cli/              # Command-line interface
+//! ├── cli/              # Command-line interface
+//! │   ├── init          # Initialize burrow
+//! │   ├── secrets       # Secret CRUD operations
+//! │   ├── lock          # Lock/unlock commands
+//! │   ├── run           # Run with injected secrets
+//! │   ├── team          # Team management
+//! │   ├── env           # .env import/export/diff
+//! │   └── completions   # Shell completions
+//! └── core/             # Core library components
+//!     ├── config        # .burrow.toml management
+//!     ├── crypto        # age encryption/decryption
+//!     ├── env           # .env file operations
+//!     ├── keys          # Key generation and storage
+//!     ├── secrets       # Secret CRUD logic
+//!     └── team          # Team member management
 //! ```
 //!
 //! # Features
