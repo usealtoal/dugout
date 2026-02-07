@@ -1,10 +1,14 @@
-//! Key generation and storage.
+//! Filesystem-based key storage implementation.
 //!
-//! Manages age identity (private key) generation and retrieval per project.
+//! Manages age identity (private key) generation and retrieval from
+//! the local filesystem (~/.burrow/keys/).
 
 use std::fs;
 use std::path::PathBuf;
 
+use age::x25519;
+
+use super::KeyStorage;
 use crate::error::{KeyError, Result, ValidationError};
 
 /// Validate file permissions (Unix only).
@@ -29,10 +33,12 @@ fn validate_file_permissions(path: &std::path::Path, expected_mode: u32) -> Resu
     Ok(())
 }
 
-/// Key storage manager for age identities.
-pub struct KeyStore;
+/// Filesystem-based key storage.
+///
+/// Stores age identities in `~/.burrow/keys/<project_id>/identity.key`.
+pub struct FilesystemKeyStore;
 
-impl KeyStore {
+impl FilesystemKeyStore {
     /// Base directory for all burrow keys (`~/.burrow/keys`).
     fn base_dir() -> Result<PathBuf> {
         let home = dirs::home_dir().ok_or_else(|| {
@@ -45,25 +51,11 @@ impl KeyStore {
     fn project_dir(project_id: &str) -> Result<PathBuf> {
         Ok(Self::base_dir()?.join(project_id))
     }
+}
 
-    /// Generate a new age keypair for a project.
-    ///
-    /// Creates the key directory if it doesn't exist and stores the private
-    /// key with restricted permissions (0600 on Unix).
-    ///
-    /// # Arguments
-    ///
-    /// * `project_id` - Unique identifier for the project
-    ///
-    /// # Returns
-    ///
-    /// The public key string (starts with "age1...").
-    ///
-    /// # Errors
-    ///
-    /// Returns `KeyError` if key generation or file operations fail.
-    pub fn generate_keypair(project_id: &str) -> Result<String> {
-        let identity = age::x25519::Identity::generate();
+impl KeyStorage for FilesystemKeyStore {
+    fn generate_keypair(&self, project_id: &str) -> Result<String> {
+        let identity = x25519::Identity::generate();
         let public_key = identity.to_public().to_string();
 
         let dir = Self::project_dir(project_id)?;
@@ -88,21 +80,7 @@ impl KeyStore {
         Ok(public_key)
     }
 
-    /// Load the private key (identity) for a project.
-    ///
-    /// # Arguments
-    ///
-    /// * `project_id` - Unique identifier for the project
-    ///
-    /// # Returns
-    ///
-    /// The age x25519 identity for decryption.
-    ///
-    /// # Errors
-    ///
-    /// Returns `KeyError::NoPrivateKey` if the key doesn't exist,
-    /// or `KeyError::InvalidFormat` if the key is malformed.
-    pub fn load_identity(project_id: &str) -> Result<age::x25519::Identity> {
+    fn load_identity(&self, project_id: &str) -> Result<x25519::Identity> {
         let key_path = Self::project_dir(project_id)?.join("identity.key");
         if !key_path.exists() {
             return Err(KeyError::NoPrivateKey(project_id.to_string()).into());
@@ -119,7 +97,7 @@ impl KeyStore {
 
         let contents = fs::read_to_string(&key_path).map_err(KeyError::ReadFailed)?;
 
-        let identity: age::x25519::Identity = contents
+        let identity: x25519::Identity = contents
             .trim()
             .parse()
             .map_err(|e: &str| KeyError::InvalidFormat(e.to_string()))?;
@@ -127,16 +105,7 @@ impl KeyStore {
         Ok(identity)
     }
 
-    /// Check if a keypair exists for a project.
-    ///
-    /// # Arguments
-    ///
-    /// * `project_id` - Unique identifier for the project
-    ///
-    /// # Returns
-    ///
-    /// `true` if an identity key file exists, `false` otherwise.
-    pub fn has_key(project_id: &str) -> bool {
+    fn has_key(&self, project_id: &str) -> bool {
         Self::project_dir(project_id)
             .map(|dir| dir.join("identity.key").exists())
             .unwrap_or(false)

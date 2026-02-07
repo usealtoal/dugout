@@ -14,9 +14,13 @@
 //! │   └── completions   # Shell completions
 //! └── core/             # Core library components
 //!     ├── config        # .burrow.toml management
-//!     ├── crypto        # age encryption/decryption
+//!     ├── crypto/       # Encryption backends
+//!     │   ├── mod       # CryptoBackend trait
+//!     │   └── age       # age encryption implementation
 //!     ├── env           # .env file operations
-//!     ├── keys          # Key generation and storage
+//!     ├── keys/         # Key storage backends
+//!     │   ├── mod       # KeyStorage trait
+//!     │   └── store     # Filesystem storage implementation
 //!     ├── secrets       # Secret CRUD logic
 //!     └── team          # Team member management
 //! ```
@@ -27,6 +31,7 @@
 //! - Team collaboration with multiple recipients
 //! - Fast encrypted secret storage
 //! - Seamless .env file integration
+//! - Extensible crypto and storage backends
 
 pub mod cli;
 pub mod core;
