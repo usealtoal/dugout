@@ -4,8 +4,8 @@
 //! encryption, and configuration handling.
 
 pub mod config;
-pub mod crypto;
+pub mod cipher;
 pub mod env;
-pub mod keys;
+pub mod store;
 pub mod secrets;
 pub mod team;

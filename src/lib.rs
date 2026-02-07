@@ -14,11 +14,11 @@
 //! │   └── completions   # Shell completions
 //! └── core/             # Core library components
 //!     ├── config        # .burrow.toml management
-//!     ├── crypto/       # Encryption backends
+//!     ├── cipher/       # Encryption backends
 //!     │   ├── mod       # Cipher trait
 //!     │   └── age       # age encryption implementation
 //!     ├── env           # .env file operations
-//!     ├── keys/         # Key storage backends
+//!     ├── store/         # Key storage backends
 //!     │   ├── mod       # KeyStorage trait
 //!     │   └── store     # Filesystem storage implementation
 //!     ├── secrets       # Secret CRUD logic

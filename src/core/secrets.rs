@@ -3,8 +3,8 @@
 //! High-level operations for managing encrypted secrets in the burrow.
 
 use crate::core::config::BurrowConfig;
-use crate::core::crypto;
-use crate::core::keys::KeyStore;
+use crate::core::cipher;
+use crate::core::store::KeyStore;
 use crate::error::{ConfigError, Result, SecretError, ValidationError};
 
 use age::x25519;
@@ -66,7 +66,7 @@ fn get_recipients(config: &BurrowConfig) -> Result<Vec<x25519::Recipient>> {
     config
         .recipients
         .values()
-        .map(|k| crypto::parse_recipient(k))
+        .map(|k| cipher::parse_recipient(k))
         .collect()
 }
 
@@ -98,7 +98,7 @@ pub fn set_secret(config: &mut BurrowConfig, key: &str, value: &str, force: bool
         return Err(ConfigError::NoRecipients.into());
     }
 
-    let encrypted = crypto::encrypt(value, &recipients)?;
+    let encrypted = cipher::encrypt(value, &recipients)?;
     config.secrets.insert(key.to_string(), encrypted);
     config.save()?;
 
@@ -127,7 +127,7 @@ pub fn get_secret(config: &BurrowConfig, key: &str) -> Result<String> {
         .ok_or_else(|| SecretError::NotFound(key.to_string()))?;
 
     let identity = KeyStore::load_identity(&config.project_id())?;
-    let plaintext = crypto::decrypt(encrypted, &identity)?;
+    let plaintext = cipher::decrypt(encrypted, &identity)?;
 
     Ok(plaintext)
 }
@@ -181,7 +181,7 @@ pub fn decrypt_all(config: &BurrowConfig) -> Result<Vec<(String, String)>> {
 
     let mut pairs = Vec::new();
     for (key, encrypted) in &config.secrets {
-        let plaintext = crypto::decrypt(encrypted, &identity)?;
+        let plaintext = cipher::decrypt(encrypted, &identity)?;
         pairs.push((key.clone(), plaintext));
     }
 
@@ -206,8 +206,8 @@ pub fn reencrypt_all(config: &mut BurrowConfig) -> Result<()> {
 
     let mut updated = std::collections::BTreeMap::new();
     for (key, encrypted) in &config.secrets {
-        let plaintext = crypto::decrypt(encrypted, &identity)?;
-        let reencrypted = crypto::encrypt(&plaintext, &recipients)?;
+        let plaintext = cipher::decrypt(encrypted, &identity)?;
+        let reencrypted = cipher::encrypt(&plaintext, &recipients)?;
         updated.insert(key.clone(), reencrypted);
     }
 

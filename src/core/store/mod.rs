@@ -30,9 +30,9 @@
 use crate::error::Result;
 use age::x25519;
 
-mod store;
+mod fs;
 
-pub use store::FilesystemKeyStore;
+pub use fs::FilesystemKeyStore;
 
 /// Key storage trait.
 ///

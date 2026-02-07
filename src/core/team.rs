@@ -4,7 +4,7 @@
 //! decrypt secrets.
 
 use crate::core::config::BurrowConfig;
-use crate::core::crypto;
+use crate::core::cipher;
 use crate::core::secrets;
 use crate::error::{ConfigError, Result};
 
@@ -25,7 +25,7 @@ use crate::error::{ConfigError, Result};
 /// Returns error if re-encryption fails.
 pub fn add_member(config: &mut BurrowConfig, name: &str, public_key: &str) -> Result<()> {
     // Validate the key format first - this will return a clear error if invalid
-    crypto::parse_recipient(public_key)?;
+    cipher::parse_recipient(public_key)?;
 
     config
         .recipients

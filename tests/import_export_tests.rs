@@ -1,6 +1,6 @@
 //! Tests for import/export functionality.
 
-use burrow::core::{config::BurrowConfig, env, keys::KeyStore};
+use burrow::core::{config::BurrowConfig, env, store::KeyStore};
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;

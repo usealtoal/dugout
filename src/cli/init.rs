@@ -4,7 +4,7 @@ use colored::Colorize;
 
 use crate::core::config;
 use crate::core::config::BurrowConfig;
-use crate::core::keys::KeyStore;
+use crate::core::store::KeyStore;
 use crate::error::Result;
 
 /// Initialize burrow in the current directory.
