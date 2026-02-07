@@ -3,7 +3,6 @@
 //! High-level operations for managing encrypted secrets in the burrow.
 
 use crate::core::config::Config;
-use crate::core::types::SecretKey;
 use crate::core::{cipher, store};
 use crate::error::{ConfigError, Result, SecretError, ValidationError};
 
@@ -128,7 +127,7 @@ pub fn get(config: &Config, key: &str) -> Result<Zeroizing<String>> {
     })?;
 
     let identity = store::load_identity(&config.project_id())?;
-    let plaintext = cipher::decrypt(encrypted, &identity)?;
+    let plaintext = cipher::decrypt(encrypted, identity.as_age())?;
 
     Ok(Zeroizing::new(plaintext))
 }
@@ -152,19 +151,6 @@ pub fn remove(config: &mut Config, key: &str) -> Result<()> {
     Ok(())
 }
 
-/// List all secret keys (names only, not values).
-///
-/// # Arguments
-///
-/// * `config` - Configuration reference
-///
-/// # Returns
-///
-/// Vector of secret key names.
-pub fn list(config: &Config) -> Vec<SecretKey> {
-    config.secrets.keys().cloned().collect()
-}
-
 /// Decrypt all secrets (for unlock/run operations).
 ///
 /// # Arguments
@@ -183,7 +169,7 @@ pub fn decrypt_all(config: &Config) -> Result<Vec<(String, Zeroizing<String>)>> 
 
     let mut pairs = Vec::new();
     for (key, encrypted) in &config.secrets {
-        let plaintext = cipher::decrypt(encrypted, &identity)?;
+        let plaintext = cipher::decrypt(encrypted, identity.as_age())?;
         pairs.push((key.clone(), Zeroizing::new(plaintext)));
     }
 
@@ -209,7 +195,7 @@ pub fn reencrypt_all(config: &mut Config) -> Result<()> {
     let mut updated = std::collections::BTreeMap::new();
     for (key, encrypted) in &config.secrets {
         // Use Zeroizing to ensure plaintext is wiped after re-encryption
-        let plaintext = Zeroizing::new(cipher::decrypt(encrypted, &identity)?);
+        let plaintext = Zeroizing::new(cipher::decrypt(encrypted, identity.as_age())?);
         let reencrypted = cipher::encrypt(&plaintext, &recipients)?;
         updated.insert(key.clone(), reencrypted);
     }

@@ -27,8 +27,8 @@
 //! }
 //! ```
 
+use crate::core::identity::Identity;
 use crate::error::Result;
-use age::x25519;
 
 mod fs;
 
@@ -67,7 +67,7 @@ pub trait Store {
     /// # Errors
     ///
     /// Returns `StoreError` if the key doesn't exist or cannot be loaded.
-    fn load_identity(&self, project_id: &str) -> Result<x25519::Identity>;
+    fn load_identity(&self, project_id: &str) -> Result<Identity>;
 
     /// Check if a keypair exists for a project.
     ///
@@ -109,13 +109,13 @@ pub fn generate_keypair(project_id: &str) -> Result<String> {
 ///
 /// # Returns
 ///
-/// The age x25519 identity for decryption.
+/// The Identity for decryption.
 ///
 /// # Errors
 ///
 /// Returns `StoreError::NoPrivateKey` if the key doesn't exist,
 /// or `StoreError::InvalidFormat` if the key is malformed.
-pub fn load_identity(project_id: &str) -> Result<x25519::Identity> {
+pub fn load_identity(project_id: &str) -> Result<Identity> {
     Filesystem.load_identity(project_id)
 }
 

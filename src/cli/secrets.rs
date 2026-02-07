@@ -38,22 +38,23 @@ pub fn rm(key: &str) -> Result<()> {
 /// List all secret keys.
 pub fn list(json: bool) -> Result<()> {
     let vault = Vault::open()?;
-    let keys = vault.list();
+    let secrets = vault.list();
 
     if json {
+        let keys: Vec<String> = secrets.iter().map(|s| s.key().to_string()).collect();
         let result = serde_json::json!({
             "keys": keys,
-            "count": keys.len()
+            "count": secrets.len()
         });
         println!("{}", serde_json::to_string_pretty(&result)?);
-    } else if keys.is_empty() {
+    } else if secrets.is_empty() {
         output::dimmed("no secrets stored");
     } else {
         println!();
-        output::header(&format!("{} secrets", keys.len()));
+        output::header(&format!("{} secrets", secrets.len()));
         output::rule();
-        for key in keys {
-            output::list_item(&key);
+        for secret in secrets {
+            output::list_item(secret.key());
         }
     }
 

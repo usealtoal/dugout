@@ -3,123 +3,29 @@
 //! Manages age identity (private key) generation and retrieval from
 //! the local filesystem (~/.burrow/keys/).
 
-use std::fs;
-use std::path::PathBuf;
-
-use age::x25519;
-use tracing::{debug, warn};
-
 use super::Store;
-use crate::core::constants;
-use crate::error::{Result, StoreError, ValidationError};
-
-/// Validate file permissions (Unix only).
-///
-/// Checks that a file has the expected permissions mode.
-#[cfg(unix)]
-fn validate_file_permissions(path: &std::path::Path, expected_mode: u32) -> Result<()> {
-    use std::os::unix::fs::PermissionsExt;
-
-    let metadata = std::fs::metadata(path)?;
-    let actual_mode = metadata.permissions().mode() & 0o777;
-
-    if actual_mode != expected_mode {
-        return Err(ValidationError::InvalidPermissions {
-            path: path.display().to_string(),
-            expected: format!("{:o}", expected_mode),
-            actual: format!("{:o}", actual_mode),
-        }
-        .into());
-    }
-
-    Ok(())
-}
+use crate::core::identity::Identity;
+use crate::error::Result;
 
 /// Filesystem-based key storage.
 ///
 /// Stores age identities in `~/.burrow/keys/<project_id>/identity.key`.
 pub struct Filesystem;
 
-impl Filesystem {
-    /// Base directory for all burrow keys (`~/.burrow/keys`).
-    fn base_dir() -> Result<PathBuf> {
-        let home = dirs::home_dir().ok_or_else(|| {
-            StoreError::GenerationFailed("unable to determine home directory".to_string())
-        })?;
-        Ok(home.join(constants::KEY_DIR))
-    }
-
-    /// Directory for a specific project's keys.
-    fn project_dir(project_id: &str) -> Result<PathBuf> {
-        Ok(Self::base_dir()?.join(project_id))
-    }
-}
-
 impl Store for Filesystem {
     fn generate_keypair(&self, project_id: &str) -> Result<String> {
-        debug!("Generating new keypair for project: {}", project_id);
-
-        let identity = x25519::Identity::generate();
-        let public_key = identity.to_public().to_string();
-
-        let dir = Self::project_dir(project_id)?;
-        fs::create_dir_all(&dir).map_err(StoreError::WriteFailed)?;
-
-        let key_path = dir.join("identity.key");
-
-        // Write identity using Display trait (outputs AGE-SECRET-KEY-...)
-        use age::secrecy::ExposeSecret;
-        let secret_str = identity.to_string();
-        fs::write(&key_path, format!("{}\n", secret_str.expose_secret()))
-            .map_err(StoreError::WriteFailed)?;
-
-        // Restrict permissions on key file (Unix only)
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(&key_path, fs::Permissions::from_mode(0o600))
-                .map_err(StoreError::WriteFailed)?;
-        }
-
-        debug!("Keypair generated and saved to: {}", key_path.display());
-
-        Ok(public_key)
+        let key_dir = Identity::project_dir(project_id)?;
+        let identity = Identity::generate(&key_dir)?;
+        Ok(identity.public_key())
     }
 
-    fn load_identity(&self, project_id: &str) -> Result<x25519::Identity> {
-        let key_path = Self::project_dir(project_id)?.join("identity.key");
-        debug!("Loading identity from: {}", key_path.display());
-
-        if !key_path.exists() {
-            return Err(StoreError::NoPrivateKey(project_id.to_string()).into());
-        }
-
-        // Verify permissions on Unix
-        #[cfg(unix)]
-        {
-            if let Err(e) = validate_file_permissions(&key_path, 0o600) {
-                warn!(
-                    "Insecure key file permissions: {}. Run: chmod 600 {}",
-                    e,
-                    key_path.display()
-                );
-            }
-        }
-
-        let contents = fs::read_to_string(&key_path).map_err(StoreError::ReadFailed)?;
-
-        let identity: x25519::Identity = contents
-            .trim()
-            .parse()
-            .map_err(|e: &str| StoreError::InvalidFormat(e.to_string()))?;
-
-        debug!("Identity loaded successfully");
-
-        Ok(identity)
+    fn load_identity(&self, project_id: &str) -> Result<Identity> {
+        let key_dir = Identity::project_dir(project_id)?;
+        Identity::load(&key_dir)
     }
 
     fn has_key(&self, project_id: &str) -> bool {
-        Self::project_dir(project_id)
+        Identity::project_dir(project_id)
             .map(|dir| dir.join("identity.key").exists())
             .unwrap_or(false)
     }

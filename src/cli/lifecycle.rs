@@ -81,7 +81,11 @@ pub fn diff() -> Result<()> {
     }
 
     // Get keys from .burrow.toml
-    let toml_keys: std::collections::HashSet<_> = vault.list().into_iter().collect();
+    let toml_keys: std::collections::HashSet<_> = vault
+        .list()
+        .into_iter()
+        .map(|s| s.key().to_string())
+        .collect();
 
     // Calculate differences
     let synced: Vec<_> = toml_keys.intersection(&env_keys).collect();
@@ -214,7 +218,7 @@ pub fn rotate() -> Result<()> {
 
     let mut decrypted_secrets = Vec::new();
     for (key, ciphertext) in &cfg.secrets {
-        let plaintext = cipher::decrypt(ciphertext, &identity)?;
+        let plaintext = cipher::decrypt(ciphertext, identity.as_age())?;
         decrypted_secrets.push((key.clone(), plaintext));
     }
     output::progress_done(true);

@@ -4,7 +4,10 @@
 //! encryption, and configuration handling.
 
 // Public API
+pub mod audit;
+pub mod identity;
 pub mod recipient;
+pub mod secret;
 pub mod types;
 pub mod vault;
 

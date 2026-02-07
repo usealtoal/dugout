@@ -3,10 +3,12 @@
 //! Vault owns the configuration and provides all secret and team operations.
 
 use crate::core::config::{self, Config};
+use crate::core::identity::Identity;
 use crate::core::recipient::Recipient;
+use crate::core::secret::Secret;
 use crate::core::store;
 use crate::core::types::SecretKey;
-use crate::core::{secrets, team};
+use crate::core::{cipher, secrets, team};
 use crate::error::Result;
 use zeroize::Zeroizing;
 
@@ -14,10 +16,20 @@ use zeroize::Zeroizing;
 ///
 /// Owns the config, manages keys, and provides all secret operations.
 /// This is the main entry point for all vault interactions.
-#[derive(Debug)]
 pub struct Vault {
     config: Config,
     project_id: String,
+    identity: Identity,
+}
+
+impl std::fmt::Debug for Vault {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Vault")
+            .field("config", &self.config)
+            .field("project_id", &self.project_id)
+            .field("identity", &self.identity)
+            .finish()
+    }
 }
 
 impl Vault {
@@ -30,8 +42,13 @@ impl Vault {
     pub fn open() -> Result<Self> {
         let config = Config::load()?;
         let project_id = config.project_id();
+        let identity = store::load_identity(&project_id)?;
 
-        Ok(Self { config, project_id })
+        Ok(Self {
+            config,
+            project_id,
+            identity,
+        })
     }
 
     /// Initialize a new vault.
@@ -63,7 +80,13 @@ impl Vault {
 
         config::ensure_gitignore()?;
 
-        Ok(Self { config, project_id })
+        let identity = store::load_identity(&project_id)?;
+
+        Ok(Self {
+            config,
+            project_id,
+            identity,
+        })
     }
 
     /// Set a secret.
@@ -76,13 +99,41 @@ impl Vault {
     /// * `value` - Plaintext secret value
     /// * `force` - Overwrite if the key already exists
     ///
+    /// # Returns
+    ///
+    /// The created Secret.
+    ///
     /// # Errors
     ///
     /// Returns `ValidationError` if key or value is invalid.
     /// Returns `SecretError::AlreadyExists` if key exists and `force` is false.
-    pub fn set(&mut self, key: &str, value: &str, force: bool) -> Result<()> {
-        secrets::set(&mut self.config, key, value, force)?;
-        Ok(())
+    pub fn set(&mut self, key: &str, value: &str, force: bool) -> Result<Secret> {
+        // Validate and encrypt
+        secrets::validate_key(key)?;
+
+        if self.config.secrets.contains_key(key) && !force {
+            return Err(crate::error::SecretError::AlreadyExists(key.to_string()).into());
+        }
+
+        let recipients: Vec<age::x25519::Recipient> = self
+            .config
+            .recipients
+            .values()
+            .map(|k| cipher::parse_recipient(k))
+            .collect::<Result<Vec<_>>>()?;
+
+        if recipients.is_empty() {
+            return Err(crate::error::ConfigError::NoRecipients.into());
+        }
+
+        let encrypted = cipher::encrypt(value, &recipients)?;
+
+        self.config
+            .secrets
+            .insert(key.to_string(), encrypted.clone());
+        self.config.save()?;
+
+        Ok(Secret::new(key.to_string(), encrypted))
     }
 
     /// Get a decrypted secret.
@@ -117,9 +168,18 @@ impl Vault {
         Ok(())
     }
 
-    /// List all secret keys (names only, not values).
-    pub fn list(&self) -> Vec<SecretKey> {
-        secrets::list(&self.config)
+    /// List all secrets.
+    pub fn list(&self) -> Vec<Secret> {
+        self.config
+            .secrets
+            .iter()
+            .map(|(key, value)| Secret::new(key.clone(), value.clone()))
+            .collect()
+    }
+
+    /// Get the vault's identity.
+    pub fn identity(&self) -> &Identity {
+        &self.identity
     }
 
     /// Decrypt all secrets.
@@ -314,7 +374,8 @@ mod tests {
         assert!(vault.get("TEMP_SECRET").is_err());
 
         // Verify it's not in the list
-        let keys = vault.list();
+        let secrets = vault.list();
+        let keys: Vec<String> = secrets.iter().map(|s| s.key().to_string()).collect();
         assert!(!keys.contains(&"TEMP_SECRET".to_string()));
     }
 
@@ -326,8 +387,10 @@ mod tests {
         vault.set("KEY_TWO", "value2", false).unwrap();
         vault.set("KEY_THREE", "value3", false).unwrap();
 
-        let keys = vault.list();
-        assert_eq!(keys.len(), 3);
+        let secrets = vault.list();
+        assert_eq!(secrets.len(), 3);
+
+        let keys: Vec<String> = secrets.iter().map(|s| s.key().to_string()).collect();
         assert!(keys.contains(&"KEY_ONE".to_string()));
         assert!(keys.contains(&"KEY_TWO".to_string()));
         assert!(keys.contains(&"KEY_THREE".to_string()));
