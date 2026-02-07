@@ -29,7 +29,7 @@ use ::age::x25519;
 
 mod age;
 
-pub use age::{parse_recipient, AgeBackend};
+pub use age::{parse_recipient, Age};
 
 /// Cryptographic backend trait.
 ///
@@ -55,7 +55,7 @@ pub trait Cipher {
     ///
     /// # Errors
     ///
-    /// Returns `CryptoError` if encryption fails.
+    /// Returns `CipherError` if encryption fails.
     fn encrypt(&self, plaintext: &str, recipients: &[Self::Recipient]) -> Result<String>;
 
     /// Decrypt an encrypted string using a private identity.
@@ -71,7 +71,7 @@ pub trait Cipher {
     ///
     /// # Errors
     ///
-    /// Returns `CryptoError` if decryption fails.
+    /// Returns `CipherError` if decryption fails.
     fn decrypt(&self, encrypted: &str, identity: &Self::Identity) -> Result<String>;
 }
 
@@ -81,7 +81,7 @@ pub use ::age::x25519::{Identity, Recipient};
 // Convenience functions using the default age backend
 /// Encrypt plaintext for multiple age recipients.
 ///
-/// This is a convenience wrapper around `AgeBackend::encrypt`.
+/// This is a convenience wrapper around `Age::encrypt`.
 ///
 /// # Arguments
 ///
@@ -94,14 +94,14 @@ pub use ::age::x25519::{Identity, Recipient};
 ///
 /// # Errors
 ///
-/// Returns `CryptoError` if encryption fails at any stage.
+/// Returns `CipherError` if encryption fails at any stage.
 pub fn encrypt(plaintext: &str, recipients: &[x25519::Recipient]) -> Result<String> {
-    AgeBackend.encrypt(plaintext, recipients)
+    Age.encrypt(plaintext, recipients)
 }
 
 /// Decrypt an age-encrypted string using a private identity.
 ///
-/// This is a convenience wrapper around `AgeBackend::decrypt`.
+/// This is a convenience wrapper around `Age::decrypt`.
 ///
 /// # Arguments
 ///
@@ -114,7 +114,7 @@ pub fn encrypt(plaintext: &str, recipients: &[x25519::Recipient]) -> Result<Stri
 ///
 /// # Errors
 ///
-/// Returns `CryptoError` if decryption fails or the key doesn't match.
+/// Returns `CipherError` if decryption fails or the key doesn't match.
 pub fn decrypt(encrypted: &str, identity: &x25519::Identity) -> Result<String> {
-    AgeBackend.decrypt(encrypted, identity)
+    Age.decrypt(encrypted, identity)
 }

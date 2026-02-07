@@ -34,7 +34,7 @@ pub enum ConfigError {
 
 /// Cryptographic operation errors.
 #[derive(Error, Debug)]
-pub enum CryptoError {
+pub enum CipherError {
     #[error("encryption failed: {0}")]
     EncryptionFailed(String),
 
@@ -56,7 +56,7 @@ pub enum CryptoError {
 
 /// Key storage and management errors.
 #[derive(Error, Debug)]
-pub enum KeyError {
+pub enum StoreError {
     #[error("no private key found for project '{0}'")]
     NoPrivateKey(String),
 
@@ -119,10 +119,10 @@ pub enum Error {
     Config(#[from] ConfigError),
 
     #[error(transparent)]
-    Crypto(#[from] CryptoError),
+    Cipher(#[from] CipherError),
 
     #[error(transparent)]
-    Key(#[from] KeyError),
+    Store(#[from] StoreError),
 
     #[error(transparent)]
     Secret(#[from] SecretError),

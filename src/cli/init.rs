@@ -2,14 +2,13 @@
 
 use colored::Colorize;
 
-use crate::core::config;
-use crate::core::config::BurrowConfig;
-use crate::core::store::KeyStore;
+use crate::core::config::{self, Config};
+use crate::core::store;
 use crate::error::Result;
 
 /// Initialize burrow in the current directory.
 pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
-    if BurrowConfig::exists() {
+    if Config::exists() {
         return Err(crate::error::ConfigError::AlreadyInitialized.into());
     }
 
@@ -19,10 +18,10 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
 
     let name = name.unwrap_or_else(whoami::username);
 
-    let mut config = BurrowConfig::new();
+    let mut config = Config::new();
     let project_id = config.project_id();
 
-    let public_key = KeyStore::generate_keypair(&project_id)?;
+    let public_key = store::generate_keypair(&project_id)?;
     config.recipients.insert(name.clone(), public_key.clone());
     config.save()?;
 

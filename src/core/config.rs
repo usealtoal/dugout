@@ -13,9 +13,9 @@ const CONFIG_FILE: &str = ".burrow.toml";
 
 /// Root configuration structure.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct BurrowConfig {
+pub struct Config {
     /// Metadata about the burrow configuration.
-    pub burrow: BurrowMeta,
+    pub burrow: Meta,
     /// Map of recipient names to their age public keys.
     #[serde(default)]
     pub recipients: BTreeMap<String, String>,
@@ -26,16 +26,16 @@ pub struct BurrowConfig {
 
 /// Burrow metadata section.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct BurrowMeta {
+pub struct Meta {
     /// Configuration version.
     pub version: String,
 }
 
-impl BurrowConfig {
+impl Config {
     /// Create a new empty configuration.
     pub fn new() -> Self {
         Self {
-            burrow: BurrowMeta {
+            burrow: Meta {
                 version: env!("CARGO_PKG_VERSION").to_string(),
             },
             recipients: BTreeMap::new(),
@@ -89,7 +89,7 @@ impl BurrowConfig {
     }
 }
 
-impl Default for BurrowConfig {
+impl Default for Config {
     fn default() -> Self {
         Self::new()
     }

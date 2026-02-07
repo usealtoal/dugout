@@ -2,9 +2,8 @@
 //!
 //! High-level operations for managing encrypted secrets in the burrow.
 
-use crate::core::config::BurrowConfig;
-use crate::core::cipher;
-use crate::core::store::KeyStore;
+use crate::core::config::Config;
+use crate::core::{cipher, store};
 use crate::error::{ConfigError, Result, SecretError, ValidationError};
 
 use age::x25519;
@@ -62,7 +61,7 @@ fn validate_value(key: &str, value: &str) -> Result<()> {
 /// # Errors
 ///
 /// Returns error if any recipient key is invalid.
-fn get_recipients(config: &BurrowConfig) -> Result<Vec<x25519::Recipient>> {
+fn get_recipients(config: &Config) -> Result<Vec<x25519::Recipient>> {
     config
         .recipients
         .values()
@@ -84,7 +83,7 @@ fn get_recipients(config: &BurrowConfig) -> Result<Vec<x25519::Recipient>> {
 /// Returns `ValidationError` if key or value is invalid.
 /// Returns `SecretError::AlreadyExists` if key exists and `force` is false.
 /// Returns `ConfigError::NoRecipients` if no recipients are configured.
-pub fn set_secret(config: &mut BurrowConfig, key: &str, value: &str, force: bool) -> Result<()> {
+pub fn set(config: &mut Config, key: &str, value: &str, force: bool) -> Result<()> {
     // Validate input
     validate_key(key)?;
     validate_value(key, value)?;
@@ -119,14 +118,14 @@ pub fn set_secret(config: &mut BurrowConfig, key: &str, value: &str, force: bool
 /// # Errors
 ///
 /// Returns `SecretError::NotFound` if the key doesn't exist.
-/// Returns `CryptoError` if decryption fails.
-pub fn get_secret(config: &BurrowConfig, key: &str) -> Result<String> {
+/// Returns `CipherError` if decryption fails.
+pub fn get(config: &Config, key: &str) -> Result<String> {
     let encrypted = config
         .secrets
         .get(key)
         .ok_or_else(|| SecretError::NotFound(key.to_string()))?;
 
-    let identity = KeyStore::load_identity(&config.project_id())?;
+    let identity = store::load_identity(&config.project_id())?;
     let plaintext = cipher::decrypt(encrypted, &identity)?;
 
     Ok(plaintext)
@@ -142,7 +141,7 @@ pub fn get_secret(config: &BurrowConfig, key: &str) -> Result<String> {
 /// # Errors
 ///
 /// Returns `SecretError::NotFound` if the key doesn't exist.
-pub fn remove_secret(config: &mut BurrowConfig, key: &str) -> Result<()> {
+pub fn remove(config: &mut Config, key: &str) -> Result<()> {
     if config.secrets.remove(key).is_none() {
         return Err(SecretError::NotFound(key.to_string()).into());
     }
@@ -159,7 +158,7 @@ pub fn remove_secret(config: &mut BurrowConfig, key: &str) -> Result<()> {
 /// # Returns
 ///
 /// Vector of secret key names.
-pub fn list_secrets(config: &BurrowConfig) -> Vec<String> {
+pub fn list(config: &Config) -> Vec<String> {
     config.secrets.keys().cloned().collect()
 }
 
@@ -176,8 +175,8 @@ pub fn list_secrets(config: &BurrowConfig) -> Vec<String> {
 /// # Errors
 ///
 /// Returns error if decryption of any secret fails.
-pub fn decrypt_all(config: &BurrowConfig) -> Result<Vec<(String, String)>> {
-    let identity = KeyStore::load_identity(&config.project_id())?;
+pub fn decrypt_all(config: &Config) -> Result<Vec<(String, String)>> {
+    let identity = store::load_identity(&config.project_id())?;
 
     let mut pairs = Vec::new();
     for (key, encrypted) in &config.secrets {
@@ -200,8 +199,8 @@ pub fn decrypt_all(config: &BurrowConfig) -> Result<Vec<(String, String)>> {
 /// # Errors
 ///
 /// Returns error if decryption or re-encryption fails.
-pub fn reencrypt_all(config: &mut BurrowConfig) -> Result<()> {
-    let identity = KeyStore::load_identity(&config.project_id())?;
+pub fn reencrypt_all(config: &mut Config) -> Result<()> {
+    let identity = store::load_identity(&config.project_id())?;
     let recipients = get_recipients(config)?;
 
     let mut updated = std::collections::BTreeMap::new();

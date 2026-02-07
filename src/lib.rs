@@ -19,8 +19,8 @@
 //!     │   └── age       # age encryption implementation
 //!     ├── env           # .env file operations
 //!     ├── store/         # Key storage backends
-//!     │   ├── mod       # KeyStorage trait
-//!     │   └── store     # Filesystem storage implementation
+//!     │   ├── mod       # Store trait
+//!     │   └── fs        # Filesystem storage implementation
 //!     ├── secrets       # Secret CRUD logic
 //!     └── team          # Team member management
 //! ```

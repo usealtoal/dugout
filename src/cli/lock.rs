@@ -2,13 +2,13 @@
 
 use colored::Colorize;
 
-use crate::core::config::BurrowConfig;
+use crate::core::config::Config;
 use crate::core::env;
 use crate::error::Result;
 
 /// Lock (status check - secrets are always encrypted).
 pub fn lock() -> Result<()> {
-    let config = BurrowConfig::load()?;
+    let config = Config::load()?;
     println!(
         "{} {} secrets encrypted in .burrow.toml",
         "locked:".green().bold(),
@@ -20,8 +20,8 @@ pub fn lock() -> Result<()> {
 
 /// Unlock secrets to .env file.
 pub fn unlock() -> Result<()> {
-    let config = BurrowConfig::load()?;
-    let count = env::unlock_to_file(&config)?;
+    let config = Config::load()?;
+    let count = env::unlock(&config)?;
     println!(
         "{} {} secrets written to .env",
         "unlocked:".green().bold(),

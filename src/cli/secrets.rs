@@ -2,38 +2,38 @@
 
 use colored::Colorize;
 
-use crate::core::config::BurrowConfig;
+use crate::core::config::Config;
 use crate::core::secrets;
 use crate::error::Result;
 
 /// Set a secret value.
 pub fn set(key: &str, value: &str, force: bool) -> Result<()> {
-    let mut config = BurrowConfig::load()?;
-    secrets::set_secret(&mut config, key, value, force)?;
+    let mut config = Config::load()?;
+    secrets::set(&mut config, key, value, force)?;
     println!("{} {}", "set:".green().bold(), key);
     Ok(())
 }
 
 /// Get a secret value.
 pub fn get(key: &str) -> Result<()> {
-    let config = BurrowConfig::load()?;
-    let value = secrets::get_secret(&config, key)?;
+    let config = Config::load()?;
+    let value = secrets::get(&config, key)?;
     println!("{}", value);
     Ok(())
 }
 
 /// Remove a secret.
 pub fn rm(key: &str) -> Result<()> {
-    let mut config = BurrowConfig::load()?;
-    secrets::remove_secret(&mut config, key)?;
+    let mut config = Config::load()?;
+    secrets::remove(&mut config, key)?;
     println!("{} {}", "removed:".green().bold(), key);
     Ok(())
 }
 
 /// List all secret keys.
 pub fn list() -> Result<()> {
-    let config = BurrowConfig::load()?;
-    let keys = secrets::list_secrets(&config);
+    let config = Config::load()?;
+    let keys = secrets::list(&config);
 
     if keys.is_empty() {
         println!("{}", "no secrets stored".dimmed());

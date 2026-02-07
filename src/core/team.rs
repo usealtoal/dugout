@@ -3,8 +3,8 @@
 //! Operations for adding and removing recipients (team members) who can
 //! decrypt secrets.
 
-use crate::core::config::BurrowConfig;
 use crate::core::cipher;
+use crate::core::config::Config;
 use crate::core::secrets;
 use crate::error::{ConfigError, Result};
 
@@ -21,9 +21,9 @@ use crate::error::{ConfigError, Result};
 ///
 /// # Errors
 ///
-/// Returns `CryptoError` if the public key is invalid.
+/// Returns `CipherError` if the public key is invalid.
 /// Returns error if re-encryption fails.
-pub fn add_member(config: &mut BurrowConfig, name: &str, public_key: &str) -> Result<()> {
+pub fn add(config: &mut Config, name: &str, public_key: &str) -> Result<()> {
     // Validate the key format first - this will return a clear error if invalid
     cipher::parse_recipient(public_key)?;
 
@@ -54,7 +54,7 @@ pub fn add_member(config: &mut BurrowConfig, name: &str, public_key: &str) -> Re
 ///
 /// Returns `ConfigError::RecipientNotFound` if the member doesn't exist.
 /// Returns error if re-encryption fails.
-pub fn remove_member(config: &mut BurrowConfig, name: &str) -> Result<()> {
+pub fn remove(config: &mut Config, name: &str) -> Result<()> {
     if config.recipients.remove(name).is_none() {
         return Err(ConfigError::RecipientNotFound(name.to_string()).into());
     }
@@ -77,7 +77,7 @@ pub fn remove_member(config: &mut BurrowConfig, name: &str) -> Result<()> {
 /// # Returns
 ///
 /// Vector of (name, public_key) pairs.
-pub fn list_members(config: &BurrowConfig) -> Vec<(String, String)> {
+pub fn list(config: &Config) -> Vec<(String, String)> {
     config
         .recipients
         .iter()

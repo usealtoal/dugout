@@ -1,11 +1,11 @@
 //! Tests for configuration management.
 
-use burrow::core::config::BurrowConfig;
+use burrow::core::config::Config;
 use tempfile::TempDir;
 
 #[test]
 fn test_config_new() {
-    let config = BurrowConfig::new();
+    let config = Config::new();
     assert_eq!(config.burrow.version, env!("CARGO_PKG_VERSION"));
     assert!(config.recipients.is_empty());
     assert!(config.secrets.is_empty());
@@ -17,7 +17,7 @@ fn test_config_save_and_load() {
     let temp_dir = TempDir::new().unwrap();
     std::env::set_current_dir(&temp_dir).unwrap();
 
-    let mut config = BurrowConfig::new();
+    let mut config = Config::new();
     config
         .recipients
         .insert("alice".to_string(), "age1test123".to_string());
@@ -27,10 +27,10 @@ fn test_config_save_and_load() {
 
     // Save
     config.save().unwrap();
-    assert!(BurrowConfig::exists());
+    assert!(Config::exists());
 
     // Load
-    let loaded = BurrowConfig::load().unwrap();
+    let loaded = Config::load().unwrap();
     assert_eq!(loaded.recipients.len(), 1);
     assert_eq!(loaded.secrets.len(), 1);
     assert_eq!(loaded.recipients.get("alice").unwrap(), "age1test123");
@@ -46,7 +46,7 @@ fn test_config_load_not_initialized() {
     let temp_dir = TempDir::new().unwrap();
     std::env::set_current_dir(&temp_dir).unwrap();
 
-    let result = BurrowConfig::load();
+    let result = Config::load();
     assert!(result.is_err());
 
     // Restore directory
@@ -59,7 +59,7 @@ fn test_config_project_id() {
     let temp_dir = TempDir::new().unwrap();
     std::env::set_current_dir(&temp_dir).unwrap();
 
-    let config = BurrowConfig::new();
+    let config = Config::new();
     let project_id = config.project_id();
 
     // Should be the directory name or "default"

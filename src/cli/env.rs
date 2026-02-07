@@ -2,14 +2,14 @@
 
 use colored::Colorize;
 
-use crate::core::config::BurrowConfig;
+use crate::core::config::Config;
 use crate::core::env;
 use crate::error::Result;
 
 /// Import secrets from a .env file.
 pub fn import(path: &str) -> Result<()> {
-    let mut config = BurrowConfig::load()?;
-    let imported = env::import_env(&mut config, path)?;
+    let mut config = Config::load()?;
+    let imported = env::import(&mut config, path)?;
     println!(
         "{} {} secrets from {}",
         "imported:".green().bold(),
@@ -24,15 +24,15 @@ pub fn import(path: &str) -> Result<()> {
 
 /// Export secrets as .env format to stdout.
 pub fn export() -> Result<()> {
-    let config = BurrowConfig::load()?;
-    let output = env::export_env(&config)?;
+    let config = Config::load()?;
+    let output = env::export(&config)?;
     print!("{}", output);
     Ok(())
 }
 
 /// Show diff/status between encrypted and local .env.
 pub fn diff() -> Result<()> {
-    let config = BurrowConfig::load()?;
+    let config = Config::load()?;
     println!(
         "{} {} secrets in .burrow.toml",
         "status:".green().bold(),

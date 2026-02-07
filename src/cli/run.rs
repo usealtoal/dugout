@@ -1,18 +1,18 @@
 //! Run a command with secrets injected as environment variables.
 
-use crate::core::config::BurrowConfig;
+use crate::core::config::Config;
 use crate::core::secrets;
 use crate::error::Result;
 
 /// Run a command with secrets injected as environment variables.
 pub fn execute(command: &[String]) -> Result<()> {
-    let config = BurrowConfig::load()?;
+    let config = Config::load()?;
     let exit_code = run_with_secrets(&config, command)?;
     std::process::exit(exit_code);
 }
 
 /// Run a command with decrypted secrets as environment variables.
-fn run_with_secrets(config: &BurrowConfig, command: &[String]) -> Result<i32> {
+fn run_with_secrets(config: &Config, command: &[String]) -> Result<i32> {
     if command.is_empty() {
         return Err(crate::error::Error::Other(
             "no command specified".to_string(),

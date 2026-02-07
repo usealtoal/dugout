@@ -8,8 +8,8 @@ use std::path::PathBuf;
 
 use age::x25519;
 
-use super::KeyStorage;
-use crate::error::{KeyError, Result, ValidationError};
+use super::Store;
+use crate::error::{Result, StoreError, ValidationError};
 
 /// Validate file permissions (Unix only).
 ///
@@ -36,13 +36,13 @@ fn validate_file_permissions(path: &std::path::Path, expected_mode: u32) -> Resu
 /// Filesystem-based key storage.
 ///
 /// Stores age identities in `~/.burrow/keys/<project_id>/identity.key`.
-pub struct FilesystemKeyStore;
+pub struct Filesystem;
 
-impl FilesystemKeyStore {
+impl Filesystem {
     /// Base directory for all burrow keys (`~/.burrow/keys`).
     fn base_dir() -> Result<PathBuf> {
         let home = dirs::home_dir().ok_or_else(|| {
-            KeyError::GenerationFailed("unable to determine home directory".to_string())
+            StoreError::GenerationFailed("unable to determine home directory".to_string())
         })?;
         Ok(home.join(".burrow").join("keys"))
     }
@@ -53,13 +53,13 @@ impl FilesystemKeyStore {
     }
 }
 
-impl KeyStorage for FilesystemKeyStore {
+impl Store for Filesystem {
     fn generate_keypair(&self, project_id: &str) -> Result<String> {
         let identity = x25519::Identity::generate();
         let public_key = identity.to_public().to_string();
 
         let dir = Self::project_dir(project_id)?;
-        fs::create_dir_all(&dir).map_err(KeyError::WriteFailed)?;
+        fs::create_dir_all(&dir).map_err(StoreError::WriteFailed)?;
 
         let key_path = dir.join("identity.key");
 
@@ -67,14 +67,14 @@ impl KeyStorage for FilesystemKeyStore {
         use age::secrecy::ExposeSecret;
         let secret_str = identity.to_string();
         fs::write(&key_path, format!("{}\n", secret_str.expose_secret()))
-            .map_err(KeyError::WriteFailed)?;
+            .map_err(StoreError::WriteFailed)?;
 
         // Restrict permissions on key file (Unix only)
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
             fs::set_permissions(&key_path, fs::Permissions::from_mode(0o600))
-                .map_err(KeyError::WriteFailed)?;
+                .map_err(StoreError::WriteFailed)?;
         }
 
         Ok(public_key)
@@ -83,7 +83,7 @@ impl KeyStorage for FilesystemKeyStore {
     fn load_identity(&self, project_id: &str) -> Result<x25519::Identity> {
         let key_path = Self::project_dir(project_id)?.join("identity.key");
         if !key_path.exists() {
-            return Err(KeyError::NoPrivateKey(project_id.to_string()).into());
+            return Err(StoreError::NoPrivateKey(project_id.to_string()).into());
         }
 
         // Verify permissions on Unix
@@ -95,12 +95,12 @@ impl KeyStorage for FilesystemKeyStore {
             }
         }
 
-        let contents = fs::read_to_string(&key_path).map_err(KeyError::ReadFailed)?;
+        let contents = fs::read_to_string(&key_path).map_err(StoreError::ReadFailed)?;
 
         let identity: x25519::Identity = contents
             .trim()
             .parse()
-            .map_err(|e: &str| KeyError::InvalidFormat(e.to_string()))?;
+            .map_err(|e: &str| StoreError::InvalidFormat(e.to_string()))?;
 
         Ok(identity)
     }

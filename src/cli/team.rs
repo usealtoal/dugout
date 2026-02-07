@@ -2,14 +2,14 @@
 
 use colored::Colorize;
 
-use crate::core::config::BurrowConfig;
+use crate::core::config::Config;
 use crate::core::team;
 use crate::error::Result;
 
 /// Add a team member.
 pub fn add(name: &str, key: &str) -> Result<()> {
-    let mut config = BurrowConfig::load()?;
-    team::add_member(&mut config, name, key)?;
+    let mut config = Config::load()?;
+    team::add(&mut config, name, key)?;
     println!("{} {} added to team", "team:".green().bold(), name);
     if !config.secrets.is_empty() {
         println!(
@@ -22,8 +22,8 @@ pub fn add(name: &str, key: &str) -> Result<()> {
 
 /// List team members.
 pub fn list() -> Result<()> {
-    let config = BurrowConfig::load()?;
-    let members = team::list_members(&config);
+    let config = Config::load()?;
+    let members = team::list(&config);
 
     if members.is_empty() {
         println!("{}", "no team members".dimmed());
@@ -39,8 +39,8 @@ pub fn list() -> Result<()> {
 
 /// Remove a team member.
 pub fn rm(name: &str) -> Result<()> {
-    let mut config = BurrowConfig::load()?;
-    team::remove_member(&mut config, name)?;
+    let mut config = Config::load()?;
+    team::remove(&mut config, name)?;
     println!("{} {} removed from team", "team:".green().bold(), name);
     Ok(())
 }

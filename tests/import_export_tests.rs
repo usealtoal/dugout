@@ -1,13 +1,13 @@
 //! Tests for import/export functionality.
 
-use burrow::core::{config::BurrowConfig, env, store::KeyStore};
+use burrow::core::{config::Config, env, store};
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
 struct TestEnv {
     _dir: TempDir,
-    config: BurrowConfig,
+    config: Config,
     original_dir: PathBuf,
 }
 
@@ -22,11 +22,11 @@ fn setup_test_env() -> TestEnv {
     let temp_dir = TempDir::new().unwrap();
     std::env::set_current_dir(&temp_dir).unwrap();
 
-    let mut config = BurrowConfig::new();
+    let mut config = Config::new();
     let project_id = config.project_id();
 
     // Generate keypair
-    let public_key = KeyStore::generate_keypair(&project_id).unwrap();
+    let public_key = store::generate_keypair(&project_id).unwrap();
     config.recipients.insert("test".to_string(), public_key);
     config.save().unwrap();
 
@@ -45,7 +45,7 @@ fn test_import_env_basic() {
     let env_content = "DATABASE_URL=postgres://localhost/db\nAPI_KEY=secret123\n";
     fs::write("test.env", env_content).unwrap();
 
-    let imported = env::import_env(&mut env.config, "test.env").unwrap();
+    let imported = env::import(&mut env.config, "test.env").unwrap();
 
     assert_eq!(imported.len(), 2);
     assert!(imported.contains(&"DATABASE_URL".to_string()));
@@ -64,7 +64,7 @@ KEY3=no_quotes
 "#;
     fs::write("test.env", env_content).unwrap();
 
-    let imported = env::import_env(&mut env.config, "test.env").unwrap();
+    let imported = env::import(&mut env.config, "test.env").unwrap();
 
     assert_eq!(imported.len(), 3);
 }
@@ -82,7 +82,7 @@ KEY2=value2
 "#;
     fs::write("test.env", env_content).unwrap();
 
-    let imported = env::import_env(&mut env.config, "test.env").unwrap();
+    let imported = env::import(&mut env.config, "test.env").unwrap();
 
     assert_eq!(imported.len(), 2);
 }
@@ -99,10 +99,10 @@ fn test_export_env() {
     // Import some test data
     let env_content = "KEY1=value1\nKEY2=value_with_underscores\n";
     fs::write("test.env", env_content).unwrap();
-    env::import_env(&mut env.config, "test.env").unwrap();
+    env::import(&mut env.config, "test.env").unwrap();
 
     // Export directly (without reloading)
-    let exported = env::export_env(&env.config).unwrap();
+    let exported = env::export(&env.config).unwrap();
 
     assert!(exported.contains("KEY1=value1"));
     assert!(exported.contains("KEY2=value_with_underscores"));
@@ -116,13 +116,13 @@ fn test_unlock_to_file() {
     // Import some test data
     let env_content = "DB_URL=postgres://test\nAPI_KEY=secret\n";
     fs::write("test.env", env_content).unwrap();
-    env::import_env(&mut env.config, "test.env").unwrap();
+    env::import(&mut env.config, "test.env").unwrap();
 
     // Remove the test file
     fs::remove_file("test.env").unwrap();
 
     // Unlock to .env (use env.config directly, not reloaded)
-    let count = env::unlock_to_file(&env.config).unwrap();
+    let count = env::unlock(&env.config).unwrap();
 
     assert_eq!(count, 2);
     assert!(fs::metadata(".env").unwrap().is_file());

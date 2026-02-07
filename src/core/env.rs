@@ -2,7 +2,7 @@
 //!
 //! Provides seamless integration with dotenv-style environment files.
 
-use crate::core::config::BurrowConfig;
+use crate::core::config::Config;
 use crate::core::secrets;
 use crate::error::Result;
 
@@ -23,7 +23,7 @@ use crate::error::Result;
 /// # Errors
 ///
 /// Returns error if file reading or encryption fails.
-pub fn import_env(config: &mut BurrowConfig, path: &str) -> Result<Vec<String>> {
+pub fn import(config: &mut Config, path: &str) -> Result<Vec<String>> {
     let contents = std::fs::read_to_string(path)?;
     let mut imported = Vec::new();
 
@@ -39,7 +39,7 @@ pub fn import_env(config: &mut BurrowConfig, path: &str) -> Result<Vec<String>> 
             let key = key.trim();
             let value = value.trim().trim_matches('"').trim_matches('\'');
 
-            secrets::set_secret(config, key, value, true)?;
+            secrets::set(config, key, value, true)?;
             imported.push(key.to_string());
         }
     }
@@ -63,7 +63,7 @@ pub fn import_env(config: &mut BurrowConfig, path: &str) -> Result<Vec<String>> 
 /// # Errors
 ///
 /// Returns error if decryption fails.
-pub fn export_env(config: &BurrowConfig) -> Result<String> {
+pub fn export(config: &Config) -> Result<String> {
     let pairs = secrets::decrypt_all(config)?;
     let mut output = String::new();
 
@@ -94,8 +94,8 @@ pub fn export_env(config: &BurrowConfig) -> Result<String> {
 /// # Errors
 ///
 /// Returns error if decryption or file write fails.
-pub fn unlock_to_file(config: &BurrowConfig) -> Result<usize> {
-    let env_content = export_env(config)?;
+pub fn unlock(config: &Config) -> Result<usize> {
+    let env_content = export(config)?;
     let count = env_content.lines().count();
 
     std::fs::write(".env", env_content)?;
