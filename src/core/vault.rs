@@ -262,3 +262,167 @@ impl Vault {
         &self.project_id
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    struct TestContext {
+        _tmp: TempDir,
+        _original_dir: std::path::PathBuf,
+    }
+
+    impl Drop for TestContext {
+        fn drop(&mut self) {
+            // Restore original directory before tempdir is cleaned up
+            let _ = std::env::set_current_dir(&self._original_dir);
+        }
+    }
+
+    fn setup_test_vault() -> (TestContext, Vault) {
+        let tmp = TempDir::new().unwrap();
+        let original_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+        let vault = Vault::init("alice").unwrap();
+        let ctx = TestContext {
+            _tmp: tmp,
+            _original_dir: original_dir,
+        };
+        (ctx, vault)
+    }
+
+    #[test]
+    fn test_vault_set_and_get() {
+        let (_ctx, mut vault) = setup_test_vault();
+
+        vault.set("API_KEY", "secret123", false).unwrap();
+        let value = vault.get("API_KEY").unwrap();
+
+        assert_eq!(value.as_str(), "secret123");
+    }
+
+    #[test]
+    fn test_vault_remove() {
+        let (_ctx, mut vault) = setup_test_vault();
+
+        vault.set("TEMP_SECRET", "value", false).unwrap();
+        vault.remove("TEMP_SECRET").unwrap();
+
+        // After removal, get should fail
+        assert!(vault.get("TEMP_SECRET").is_err());
+
+        // Verify it's not in the list
+        let keys = vault.list();
+        assert!(!keys.contains(&"TEMP_SECRET".to_string()));
+    }
+
+    #[test]
+    fn test_vault_list() {
+        let (_ctx, mut vault) = setup_test_vault();
+
+        vault.set("KEY_ONE", "value1", false).unwrap();
+        vault.set("KEY_TWO", "value2", false).unwrap();
+        vault.set("KEY_THREE", "value3", false).unwrap();
+
+        let keys = vault.list();
+        assert_eq!(keys.len(), 3);
+        assert!(keys.contains(&"KEY_ONE".to_string()));
+        assert!(keys.contains(&"KEY_TWO".to_string()));
+        assert!(keys.contains(&"KEY_THREE".to_string()));
+    }
+
+    #[test]
+    fn test_vault_import() {
+        let (_ctx, mut vault) = setup_test_vault();
+
+        let env_content = "IMPORT_ONE=value1\nIMPORT_TWO=value2\n";
+        fs::write(".env.test", env_content).unwrap();
+
+        let imported = vault.import(".env.test").unwrap();
+        assert_eq!(imported.len(), 2);
+
+        assert_eq!(vault.get("IMPORT_ONE").unwrap().as_str(), "value1");
+        assert_eq!(vault.get("IMPORT_TWO").unwrap().as_str(), "value2");
+    }
+
+    #[test]
+    fn test_vault_export_roundtrip() {
+        let (_ctx, mut vault) = setup_test_vault();
+
+        vault.set("EXPORT_KEY", "export_value", false).unwrap();
+        vault.set("ANOTHER_KEY", "another_value", false).unwrap();
+
+        let exported = vault.export().unwrap();
+
+        assert!(exported.contains("EXPORT_KEY=export_value"));
+        assert!(exported.contains("ANOTHER_KEY=another_value"));
+    }
+
+    #[test]
+    fn test_vault_add_recipient() {
+        let (_ctx, mut vault) = setup_test_vault();
+
+        // Set a secret first
+        vault.set("SHARED_SECRET", "value", false).unwrap();
+
+        // Generate a second keypair
+        let identity = age::x25519::Identity::generate();
+        let pubkey = identity.to_public().to_string();
+
+        // Add the new recipient
+        vault.add_recipient("bob", &pubkey).unwrap();
+
+        // Verify the recipient was added
+        let recipients = vault.recipients();
+        assert_eq!(recipients.len(), 2);
+        assert!(recipients.iter().any(|r| r.name() == "bob"));
+
+        // Verify the secret can still be decrypted (by alice's key)
+        let value = vault.get("SHARED_SECRET").unwrap();
+        assert_eq!(value.as_str(), "value");
+    }
+
+    #[test]
+    fn test_vault_remove_recipient() {
+        let (_ctx, mut vault) = setup_test_vault();
+
+        // Add a second recipient
+        let identity = age::x25519::Identity::generate();
+        let pubkey = identity.to_public().to_string();
+        vault.add_recipient("bob", &pubkey).unwrap();
+
+        assert_eq!(vault.recipients().len(), 2);
+
+        // Remove bob
+        vault.remove_recipient("bob").unwrap();
+
+        let recipients = vault.recipients();
+        assert_eq!(recipients.len(), 1);
+        assert!(recipients.iter().all(|r| r.name() != "bob"));
+    }
+
+    #[test]
+    fn test_vault_reencrypt_after_team_change() {
+        let (_ctx, mut vault) = setup_test_vault();
+
+        // Set a secret
+        vault.set("TEAM_SECRET", "original", false).unwrap();
+
+        // Add a new member
+        let identity = age::x25519::Identity::generate();
+        let pubkey = identity.to_public().to_string();
+        vault.add_recipient("bob", &pubkey).unwrap();
+
+        // Secret should still decrypt to the same value (using alice's key)
+        let value = vault.get("TEAM_SECRET").unwrap();
+        assert_eq!(value.as_str(), "original");
+
+        // Verify re-encryption worked - decrypt all should succeed
+        let all_secrets = vault.decrypt_all().unwrap();
+        assert_eq!(all_secrets.len(), 1);
+        assert_eq!(all_secrets[0].0, "TEAM_SECRET");
+        assert_eq!(all_secrets[0].1.as_str(), "original");
+    }
+}

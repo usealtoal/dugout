@@ -202,3 +202,100 @@ pub fn ensure_gitignore() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    struct TestContext {
+        _tmp: TempDir,
+        _original_dir: std::path::PathBuf,
+    }
+
+    impl Drop for TestContext {
+        fn drop(&mut self) {
+            // Restore original directory before tempdir is cleaned up
+            let _ = std::env::set_current_dir(&self._original_dir);
+        }
+    }
+
+    fn setup_test_dir() -> TestContext {
+        let tmp = TempDir::new().unwrap();
+        let original_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+        TestContext {
+            _tmp: tmp,
+            _original_dir: original_dir,
+        }
+    }
+
+    #[test]
+    fn test_config_save_load_roundtrip() {
+        let _ctx = setup_test_dir();
+
+        let identity = age::x25519::Identity::generate();
+        let pubkey = identity.to_public().to_string();
+
+        let mut config = Config::new();
+        config.recipients.insert("alice".to_string(), pubkey);
+        config.secrets.insert(
+            "TEST_KEY".to_string(),
+            "-----BEGIN AGE ENCRYPTED FILE-----\ntest\n-----END AGE ENCRYPTED FILE-----"
+                .to_string(),
+        );
+
+        config.save().unwrap();
+        assert!(Config::exists());
+
+        let loaded = Config::load().unwrap();
+        assert_eq!(loaded.recipients.len(), 1);
+        assert_eq!(loaded.secrets.len(), 1);
+        assert!(loaded.recipients.contains_key("alice"));
+        assert!(loaded.secrets.contains_key("TEST_KEY"));
+    }
+
+    #[test]
+    fn test_config_validate_valid() {
+        let _ctx = setup_test_dir();
+
+        let identity = age::x25519::Identity::generate();
+        let pubkey = identity.to_public().to_string();
+
+        let mut config = Config::new();
+        config.recipients.insert("alice".to_string(), pubkey);
+
+        let result = config.validate();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_config_validate_missing_recipients() {
+        let _ctx = setup_test_dir();
+
+        let config = Config::new();
+        let result = config.validate();
+
+        assert!(result.is_err());
+        // Should fail because no recipients
+    }
+
+    #[test]
+    fn test_config_validate_bad_secret_key() {
+        let _ctx = setup_test_dir();
+
+        let identity = age::x25519::Identity::generate();
+        let pubkey = identity.to_public().to_string();
+
+        let mut config = Config::new();
+        config.recipients.insert("alice".to_string(), pubkey);
+        config.secrets.insert(
+            "invalid-key-name".to_string(),
+            "encrypted_value".to_string(),
+        );
+
+        let result = config.validate();
+        assert!(result.is_err());
+        // Should fail because secret key has invalid characters
+    }
+}
