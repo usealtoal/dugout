@@ -152,7 +152,7 @@ pub fn execute() -> Result<()> {
     // Save updated config
     cfg.save()?;
 
-    println!();
+    output::blank();
     output::timed("Key rotation complete", start.elapsed());
     output::hint("all secrets have been re-encrypted with the new key");
 

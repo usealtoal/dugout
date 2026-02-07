@@ -38,7 +38,7 @@ pub fn get(key: &str) -> Result<()> {
     let vault = Vault::open()?;
     let value = vault.get(key)?;
     // Plain output for scripting - no decoration
-    println!("{}", value.as_str());
+    output::data(value.as_str());
     Ok(())
 }
 
@@ -62,11 +62,11 @@ pub fn list(json: bool) -> Result<()> {
             "keys": keys,
             "count": secrets.len()
         });
-        println!("{}", serde_json::to_string_pretty(&result)?);
+        output::data(&serde_json::to_string_pretty(&result)?);
     } else if secrets.is_empty() {
         output::dimmed("no secrets stored");
     } else {
-        println!();
+        output::blank();
         output::header(&format!("{} secrets", secrets.len()));
         output::rule();
         for secret in secrets {

@@ -26,11 +26,11 @@ pub fn execute(json: bool) -> Result<()> {
             "members": members_json,
             "count": members.len()
         });
-        println!("{}", serde_json::to_string_pretty(&result)?);
+        output::data(&serde_json::to_string_pretty(&result)?);
     } else if members.is_empty() {
         output::dimmed("no team members");
     } else {
-        println!();
+        output::blank();
         output::header(&format!("{} team members", members.len()));
         output::rule();
         for recipient in members {

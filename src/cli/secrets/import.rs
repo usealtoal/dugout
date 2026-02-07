@@ -25,7 +25,7 @@ pub fn execute(path: &str) -> Result<()> {
     );
 
     if !imported.is_empty() {
-        println!();
+        output::blank();
         for key in &imported {
             output::list_item(key);
         }

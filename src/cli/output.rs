@@ -103,6 +103,21 @@ pub fn note(msg: &str) {
     println!("{}", msg);
 }
 
+/// Print a blank line.
+pub fn blank() {
+    println!();
+}
+
+/// Print raw data with no decoration (for piping/scripting).
+pub fn raw(data: &str) {
+    print!("{}", data);
+}
+
+/// Print raw data line (for get command, JSON output, etc).
+pub fn data(data: &str) {
+    println!("{}", data);
+}
+
 /// Format a path string in cyan.
 ///
 /// Returns a colored string that can be used inline.

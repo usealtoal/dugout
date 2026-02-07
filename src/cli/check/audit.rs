@@ -42,7 +42,7 @@ pub fn execute() -> Result<()> {
             findings.len(),
             if findings.len() == 1 { "" } else { "s" }
         ));
-        println!();
+        output::blank();
 
         // Group findings by severity
         let high: Vec<_> = findings
@@ -66,7 +66,7 @@ pub fn execute() -> Result<()> {
             if high.len() > 10 {
                 output::dimmed(&format!("  ... and {} more", high.len() - 10));
             }
-            println!();
+            output::blank();
         }
 
         if !medium.is_empty() {
@@ -77,12 +77,12 @@ pub fn execute() -> Result<()> {
             if medium.len() > 5 {
                 output::dimmed(&format!("  ... and {} more", medium.len() - 5));
             }
-            println!();
+            output::blank();
         }
 
         if !low.is_empty() {
             output::dimmed(&format!("Low severity: {} findings (not shown)", low.len()));
-            println!();
+            output::blank();
         }
 
         output::hint("Use 'git filter-repo' or 'BFG Repo-Cleaner' to remove sensitive data");

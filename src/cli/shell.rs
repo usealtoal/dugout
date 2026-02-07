@@ -19,7 +19,7 @@ pub fn execute() -> Result<()> {
         "Entering burrow shell. {} secrets loaded. Type 'exit' to leave.",
         pairs.len()
     ));
-    println!();
+    output::blank();
 
     let mut cmd = std::process::Command::new(&shell);
 
@@ -32,7 +32,7 @@ pub fn execute() -> Result<()> {
 
     let status = cmd.status()?;
 
-    println!();
+    output::blank();
     output::success("Left burrow shell. Secrets cleared.");
 
     // Return the shell's exit code

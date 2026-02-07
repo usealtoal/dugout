@@ -97,7 +97,7 @@ pub fn execute() -> Result<()> {
     output::kv("key file", key_status);
 
     // Suggestions
-    println!();
+    output::blank();
     if secret_count == 0 {
         output::hint(&format!(
             "Add your first secret with {}",

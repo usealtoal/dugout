@@ -33,7 +33,7 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
         .map(|r| r.public_key())
         .unwrap_or("unknown");
 
-    println!();
+    output::blank();
     output::success("burrow initialized");
     output::kv("recipient", format!("{} ({})", name, &public_key[..20]));
     output::kv(
@@ -41,7 +41,7 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
         format!("{} (commit this)", output::path(".burrow.toml")),
     );
     output::kv("key", format!("~/.burrow/keys/{}/", vault.project_id()));
-    println!();
+    output::blank();
     output::hint(&format!(
         "Next: {} to add secrets",
         output::cmd("burrow set KEY VALUE")

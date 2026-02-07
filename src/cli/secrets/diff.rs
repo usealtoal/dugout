@@ -18,9 +18,9 @@ pub fn execute() -> Result<()> {
     if !synced.is_empty() {
         output::success("synced:");
         for entry in &synced {
-            println!("  {}", output::key(entry.key()));
+            output::list_item(&output::key(entry.key()));
         }
-        println!();
+        output::blank();
     }
 
     // Modified entries
@@ -28,9 +28,9 @@ pub fn execute() -> Result<()> {
     if !modified.is_empty() {
         output::warn("modified (values differ):");
         for entry in &modified {
-            println!("  {}", output::key(entry.key()));
+            output::list_item(&output::key(entry.key()));
         }
-        println!();
+        output::blank();
         output::hint(&format!(
             "Run {} to update .env with vault values",
             output::cmd("burrow secrets unlock")
@@ -42,9 +42,9 @@ pub fn execute() -> Result<()> {
     if !vault_only.is_empty() {
         output::warn("in vault but not in .env:");
         for entry in &vault_only {
-            println!("  {}", output::key(entry.key()));
+            output::list_item(&output::key(entry.key()));
         }
-        println!();
+        output::blank();
         output::hint(&format!(
             "Run {} to sync these secrets",
             output::cmd("burrow secrets unlock")
@@ -56,9 +56,9 @@ pub fn execute() -> Result<()> {
     if !env_only.is_empty() {
         output::warn("in .env but not tracked:");
         for entry in &env_only {
-            println!("  {}", output::key(entry.key()));
+            output::list_item(&output::key(entry.key()));
         }
-        println!();
+        output::blank();
         output::hint(&format!(
             "Use {} to encrypt untracked secrets",
             output::cmd("burrow secrets import .env")
@@ -72,7 +72,7 @@ pub fn execute() -> Result<()> {
         } else {
             output::warn(".env file not found");
         }
-        println!();
+        output::blank();
         output::hint(&format!(
             "Run {} to create .env file",
             output::cmd("burrow secrets unlock")
