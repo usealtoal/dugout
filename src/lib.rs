@@ -15,7 +15,7 @@
 //! └── core/             # Core library components
 //!     ├── config        # .burrow.toml management
 //!     ├── crypto/       # Encryption backends
-//!     │   ├── mod       # CryptoBackend trait
+//!     │   ├── mod       # Cipher trait
 //!     │   └── age       # age encryption implementation
 //!     ├── env           # .env file operations
 //!     ├── keys/         # Key storage backends

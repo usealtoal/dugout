@@ -5,7 +5,7 @@
 //!
 //! ## Adding a New Backend
 //!
-//! 1. Implement the `CryptoBackend` trait
+//! 1. Implement the `Cipher` trait
 //! 2. Add the implementation in a new file (e.g., `kms.rs`, `gpg.rs`)
 //! 3. Re-export from this module
 //!
@@ -14,7 +14,7 @@
 //! ```ignore
 //! struct KmsBackend { /* ... */ }
 //!
-//! impl CryptoBackend for KmsBackend {
+//! impl Cipher for KmsBackend {
 //!     fn encrypt(&self, plaintext: &str, recipients: &[Recipient]) -> Result<String> {
 //!         // KMS-specific encryption
 //!     }
@@ -35,7 +35,7 @@ pub use age::{parse_recipient, AgeBackend};
 ///
 /// Abstracts encryption and decryption operations to support
 /// multiple cryptographic backends (age, KMS, GPG, etc.).
-pub trait CryptoBackend {
+pub trait Cipher {
     /// Type representing a recipient public key.
     type Recipient;
 

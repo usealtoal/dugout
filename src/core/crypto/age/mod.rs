@@ -7,7 +7,7 @@ use std::io::{Read, Write};
 
 use ::age::x25519;
 
-use super::CryptoBackend;
+use super::Cipher;
 use crate::error::{CryptoError, Result};
 
 /// Age-based cryptographic backend.
@@ -15,7 +15,7 @@ use crate::error::{CryptoError, Result};
 /// Uses the age encryption format with x25519 keys.
 pub struct AgeBackend;
 
-impl CryptoBackend for AgeBackend {
+impl Cipher for AgeBackend {
     type Recipient = x25519::Recipient;
     type Identity = x25519::Identity;
 
