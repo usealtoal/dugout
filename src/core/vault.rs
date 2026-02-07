@@ -30,9 +30,8 @@ impl std::fmt::Debug for Vault {
     }
 }
 
-// --- Construction ---
-
 impl Vault {
+    // --- Construction ---
     /// Open an existing vault in the current directory.
     ///
     /// # Errors
@@ -107,11 +106,8 @@ impl Vault {
     pub fn project_id(&self) -> &str {
         &self.project_id
     }
-}
 
-// --- Secrets ---
-
-impl Vault {
+    // --- Secrets ---
     /// Set a secret.
     ///
     /// Encrypts the value for all configured recipients and saves to config.
@@ -253,11 +249,8 @@ impl Vault {
 
         Ok(())
     }
-}
 
-// --- Team ---
-
-impl Vault {
+    // --- Team ---
     /// Add a team member.
     ///
     /// Validates the public key, adds the recipient to config, and re-encrypts
@@ -327,11 +320,8 @@ impl Vault {
             .filter_map(|(name, key)| Recipient::new(name, key).ok())
             .collect()
     }
-}
 
-// --- Lifecycle ---
-
-impl Vault {
+    // --- Lifecycle ---
     /// Import secrets from .env file.
     ///
     /// Reads key=value pairs from the file and encrypts them.
