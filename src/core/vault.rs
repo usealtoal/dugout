@@ -2,14 +2,12 @@
 //!
 //! Vault owns the configuration and provides all secret and team operations.
 
+use crate::core::cipher;
 use crate::core::config::{self, Config};
-use crate::core::identity::Identity;
-use crate::core::recipient::Recipient;
-use crate::core::secret::Secret;
+use crate::core::domain::{Identity, Recipient, Secret};
 use crate::core::store;
-use crate::core::types::SecretKey;
-use crate::core::{cipher, secrets, team};
-use crate::error::Result;
+use crate::core::types::{MemberName, PublicKey, SecretKey};
+use crate::error::{ConfigError, Result, SecretError, ValidationError};
 use zeroize::Zeroizing;
 
 /// The primary interface for burrow operations.
@@ -108,22 +106,17 @@ impl Vault {
     /// Returns `ValidationError` if key or value is invalid.
     /// Returns `SecretError::AlreadyExists` if key exists and `force` is false.
     pub fn set(&mut self, key: &str, value: &str, force: bool) -> Result<Secret> {
-        // Validate and encrypt
-        secrets::validate_key(key)?;
+        // Validate input
+        validate_key(key)?;
+        validate_value(key, value)?;
 
         if self.config.secrets.contains_key(key) && !force {
-            return Err(crate::error::SecretError::AlreadyExists(key.to_string()).into());
+            return Err(SecretError::AlreadyExists(key.to_string()).into());
         }
 
-        let recipients: Vec<age::x25519::Recipient> = self
-            .config
-            .recipients
-            .values()
-            .map(|k| cipher::parse_recipient(k))
-            .collect::<Result<Vec<_>>>()?;
-
+        let recipients = get_recipients(&self.config)?;
         if recipients.is_empty() {
-            return Err(crate::error::ConfigError::NoRecipients.into());
+            return Err(ConfigError::NoRecipients.into());
         }
 
         let encrypted = cipher::encrypt(value, &recipients)?;
@@ -151,7 +144,14 @@ impl Vault {
     /// Returns `SecretError::NotFound` if the key doesn't exist.
     /// Returns `CipherError` if decryption fails.
     pub fn get(&self, key: &str) -> Result<Zeroizing<String>> {
-        secrets::get(&self.config, key)
+        let encrypted = self.config.secrets.get(key).ok_or_else(|| {
+            let available: Vec<String> = self.config.secrets.keys().cloned().collect();
+            SecretError::not_found_with_suggestions(key.to_string(), &available)
+        })?;
+
+        let plaintext = cipher::decrypt(encrypted, self.identity.as_age())?;
+
+        Ok(Zeroizing::new(plaintext))
     }
 
     /// Remove a secret.
@@ -164,7 +164,13 @@ impl Vault {
     ///
     /// Returns `SecretError::NotFound` if the key doesn't exist.
     pub fn remove(&mut self, key: &str) -> Result<()> {
-        secrets::remove(&mut self.config, key)?;
+        if self.config.secrets.remove(key).is_none() {
+            let available: Vec<String> = self.config.secrets.keys().cloned().collect();
+            return Err(
+                SecretError::not_found_with_suggestions(key.to_string(), &available).into(),
+            );
+        }
+        self.config.save()?;
         Ok(())
     }
 
@@ -194,7 +200,13 @@ impl Vault {
     ///
     /// Returns error if decryption of any secret fails.
     pub fn decrypt_all(&self) -> Result<Vec<(SecretKey, Zeroizing<String>)>> {
-        secrets::decrypt_all(&self.config)
+        let mut pairs = Vec::new();
+        for (key, encrypted) in &self.config.secrets {
+            let plaintext = cipher::decrypt(encrypted, self.identity.as_age())?;
+            pairs.push((key.clone(), Zeroizing::new(plaintext)));
+        }
+
+        Ok(pairs)
     }
 
     /// Re-encrypt all secrets (after team changes).
@@ -206,7 +218,19 @@ impl Vault {
     ///
     /// Returns error if decryption or re-encryption fails.
     pub fn reencrypt_all(&mut self) -> Result<()> {
-        secrets::reencrypt_all(&mut self.config)?;
+        let recipients = get_recipients(&self.config)?;
+
+        let mut updated = std::collections::BTreeMap::new();
+        for (key, encrypted) in &self.config.secrets {
+            // Use Zeroizing to ensure plaintext is wiped after re-encryption
+            let plaintext = Zeroizing::new(cipher::decrypt(encrypted, self.identity.as_age())?);
+            let reencrypted = cipher::encrypt(&plaintext, &recipients)?;
+            updated.insert(key.clone(), reencrypted);
+        }
+
+        self.config.secrets = updated;
+        self.config.save()?;
+
         Ok(())
     }
 
@@ -225,7 +249,19 @@ impl Vault {
     /// Returns `CipherError` if the public key is invalid.
     /// Returns error if re-encryption fails.
     pub fn add_recipient(&mut self, name: &str, key: &str) -> Result<()> {
-        team::add(&mut self.config, name, key)?;
+        // Validate the key format first - this will return a clear error if invalid
+        cipher::parse_recipient(key)?;
+
+        self.config
+            .recipients
+            .insert(name.to_string(), key.to_string());
+        self.config.save()?;
+
+        // Re-encrypt all secrets for the new recipient set
+        if !self.config.secrets.is_empty() {
+            self.reencrypt_all()?;
+        }
+
         Ok(())
     }
 
@@ -243,7 +279,16 @@ impl Vault {
     /// Returns `ConfigError::RecipientNotFound` if the member doesn't exist.
     /// Returns error if re-encryption fails.
     pub fn remove_recipient(&mut self, name: &str) -> Result<()> {
-        team::remove(&mut self.config, name)?;
+        if self.config.recipients.remove(name).is_none() {
+            return Err(ConfigError::RecipientNotFound(name.to_string()).into());
+        }
+        self.config.save()?;
+
+        // Re-encrypt all secrets without the removed recipient
+        if !self.config.secrets.is_empty() {
+            self.reencrypt_all()?;
+        }
+
         Ok(())
     }
 
@@ -253,7 +298,7 @@ impl Vault {
     ///
     /// Vector of validated `Recipient` instances.
     pub fn recipients(&self) -> Vec<Recipient> {
-        team::list(&self.config)
+        list_recipients(&self.config)
             .into_iter()
             .filter_map(|(name, key)| Recipient::new(name, key).ok())
             .collect()
@@ -275,11 +320,12 @@ impl Vault {
     ///
     /// Returns error if file cannot be read or secrets cannot be encrypted.
     pub fn import(&mut self, path: impl AsRef<std::path::Path>) -> Result<Vec<SecretKey>> {
-        let env = crate::core::env::Env::load(path)?;
+        let env = crate::core::domain::Env::load(path)?;
         let mut imported = Vec::new();
 
         for (key, value) in env.entries() {
-            secrets::set(&mut self.config, key, value, true)?;
+            // Use internal set_secret helper
+            set_secret(&mut self.config, key, value, true)?;
             imported.push(key.clone());
         }
 
@@ -297,13 +343,14 @@ impl Vault {
     /// # Errors
     ///
     /// Returns error if decryption fails.
-    pub fn export(&self) -> Result<crate::core::env::Env> {
-        let pairs = secrets::decrypt_all(&self.config)?
+    pub fn export(&self) -> Result<crate::core::domain::Env> {
+        let pairs = self
+            .decrypt_all()?
             .into_iter()
             .map(|(k, v)| (k, v.to_string()))
             .collect();
 
-        Ok(crate::core::env::Env::from_pairs(
+        Ok(crate::core::domain::Env::from_pairs(
             pairs,
             std::path::PathBuf::from(".env"),
         ))
@@ -320,7 +367,7 @@ impl Vault {
     /// # Errors
     ///
     /// Returns error if decryption or file write fails.
-    pub fn unlock(&self) -> Result<crate::core::env::Env> {
+    pub fn unlock(&self) -> Result<crate::core::domain::Env> {
         let env = self.export()?;
         env.save()?;
         Ok(env)
@@ -341,20 +388,21 @@ impl Vault {
     /// # Errors
     ///
     /// Returns error if decryption fails or .env file cannot be read.
-    pub fn diff(&self, env_path: impl AsRef<std::path::Path>) -> Result<crate::core::diff::Diff> {
-        let vault_pairs = secrets::decrypt_all(&self.config)?
+    pub fn diff(&self, env_path: impl AsRef<std::path::Path>) -> Result<crate::core::domain::Diff> {
+        let vault_pairs = self
+            .decrypt_all()?
             .into_iter()
             .map(|(k, v)| (k, v.to_string()))
             .collect::<Vec<_>>();
 
         let env_pairs = if env_path.as_ref().exists() {
-            let env = crate::core::env::Env::load(env_path)?;
+            let env = crate::core::domain::Env::load(env_path)?;
             env.entries().to_vec()
         } else {
             Vec::new()
         };
 
-        Ok(crate::core::diff::Diff::compute(&vault_pairs, &env_pairs))
+        Ok(crate::core::domain::Diff::compute(&vault_pairs, &env_pairs))
     }
 
     /// Get config reference.
@@ -370,6 +418,104 @@ impl Vault {
     pub fn project_id(&self) -> &str {
         &self.project_id
     }
+}
+
+// Private helper functions (previously in secrets.rs and team.rs)
+
+/// Validate a secret key name.
+///
+/// Secret keys must be valid environment variable names:
+/// - Only A-Z, 0-9, and underscore
+/// - Cannot start with a digit
+/// - Cannot be empty
+pub(crate) fn validate_key(key: &str) -> Result<()> {
+    if key.is_empty() {
+        return Err(ValidationError::EmptyKey.into());
+    }
+
+    if let Some(first_char) = key.chars().next() {
+        if first_char.is_ascii_digit() {
+            return Err(ValidationError::InvalidKey {
+                key: key.to_string(),
+                reason: "cannot start with a digit".to_string(),
+            }
+            .into());
+        }
+    }
+
+    for (i, ch) in key.chars().enumerate() {
+        if !ch.is_ascii_alphanumeric() && ch != '_' {
+            return Err(ValidationError::InvalidKey {
+                key: key.to_string(),
+                reason: format!(
+                    "invalid character '{}' at position {}. Only A-Z, 0-9, and underscore are allowed",
+                    ch, i + 1
+                ),
+            }
+            .into());
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate a secret value.
+///
+/// Secret values cannot be empty.
+fn validate_value(key: &str, value: &str) -> Result<()> {
+    if value.is_empty() {
+        return Err(ValidationError::EmptyValue(key.to_string()).into());
+    }
+
+    Ok(())
+}
+
+/// Get all recipient public keys from config.
+///
+/// # Errors
+///
+/// Returns error if any recipient key is invalid.
+fn get_recipients(config: &Config) -> Result<Vec<age::x25519::Recipient>> {
+    config
+        .recipients
+        .values()
+        .map(|k| cipher::parse_recipient(k))
+        .collect()
+}
+
+/// Internal helper: Set (encrypt) a secret value.
+///
+/// Used by import() to avoid code duplication.
+fn set_secret(config: &mut Config, key: &str, value: &str, force: bool) -> Result<()> {
+    // Validate input
+    validate_key(key)?;
+    validate_value(key, value)?;
+
+    if config.secrets.contains_key(key) && !force {
+        return Err(SecretError::AlreadyExists(key.to_string()).into());
+    }
+
+    let recipients = get_recipients(config)?;
+    if recipients.is_empty() {
+        return Err(ConfigError::NoRecipients.into());
+    }
+
+    let encrypted = cipher::encrypt(value, &recipients)?;
+    config.secrets.insert(key.to_string(), encrypted);
+    config.save()?;
+
+    Ok(())
+}
+
+/// Internal helper: List all team members.
+///
+/// Returns vector of (name, public_key) pairs.
+fn list_recipients(config: &Config) -> Vec<(MemberName, PublicKey)> {
+    config
+        .recipients
+        .iter()
+        .map(|(name, key)| (name.clone(), key.clone()))
+        .collect()
 }
 
 #[cfg(test)]

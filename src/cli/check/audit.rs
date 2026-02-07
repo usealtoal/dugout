@@ -3,7 +3,7 @@
 //! Scan git history for leaked secrets.
 
 use crate::cli::output;
-use crate::core::audit;
+use crate::core::domain::audit;
 use crate::error::Result;
 use std::process::{Command, Stdio};
 

@@ -27,7 +27,7 @@
 //! }
 //! ```
 
-use crate::core::identity::Identity;
+use crate::core::domain::Identity;
 use crate::error::Result;
 
 mod fs;

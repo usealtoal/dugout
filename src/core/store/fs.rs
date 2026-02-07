@@ -4,7 +4,7 @@
 //! the local filesystem (~/.burrow/keys/).
 
 use super::Store;
-use crate::core::identity::Identity;
+use crate::core::domain::Identity;
 use crate::error::Result;
 
 /// Filesystem-based key storage.

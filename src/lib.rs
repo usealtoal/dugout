@@ -17,18 +17,21 @@
 //! │   └── completions   # Shell completions
 //! └── core/             # Core library components
 //!     ├── vault         # Main API - Vault struct
-//!     ├── recipient     # Team member representation
+//!     ├── domain/       # Domain types
+//!     │   ├── secret    # Secret
+//!     │   ├── recipient # Recipient
+//!     │   ├── identity  # Identity
+//!     │   ├── diff      # Diff, DiffEntry, EntryStatus
+//!     │   ├── env       # Env
+//!     │   └── audit     # Finding, Severity
 //!     ├── types         # Domain type aliases
 //!     ├── config        # .burrow.toml management
 //!     ├── cipher/       # Encryption backends
 //!     │   ├── mod       # Cipher trait
 //!     │   └── age       # age encryption implementation
-//!     ├── env           # .env file operations
-//!     ├── store/         # Key storage backends
-//!     │   ├── mod       # Store trait
-//!     │   └── fs        # Filesystem storage implementation
-//!     ├── secrets       # Secret CRUD logic (internal)
-//!     └── team          # Team member management (internal)
+//!     └── store/        # Key storage backends
+//!         ├── mod       # Store trait
+//!         └── fs        # Filesystem storage implementation
 //! ```
 //!
 //! # Features
@@ -68,11 +71,6 @@ pub mod core;
 pub mod error;
 
 // Re-export the public API
-pub use core::audit::{Finding, Severity};
-pub use core::diff::{Diff, DiffEntry, EntryStatus};
-pub use core::env::Env;
-pub use core::identity::Identity;
-pub use core::recipient::Recipient;
-pub use core::secret::Secret;
+pub use core::domain::*;
 pub use core::types::*;
 pub use core::vault::Vault;

@@ -8,8 +8,8 @@ use std::path::PathBuf;
 use tracing::debug;
 
 use crate::core::constants;
-use crate::core::secrets;
 use crate::core::types::{EncryptedValue, MemberName, PublicKey, SecretKey};
+use crate::core::vault;
 use crate::error::{ConfigError, Result};
 
 /// Root configuration structure.
@@ -156,7 +156,7 @@ impl Config {
 
         // Validate secret keys are valid env var names
         for key in self.secrets.keys() {
-            secrets::validate_key(key)?;
+            vault::validate_key(key)?;
         }
 
         Ok(())
