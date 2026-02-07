@@ -9,8 +9,11 @@
 //! │   ├── secrets       # Secret CRUD operations
 //! │   ├── lock          # Lock/unlock commands
 //! │   ├── run           # Run with injected secrets
+//! │   ├── shell         # Interactive shell with secrets
 //! │   ├── team          # Team management
 //! │   ├── env           # .env import/export/diff
+//! │   ├── status        # Quick status overview
+//! │   ├── audit         # Git history security audit
 //! │   └── completions   # Shell completions
 //! └── core/             # Core library components
 //!     ├── config        # .burrow.toml management

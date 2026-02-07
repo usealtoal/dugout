@@ -30,30 +30,82 @@ pub fn export() -> Result<()> {
 
 /// Show diff/status between encrypted and local .env.
 pub fn diff() -> Result<()> {
-    let config = Config::load()?;
-    println!();
-    output::header("Status");
-    output::rule();
-    output::kv(
-        ".burrow.toml",
-        format!("{} secrets (encrypted)", config.secrets.len()),
-    );
+    use colored::Colorize;
 
+    let config = Config::load()?;
+
+    // Parse .env file if it exists
+    let mut env_keys = std::collections::HashSet::new();
     let env_path = std::path::Path::new(".env");
     if env_path.exists() {
         let env_content = std::fs::read_to_string(env_path)?;
-        let env_count = env_content
-            .lines()
-            .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
-            .count();
-        output::kv(".env", format!("{} entries (plaintext)", env_count));
-    } else {
-        output::kv(".env", "not found");
+        for line in env_content.lines() {
+            let line = line.trim();
+            if !line.is_empty() && !line.starts_with('#') {
+                if let Some((key, _)) = line.split_once('=') {
+                    env_keys.insert(key.trim().to_string());
+                }
+            }
+        }
+    }
+
+    // Get keys from .burrow.toml
+    let toml_keys: std::collections::HashSet<_> = config.secrets.keys().cloned().collect();
+
+    // Calculate differences
+    let synced: Vec<_> = toml_keys.intersection(&env_keys).collect();
+    let missing_from_env: Vec<_> = toml_keys.difference(&env_keys).collect();
+    let untracked: Vec<_> = env_keys.difference(&toml_keys).collect();
+
+    output::section("Diff");
+
+    // Synced keys (green)
+    if !synced.is_empty() {
+        println!("{} synced:", "✓".green());
+        for key in &synced {
+            println!("  {}", key.green());
+        }
+        println!();
+    }
+
+    // Missing from .env (yellow)
+    if !missing_from_env.is_empty() {
+        println!("{} in .burrow.toml but not in .env:", "⚠".yellow());
+        for key in &missing_from_env {
+            println!("  {}", key.yellow());
+        }
         println!();
         output::hint(&format!(
-            "Run {} to create .env file",
+            "Run {} to sync these secrets",
             output::cmd("burrow unlock")
         ));
+    }
+
+    // Untracked in .env (red)
+    if !untracked.is_empty() {
+        println!("{} in .env but not tracked:", "!".red());
+        for key in &untracked {
+            println!("  {}", key.red());
+        }
+        println!();
+        output::hint(&format!(
+            "Use {} to encrypt untracked secrets",
+            output::cmd("burrow import .env")
+        ));
+    }
+
+    // Summary
+    if synced.is_empty() && missing_from_env.is_empty() && untracked.is_empty() {
+        if env_path.exists() {
+            output::success("All secrets in sync");
+        } else {
+            output::warn(".env file not found");
+            println!();
+            output::hint(&format!(
+                "Run {} to create .env file",
+                output::cmd("burrow unlock")
+            ));
+        }
     }
 
     Ok(())

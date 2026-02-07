@@ -1,5 +1,6 @@
 //! Command-line interface.
 
+pub mod audit;
 pub mod banner;
 pub mod completions;
 pub mod env;
@@ -8,6 +9,8 @@ pub mod lock;
 pub mod output;
 pub mod run;
 pub mod secrets;
+pub mod shell;
+pub mod status;
 pub mod team;
 
 use clap::{Parser, Subcommand};
@@ -81,6 +84,9 @@ pub enum Command {
         command: Vec<String>,
     },
 
+    /// Spawn a shell with secrets loaded as environment variables
+    Env,
+
     /// Manage team members
     Team {
         #[command(subcommand)]
@@ -96,8 +102,14 @@ pub enum Command {
     /// Export secrets as .env format
     Export,
 
-    /// Show diff since last lock
+    /// Show diff between .burrow.toml and .env
     Diff,
+
+    /// Show quick status overview
+    Status,
+
+    /// Audit git history for leaked secrets
+    Audit,
 
     /// Generate shell completions
     Completions {
@@ -154,6 +166,7 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
         Lock => lock::lock(),
         Unlock => lock::unlock(),
         Run { command } => run::execute(&command),
+        Env => shell::execute(),
         Team { action } => match action {
             TeamAction::Add { name, key } => team::add(&name, &key),
             TeamAction::List { json } => team::list(json),
@@ -162,6 +175,8 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
         Import { path } => env::import(&path),
         Export => env::export(),
         Diff => env::diff(),
+        Status => status::execute(),
+        Audit => audit::execute(),
         Completions { shell } => completions::execute(shell),
     }
 }
