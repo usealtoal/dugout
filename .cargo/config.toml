@@ -1,0 +1,4 @@
+[env]
+
+# Tests use set_current_dir which is process-global
+# Must run single-threaded to avoid race conditions
