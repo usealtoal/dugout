@@ -8,13 +8,12 @@ use crate::error::Result;
 /// Lock (status check - secrets are always encrypted).
 pub fn execute() -> Result<()> {
     let vault = crate::core::vault::Vault::open()?;
-    output::progress("Checking encryption");
-    output::progress_done(true);
-    output::success(&format!(
-        "locked: {} secrets encrypted in {}",
-        vault.list().len(),
-        output::path(".burrow.toml")
-    ));
+    let sp = output::spinner("Verifying encryption...");
+    let count = vault.list().len();
+    output::spinner_success(
+        &sp,
+        &format!("All {} secrets encrypted", output::count(count)),
+    );
     output::kv("status", "safe to commit");
     Ok(())
 }

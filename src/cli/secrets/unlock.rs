@@ -4,17 +4,23 @@
 
 use crate::cli::output;
 use crate::error::Result;
+use std::time::Instant;
 
 /// Unlock secrets to .env file.
 pub fn execute() -> Result<()> {
+    let start = Instant::now();
     let vault = crate::core::vault::Vault::open()?;
-    output::progress("Decrypting secrets");
+    let sp = output::spinner("Decrypting secrets...");
     let env = vault.unlock()?;
-    output::progress_done(true);
-    output::success(&format!(
-        "unlocked: {} secrets written to {}",
-        env.len(),
-        output::path(".env")
-    ));
+    sp.finish_and_clear();
+
+    output::timed(
+        &format!(
+            "Decrypted {} secrets → {}",
+            output::count(env.len()),
+            output::path(".env")
+        ),
+        start.elapsed(),
+    );
     Ok(())
 }

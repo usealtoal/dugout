@@ -26,9 +26,10 @@ pub use unlock::execute as unlock;
 /// Set a secret value.
 pub fn set(key: &str, value: &str, force: bool) -> Result<()> {
     info!("Setting secret: {} (force: {})", key, force);
+    let sp = output::spinner("Encrypting...");
     let mut vault = Vault::open()?;
     vault.set(key, value, force)?;
-    output::success(&format!("set: {}", output::key(key)));
+    output::spinner_success(&sp, &format!("Set {}", output::key(key)));
     Ok(())
 }
 

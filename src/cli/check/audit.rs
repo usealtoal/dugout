@@ -29,7 +29,9 @@ pub fn execute() -> Result<()> {
 
     output::section("Security Audit");
 
+    let sp = output::spinner("Scanning git history...");
     let findings = audit::scan_git_history()?;
+    sp.finish_and_clear();
 
     if findings.is_empty() {
         output::success("No obvious secrets found in git history");

@@ -8,8 +8,9 @@ use crate::error::Result;
 
 /// Remove a team member.
 pub fn execute(name: &str) -> Result<()> {
+    let sp = output::spinner(&format!("Removing member {}...", output::key(name)));
     let mut vault = Vault::open()?;
     vault.remove_recipient(name)?;
-    output::success(&format!("team member removed: {}", output::key(name)));
+    output::spinner_success(&sp, &format!("Removed team member {}", output::key(name)));
     Ok(())
 }

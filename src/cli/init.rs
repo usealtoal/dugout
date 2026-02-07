@@ -19,7 +19,10 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
 
     info!("Initializing burrow for user: {}", name);
 
+    // Generate keypair with spinner
+    let sp = output::spinner("Generating keypair...");
     let vault = Vault::init(&name)?;
+    output::spinner_success(&sp, "Generated keypair");
 
     info!("Burrow initialized successfully");
 

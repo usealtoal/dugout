@@ -64,8 +64,12 @@ fn archive_old_key(project_id: &str) -> Result<()> {
 /// 4. Re-encrypts all secrets with the new key and existing recipients
 /// 5. Updates configuration with the new public key
 pub fn execute() -> Result<()> {
+    use std::time::Instant;
+
     info!("Starting key rotation");
     output::section("Key Rotation");
+
+    let start = Instant::now();
 
     // Load config
     let mut cfg = config::Config::load()?;
@@ -77,7 +81,7 @@ pub fn execute() -> Result<()> {
     }
 
     // Step 1: Decrypt all secrets
-    output::progress("Decrypting secrets");
+    let sp = output::spinner("Decrypting secrets...");
     let identity = store::load_identity(&project_id)?;
 
     let mut decrypted_secrets = Vec::new();
@@ -85,22 +89,24 @@ pub fn execute() -> Result<()> {
         let plaintext = cipher::decrypt(ciphertext, identity.as_age())?;
         decrypted_secrets.push((key.clone(), plaintext));
     }
-    output::progress_done(true);
-    output::dimmed(&format!(
-        "  decrypted {} secret(s)",
-        decrypted_secrets.len()
-    ));
+    output::spinner_success(
+        &sp,
+        &format!(
+            "Decrypted {} secrets",
+            output::count(decrypted_secrets.len())
+        ),
+    );
 
     // Step 2: Archive old key
-    output::progress("Archiving old key");
+    let sp = output::spinner("Archiving old key...");
     archive_old_key(&project_id)?;
-    output::progress_done(true);
+    output::spinner_success(&sp, "Archived old key");
 
     // Step 3: Generate new keypair
-    output::progress("Generating new keypair");
+    let sp = output::spinner("Generating new keypair...");
     let new_public_key = store::generate_keypair(&project_id)?;
-    output::progress_done(true);
-    output::dimmed(&format!("  new public key: {}", new_public_key));
+    output::spinner_success(&sp, "Generated new keypair");
+    output::dimmed(&format!("  new public key: {}", &new_public_key[..40]));
 
     // Step 4: Get all recipient public keys (including new one)
     let mut recipients = Vec::new();
@@ -117,13 +123,18 @@ pub fn execute() -> Result<()> {
     }
 
     // Step 5: Re-encrypt all secrets
-    output::progress("Re-encrypting secrets");
+    let pb = output::progress_bar(decrypted_secrets.len() as u64, "Re-encrypting secrets");
     cfg.secrets.clear();
     for (key, plaintext) in decrypted_secrets {
         let ciphertext = cipher::encrypt(&plaintext, &recipients)?;
         cfg.secrets.insert(key, ciphertext);
+        pb.inc(1);
     }
-    output::progress_done(true);
+    pb.finish_and_clear();
+    output::success(&format!(
+        "Re-encrypted {} secrets",
+        output::count(cfg.secrets.len())
+    ));
 
     // Step 6: Update config with new public key for the project owner
     // Find the project owner recipient (the one with the old key) and update it
@@ -139,12 +150,10 @@ pub fn execute() -> Result<()> {
     }
 
     // Save updated config
-    output::progress("Saving configuration");
     cfg.save()?;
-    output::progress_done(true);
 
     println!();
-    output::success("key rotation complete");
+    output::timed("Key rotation complete", start.elapsed());
     output::hint("all secrets have been re-encrypted with the new key");
 
     Ok(())

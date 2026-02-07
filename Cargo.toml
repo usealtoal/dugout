@@ -25,8 +25,9 @@ age = { version = "0.11", features = ["armor"] }
 chrono = "0.4"
 clap = { version = "4", features = ["derive", "env"] }
 clap_complete = "4"
-colored = "3"
+console = "0.15"
 dirs = "6"
+indicatif = "0.17"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"
