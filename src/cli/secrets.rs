@@ -2,6 +2,8 @@
 //!
 //! Implements set, get, rm, and list operations for secrets.
 
+use tracing::info;
+
 use crate::cli::output;
 use crate::core::config::Config;
 use crate::core::secrets;
@@ -9,6 +11,7 @@ use crate::error::Result;
 
 /// Set a secret value.
 pub fn set(key: &str, value: &str, force: bool) -> Result<()> {
+    info!("Setting secret: {} (force: {})", key, force);
     let mut config = Config::load()?;
     secrets::set(&mut config, key, value, force)?;
     output::success(&format!("set: {}", output::key(key)));
@@ -26,6 +29,7 @@ pub fn get(key: &str) -> Result<()> {
 
 /// Remove a secret.
 pub fn rm(key: &str) -> Result<()> {
+    info!("Removing secret: {}", key);
     let mut config = Config::load()?;
     secrets::remove(&mut config, key)?;
     output::success(&format!("removed: {}", output::key(key)));

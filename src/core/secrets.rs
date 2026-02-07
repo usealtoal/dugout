@@ -3,6 +3,7 @@
 //! High-level operations for managing encrypted secrets in the burrow.
 
 use crate::core::config::Config;
+use crate::core::types::SecretKey;
 use crate::core::{cipher, store};
 use crate::error::{ConfigError, Result, SecretError, ValidationError};
 
@@ -15,7 +16,7 @@ use zeroize::Zeroizing;
 /// - Only A-Z, 0-9, and underscore
 /// - Cannot start with a digit
 /// - Cannot be empty
-fn validate_key(key: &str) -> Result<()> {
+pub fn validate_key(key: &str) -> Result<()> {
     if key.is_empty() {
         return Err(ValidationError::EmptyKey.into());
     }
@@ -160,7 +161,7 @@ pub fn remove(config: &mut Config, key: &str) -> Result<()> {
 /// # Returns
 ///
 /// Vector of secret key names.
-pub fn list(config: &Config) -> Vec<String> {
+pub fn list(config: &Config) -> Vec<SecretKey> {
     config.secrets.keys().cloned().collect()
 }
 

@@ -2,6 +2,8 @@
 //!
 //! Lock, unlock, import, export, diff, and rotate operations.
 
+use tracing::info;
+
 use crate::cli::output;
 use crate::core::{cipher, config, env, store};
 use crate::error::Result;
@@ -194,6 +196,7 @@ fn archive_old_key(project_id: &str) -> Result<()> {
 /// 4. Re-encrypts all secrets with the new key and existing recipients
 /// 5. Updates configuration with the new public key
 pub fn rotate() -> Result<()> {
+    info!("Starting key rotation");
     output::section("Key Rotation");
 
     // Load config

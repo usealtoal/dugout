@@ -17,10 +17,15 @@ fn test_config_save_and_load() {
     let temp_dir = TempDir::new().unwrap();
     std::env::set_current_dir(&temp_dir).unwrap();
 
+    // Generate a valid age public key for testing
+    use age::x25519;
+    let identity = x25519::Identity::generate();
+    let public_key = identity.to_public().to_string();
+
     let mut config = Config::new();
     config
         .recipients
-        .insert("alice".to_string(), "age1test123".to_string());
+        .insert("alice".to_string(), public_key.clone());
     config
         .secrets
         .insert("KEY".to_string(), "encrypted_value".to_string());
@@ -33,7 +38,7 @@ fn test_config_save_and_load() {
     let loaded = Config::load().unwrap();
     assert_eq!(loaded.recipients.len(), 1);
     assert_eq!(loaded.secrets.len(), 1);
-    assert_eq!(loaded.recipients.get("alice").unwrap(), "age1test123");
+    assert_eq!(loaded.recipients.get("alice").unwrap(), &public_key);
     assert_eq!(loaded.secrets.get("KEY").unwrap(), "encrypted_value");
 
     // Restore directory

@@ -5,11 +5,12 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use tracing::debug;
 
+use crate::core::constants;
+use crate::core::secrets;
+use crate::core::types::{EncryptedValue, MemberName, PublicKey, SecretKey};
 use crate::error::{ConfigError, Result};
-
-/// Configuration file name.
-const CONFIG_FILE: &str = ".burrow.toml";
 
 /// Root configuration structure.
 #[derive(Debug, Serialize, Deserialize)]
@@ -18,10 +19,10 @@ pub struct Config {
     pub burrow: Meta,
     /// Map of recipient names to their age public keys.
     #[serde(default)]
-    pub recipients: BTreeMap<String, String>,
+    pub recipients: BTreeMap<MemberName, PublicKey>,
     /// Map of secret keys to their encrypted values.
     #[serde(default)]
-    pub secrets: BTreeMap<String, String>,
+    pub secrets: BTreeMap<SecretKey, EncryptedValue>,
 }
 
 /// Burrow metadata section.
@@ -45,7 +46,7 @@ impl Config {
 
     /// Get the path to the configuration file.
     pub fn config_path() -> PathBuf {
-        PathBuf::from(CONFIG_FILE)
+        PathBuf::from(constants::CONFIG_FILE)
     }
 
     /// Check if a configuration file exists in the current directory.
@@ -61,11 +62,23 @@ impl Config {
     /// or `ConfigError::Parse` if the TOML is malformed.
     pub fn load() -> Result<Self> {
         let path = Self::config_path();
+        debug!("Loading configuration from {}", path.display());
+
         if !path.exists() {
             return Err(ConfigError::NotInitialized.into());
         }
         let contents = std::fs::read_to_string(&path).map_err(ConfigError::ReadFile)?;
         let config: Self = toml::from_str(&contents).map_err(ConfigError::Parse)?;
+
+        debug!(
+            "Loaded config: {} recipient(s), {} secret(s)",
+            config.recipients.len(),
+            config.secrets.len()
+        );
+
+        // Validate the loaded configuration
+        config.validate()?;
+
         Ok(config)
     }
 
@@ -75,8 +88,16 @@ impl Config {
     ///
     /// Returns error if serialization or file write fails.
     pub fn save(&self) -> Result<()> {
+        debug!(
+            "Saving configuration: {} recipient(s), {} secret(s)",
+            self.recipients.len(),
+            self.secrets.len()
+        );
+
         let contents = toml::to_string_pretty(self).map_err(ConfigError::Serialize)?;
         std::fs::write(Self::config_path(), contents)?;
+
+        debug!("Configuration saved to .burrow.toml");
         Ok(())
     }
 
@@ -86,6 +107,59 @@ impl Config {
             .ok()
             .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
             .unwrap_or_else(|| "default".to_string())
+    }
+
+    /// Validate the configuration structure and contents.
+    ///
+    /// Checks:
+    /// - Version field is valid semver
+    /// - At least one recipient exists
+    /// - All recipient keys are valid age public keys
+    /// - All secret keys are valid environment variable names
+    ///
+    /// # Errors
+    ///
+    /// Returns `ConfigError::InvalidValue` or `ConfigError::MissingField` on validation failure.
+    pub fn validate(&self) -> Result<()> {
+        use crate::core::cipher;
+
+        // Check version is valid semver
+        if self.burrow.version.is_empty() {
+            return Err(ConfigError::MissingField { field: "version" }.into());
+        }
+
+        // Try to parse as semver (basic check - just ensure it has valid format)
+        let version_parts: Vec<&str> = self.burrow.version.split('.').collect();
+        if version_parts.len() < 2 {
+            return Err(ConfigError::InvalidValue {
+                field: "version",
+                reason: format!("not a valid semver: {}", self.burrow.version),
+            }
+            .into());
+        }
+
+        // Check at least one recipient exists
+        if self.recipients.is_empty() {
+            return Err(ConfigError::NoRecipients.into());
+        }
+
+        // Validate all recipient public keys
+        for (name, key) in &self.recipients {
+            if cipher::parse_recipient(key).is_err() {
+                return Err(ConfigError::InvalidValue {
+                    field: "recipients",
+                    reason: format!("invalid age public key for recipient '{}': {}", name, key),
+                }
+                .into());
+            }
+        }
+
+        // Validate secret keys are valid env var names
+        for key in self.secrets.keys() {
+            secrets::validate_key(key)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -104,7 +178,6 @@ impl Default for Config {
 /// Returns error if file operations fail.
 pub fn ensure_gitignore() -> Result<()> {
     let gitignore = std::path::Path::new(".gitignore");
-    let entries = [".env", ".env.*", "!.env.example"];
 
     let existing = if gitignore.exists() {
         std::fs::read_to_string(gitignore)?
@@ -113,8 +186,8 @@ pub fn ensure_gitignore() -> Result<()> {
     };
 
     let mut updated = existing.clone();
-    for entry in entries {
-        if !existing.lines().any(|l| l.trim() == entry) {
+    for entry in constants::GITIGNORE_ENTRIES {
+        if !existing.lines().any(|l| l.trim() == *entry) {
             if !updated.is_empty() && !updated.ends_with('\n') {
                 updated.push('\n');
             }

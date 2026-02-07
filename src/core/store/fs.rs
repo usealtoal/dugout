@@ -7,8 +7,10 @@ use std::fs;
 use std::path::PathBuf;
 
 use age::x25519;
+use tracing::{debug, warn};
 
 use super::Store;
+use crate::core::constants;
 use crate::error::{Result, StoreError, ValidationError};
 
 /// Validate file permissions (Unix only).
@@ -44,7 +46,7 @@ impl Filesystem {
         let home = dirs::home_dir().ok_or_else(|| {
             StoreError::GenerationFailed("unable to determine home directory".to_string())
         })?;
-        Ok(home.join(".burrow").join("keys"))
+        Ok(home.join(constants::KEY_DIR))
     }
 
     /// Directory for a specific project's keys.
@@ -55,6 +57,8 @@ impl Filesystem {
 
 impl Store for Filesystem {
     fn generate_keypair(&self, project_id: &str) -> Result<String> {
+        debug!("Generating new keypair for project: {}", project_id);
+
         let identity = x25519::Identity::generate();
         let public_key = identity.to_public().to_string();
 
@@ -77,11 +81,15 @@ impl Store for Filesystem {
                 .map_err(StoreError::WriteFailed)?;
         }
 
+        debug!("Keypair generated and saved to: {}", key_path.display());
+
         Ok(public_key)
     }
 
     fn load_identity(&self, project_id: &str) -> Result<x25519::Identity> {
         let key_path = Self::project_dir(project_id)?.join("identity.key");
+        debug!("Loading identity from: {}", key_path.display());
+
         if !key_path.exists() {
             return Err(StoreError::NoPrivateKey(project_id.to_string()).into());
         }
@@ -90,8 +98,11 @@ impl Store for Filesystem {
         #[cfg(unix)]
         {
             if let Err(e) = validate_file_permissions(&key_path, 0o600) {
-                eprintln!("Warning: {}", e);
-                eprintln!("  Run: chmod 600 {}", key_path.display());
+                warn!(
+                    "Insecure key file permissions: {}. Run: chmod 600 {}",
+                    e,
+                    key_path.display()
+                );
             }
         }
 
@@ -101,6 +112,8 @@ impl Store for Filesystem {
             .trim()
             .parse()
             .map_err(|e: &str| StoreError::InvalidFormat(e.to_string()))?;
+
+        debug!("Identity loaded successfully");
 
         Ok(identity)
     }

@@ -2,42 +2,29 @@
 //!
 //! These tests run the actual compiled binary with a clean environment for each test.
 
-use assert_cmd::Command;
-use predicates::prelude::*;
-use std::fs;
-use tempfile::TempDir;
+mod harness;
 
-/// Helper to create a fresh burrow command with isolated temp directories.
-#[allow(deprecated)]
-fn burrow_cmd(tempdir: &TempDir) -> Command {
-    let mut cmd = Command::cargo_bin("burrow").unwrap();
-    // Set HOME to tempdir so keys don't pollute real home
-    cmd.env("HOME", tempdir.path());
-    cmd.current_dir(tempdir.path());
-    cmd
-}
+use harness::TestEnv;
+use std::fs;
 
 #[test]
 fn test_init_creates_config_and_key() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("test-user")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("initialized"));
+    let output = env.init("test-user");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("initialized"));
 
     // Check that .burrow.toml exists
-    let config_path = temp.path().join(".burrow.toml");
+    let config_path = env.dir.path().join(".burrow.toml");
     assert!(config_path.exists(), ".burrow.toml should exist");
 
     // Check that a key was created in ~/.burrow/keys/<project_id>/identity.key
     // project_id is derived from the current directory name
-    let project_id = temp.path().file_name().unwrap().to_string_lossy();
-    let identity_path = temp
+    let project_id = env.dir.path().file_name().unwrap().to_string_lossy();
+    let identity_path = env
+        .home
         .path()
         .join(".burrow/keys")
         .join(&*project_id)
@@ -51,223 +38,133 @@ fn test_init_creates_config_and_key() {
 
 #[test]
 fn test_init_in_already_initialized_dir_fails() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
     // First init should succeed
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("test-user")
-        .assert()
-        .success();
+    let output = env.init("test-user");
+    assert!(output.status.success());
 
     // Second init should fail gracefully
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("test-user")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("already initialized"));
+    let output = env
+        .cmd()
+        .args(["init", "--no-banner", "--name", "test-user"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("already initialized"));
 }
 
 #[test]
 fn test_set_and_get_roundtrip() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    // Initialize
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("test-user")
-        .assert()
-        .success();
+    env.init("test-user");
 
     // Set a secret
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("DATABASE_URL")
-        .arg("postgres://localhost/db")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("DATABASE_URL"));
+    let output = env.set("DATABASE_URL", "postgres://localhost/db");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("DATABASE_URL"));
 
     // Get the secret back
-    burrow_cmd(&temp)
-        .arg("get")
-        .arg("DATABASE_URL")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("postgres://localhost/db"));
+    let output = env.cmd().args(["get", "DATABASE_URL"]).output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("postgres://localhost/db"));
 }
 
 #[test]
 fn test_set_without_init_fails() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("KEY")
-        .arg("VALUE")
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("not initialized"));
+    let output = env.set("KEY", "VALUE");
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("not initialized"));
 }
 
 #[test]
 fn test_list_shows_keys() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("test-user")
-        .assert()
-        .success();
+    env.init("test-user");
 
     // Initially empty
-    burrow_cmd(&temp)
-        .arg("list")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("no secrets"));
+    let output = env.cmd().arg("list").output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("no secrets"));
 
     // Add a few secrets
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("KEY_ONE")
-        .arg("value1")
-        .assert()
-        .success();
-
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("KEY_TWO")
-        .arg("value2")
-        .assert()
-        .success();
+    env.set("KEY_ONE", "value1");
+    env.set("KEY_TWO", "value2");
 
     // List should show both
-    burrow_cmd(&temp)
-        .arg("list")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("KEY_ONE"))
-        .stdout(predicate::str::contains("KEY_TWO"))
-        .stdout(predicate::str::contains("2 secrets"));
+    let output = env.cmd().arg("list").output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("KEY_ONE"));
+    assert!(stdout.contains("KEY_TWO"));
+    assert!(stdout.contains("2 secrets"));
 }
 
 #[test]
 fn test_rm_removes_secret() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("test-user")
-        .assert()
-        .success();
-
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("TEMP_KEY")
-        .arg("temp_value")
-        .assert()
-        .success();
+    env.init("test-user");
+    env.set("TEMP_KEY", "temp_value");
 
     // Remove it
-    burrow_cmd(&temp)
-        .arg("rm")
-        .arg("TEMP_KEY")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("removed"));
+    let output = env.cmd().args(["rm", "TEMP_KEY"]).output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("removed"));
 
     // Should no longer be accessible
-    burrow_cmd(&temp)
-        .arg("get")
-        .arg("TEMP_KEY")
-        .assert()
-        .failure();
+    let output = env.cmd().args(["get", "TEMP_KEY"]).output().unwrap();
+    assert!(!output.status.success());
 }
 
 #[test]
 fn test_set_with_force_overwrites() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("test-user")
-        .assert()
-        .success();
-
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("OVERWRITE_KEY")
-        .arg("original_value")
-        .assert()
-        .success();
+    env.init("test-user");
+    env.set("OVERWRITE_KEY", "original_value");
 
     // Without --force should fail
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("OVERWRITE_KEY")
-        .arg("new_value")
-        .assert()
-        .failure();
+    let output = env.set("OVERWRITE_KEY", "new_value");
+    assert!(!output.status.success());
 
     // With --force should succeed
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("OVERWRITE_KEY")
-        .arg("new_value")
-        .arg("--force")
-        .assert()
-        .success();
+    let output = env
+        .cmd()
+        .args(["set", "OVERWRITE_KEY", "new_value", "--force"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
 
     // Verify new value
-    burrow_cmd(&temp)
-        .arg("get")
-        .arg("OVERWRITE_KEY")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("new_value"));
+    let output = env.cmd().args(["get", "OVERWRITE_KEY"]).output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("new_value"));
 }
 
 #[test]
 fn test_unlock_creates_env_file() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("test-user")
-        .assert()
-        .success();
+    env.init("test-user");
+    env.set("TEST_VAR", "test_value");
 
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("TEST_VAR")
-        .arg("test_value")
-        .assert()
-        .success();
-
-    burrow_cmd(&temp)
-        .arg("secrets")
-        .arg("unlock")
-        .assert()
-        .success();
+    let output = env.cmd().args(["secrets", "unlock"]).output().unwrap();
+    assert!(output.status.success());
 
     // Check that .env was created
-    let env_path = temp.path().join(".env");
+    let env_path = env.dir.path().join(".env");
     assert!(env_path.exists(), ".env should exist after unlock");
 
     let env_content = fs::read_to_string(env_path).unwrap();
@@ -276,228 +173,140 @@ fn test_unlock_creates_env_file() {
 
 #[test]
 fn test_run_injects_env_vars() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("test-user")
-        .assert()
-        .success();
-
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("INJECTED_VAR")
-        .arg("injected_value")
-        .assert()
-        .success();
+    env.init("test-user");
+    env.set("INJECTED_VAR", "injected_value");
 
     // Run echo with the environment variable
     #[cfg(unix)]
     {
-        burrow_cmd(&temp)
-            .arg("run")
-            .arg("--")
-            .arg("sh")
-            .arg("-c")
-            .arg("echo $INJECTED_VAR")
-            .assert()
-            .success()
-            .stdout(predicate::str::contains("injected_value"));
+        let output = env
+            .cmd()
+            .args(["run", "--", "sh", "-c", "echo $INJECTED_VAR"])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("injected_value"));
     }
 
     #[cfg(windows)]
     {
-        burrow_cmd(&temp)
-            .arg("run")
-            .arg("--")
-            .arg("cmd")
-            .arg("/c")
-            .arg("echo %INJECTED_VAR%")
-            .assert()
-            .success()
-            .stdout(predicate::str::contains("injected_value"));
+        let output = env
+            .cmd()
+            .args(["run", "--", "cmd", "/c", "echo %INJECTED_VAR%"])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("injected_value"));
     }
 }
 
 #[test]
 fn test_import_from_env_file() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("test-user")
-        .assert()
-        .success();
+    env.init("test-user");
 
     // Create a test .env file
-    let test_env = temp.path().join("test.env");
+    let test_env = env.dir.path().join("test.env");
     fs::write(
         &test_env,
         "IMPORT_KEY1=import_value1\nIMPORT_KEY2=import_value2\n",
     )
     .unwrap();
 
-    burrow_cmd(&temp)
-        .arg("secrets")
-        .arg("import")
-        .arg("test.env")
-        .assert()
-        .success();
+    let output = env
+        .cmd()
+        .args(["secrets", "import", "test.env"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
 
     // Verify both keys were imported
-    burrow_cmd(&temp)
-        .arg("get")
-        .arg("IMPORT_KEY1")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("import_value1"));
+    let output = env.cmd().args(["get", "IMPORT_KEY1"]).output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("import_value1"));
 
-    burrow_cmd(&temp)
-        .arg("get")
-        .arg("IMPORT_KEY2")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("import_value2"));
+    let output = env.cmd().args(["get", "IMPORT_KEY2"]).output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("import_value2"));
 }
 
 #[test]
 fn test_export_outputs_env_format() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("test-user")
-        .assert()
-        .success();
+    env.init("test-user");
+    env.set("EXPORT_KEY", "export_value");
 
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("EXPORT_KEY")
-        .arg("export_value")
-        .assert()
-        .success();
-
-    burrow_cmd(&temp)
-        .arg("secrets")
-        .arg("export")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("EXPORT_KEY=export_value"));
+    let output = env.cmd().args(["secrets", "export"]).output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("EXPORT_KEY=export_value"));
 }
 
 #[test]
 fn test_team_list_shows_members() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("alice")
-        .assert()
-        .success();
+    env.init("alice");
 
     // Initially just the creator
-    burrow_cmd(&temp)
-        .arg("team")
-        .arg("list")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("alice"));
+    let output = env.cmd().args(["team", "list"]).output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("alice"));
 }
 
 #[test]
 fn test_completions_bash_outputs_script() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("completions")
-        .arg("bash")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("_burrow"))
-        .stdout(predicate::str::contains("complete"));
+    let output = env.cmd().args(["completions", "bash"]).output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("_burrow"));
+    assert!(stdout.contains("complete"));
 }
 
 #[test]
 fn test_invalid_key_names_rejected() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("test-user")
-        .assert()
-        .success();
+    env.init("test-user");
 
     // Keys starting with numbers should fail
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("123BAD")
-        .arg("value")
-        .assert()
-        .failure();
+    let output = env.set("123BAD", "value");
+    assert!(!output.status.success());
 
     // Empty key should fail
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("")
-        .arg("value")
-        .assert()
-        .failure();
+    let output = env.set("", "value");
+    assert!(!output.status.success());
 
     // Keys with special chars should fail
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("KEY-WITH-DASH")
-        .arg("value")
-        .assert()
-        .failure();
+    let output = env.set("KEY-WITH-DASH", "value");
+    assert!(!output.status.success());
 
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("KEY.WITH.DOT")
-        .arg("value")
-        .assert()
-        .failure();
+    let output = env.set("KEY.WITH.DOT", "value");
+    assert!(!output.status.success());
 }
 
 #[test]
 fn test_list_json_output() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("test-user")
-        .assert()
-        .success();
+    env.init("test-user");
+    env.set("KEY_JSON", "value_json");
 
-    burrow_cmd(&temp)
-        .arg("set")
-        .arg("KEY_JSON")
-        .arg("value_json")
-        .assert()
-        .success();
+    let output = env.cmd().args(["list", "--json"]).output().unwrap();
+    assert!(output.status.success());
 
-    let output = burrow_cmd(&temp)
-        .arg("list")
-        .arg("--json")
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-
-    let stdout = String::from_utf8(output).unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
 
     // Should be valid JSON
     let parsed: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
@@ -508,27 +317,14 @@ fn test_list_json_output() {
 
 #[test]
 fn test_team_list_json_output() {
-    let temp = TempDir::new().unwrap();
+    let env = TestEnv::new();
 
-    burrow_cmd(&temp)
-        .arg("init")
-        .arg("--no-banner")
-        .arg("--name")
-        .arg("alice")
-        .assert()
-        .success();
+    env.init("alice");
 
-    let output = burrow_cmd(&temp)
-        .arg("team")
-        .arg("list")
-        .arg("--json")
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
+    let output = env.cmd().args(["team", "list", "--json"]).output().unwrap();
+    assert!(output.status.success());
 
-    let stdout = String::from_utf8(output).unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
 
     // Should be valid JSON
     let parsed: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");

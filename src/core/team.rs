@@ -6,6 +6,7 @@
 use crate::core::cipher;
 use crate::core::config::Config;
 use crate::core::secrets;
+use crate::core::types::{MemberName, PublicKey};
 use crate::error::{ConfigError, Result};
 
 /// Add a team member by their age public key.
@@ -77,7 +78,7 @@ pub fn remove(config: &mut Config, name: &str) -> Result<()> {
 /// # Returns
 ///
 /// Vector of (name, public_key) pairs.
-pub fn list(config: &Config) -> Vec<(String, String)> {
+pub fn list(config: &Config) -> Vec<(MemberName, PublicKey)> {
     config
         .recipients
         .iter()

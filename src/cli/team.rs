@@ -2,6 +2,8 @@
 //!
 //! Add, list, and remove team members (recipients).
 
+use tracing::info;
+
 use crate::cli::output;
 use crate::core::config::Config;
 use crate::core::team;
@@ -9,6 +11,7 @@ use crate::error::Result;
 
 /// Add a team member.
 pub fn add(name: &str, key: &str) -> Result<()> {
+    info!("Adding team member: {}", name);
     let mut config = Config::load()?;
     team::add(&mut config, name, key)?;
     output::success(&format!("team member added: {}", output::key(name)));

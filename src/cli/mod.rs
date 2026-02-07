@@ -11,7 +11,7 @@ pub mod team;
 
 // Subcommand groups
 pub mod check;
-pub mod secrets_mgmt;
+pub mod lifecycle;
 
 use clap::{Parser, Subcommand};
 
@@ -24,6 +24,10 @@ use clap::{Parser, Subcommand};
     after_help = "Dig deep. Ship safe. 🐀"
 )]
 pub struct Cli {
+    /// Enable verbose logging output
+    #[arg(short, long, global = true)]
+    pub verbose: bool,
+
     #[command(subcommand)]
     pub command: Command,
 }
@@ -188,12 +192,12 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
             TeamAction::Rm { name } => team::rm(&name),
         },
         Secrets(cmd) => match cmd {
-            SecretsCommand::Lock => secrets_mgmt::lock(),
-            SecretsCommand::Unlock => secrets_mgmt::unlock(),
-            SecretsCommand::Import { path } => secrets_mgmt::import(&path),
-            SecretsCommand::Export => secrets_mgmt::export(),
-            SecretsCommand::Diff => secrets_mgmt::diff(),
-            SecretsCommand::Rotate => secrets_mgmt::rotate(),
+            SecretsCommand::Lock => lifecycle::lock(),
+            SecretsCommand::Unlock => lifecycle::unlock(),
+            SecretsCommand::Import { path } => lifecycle::import(&path),
+            SecretsCommand::Export => lifecycle::export(),
+            SecretsCommand::Diff => lifecycle::diff(),
+            SecretsCommand::Rotate => lifecycle::rotate(),
         },
         Check(cmd) => match cmd {
             CheckCommand::Status => check::status(),

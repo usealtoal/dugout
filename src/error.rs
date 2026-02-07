@@ -19,6 +19,12 @@ pub enum ConfigError {
     #[error("recipient not found: {0}")]
     RecipientNotFound(String),
 
+    #[error("missing required field: {field}")]
+    MissingField { field: &'static str },
+
+    #[error("invalid value for {field}: {reason}")]
+    InvalidValue { field: &'static str, reason: String },
+
     #[error("failed to read config file: {0}")]
     ReadFile(#[source] std::io::Error),
 

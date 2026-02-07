@@ -3,6 +3,8 @@
 //! Initializes burrow in the current directory by creating configuration
 //! and generating a keypair.
 
+use tracing::info;
+
 use crate::cli::output;
 use crate::core::config::{self, Config};
 use crate::core::store;
@@ -20,6 +22,8 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
 
     let name = name.unwrap_or_else(whoami::username);
 
+    info!("Initializing burrow for user: {}", name);
+
     let mut config = Config::new();
     let project_id = config.project_id();
 
@@ -28,6 +32,8 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
     config.save()?;
 
     config::ensure_gitignore()?;
+
+    info!("Burrow initialized successfully");
 
     println!();
     output::success("burrow initialized");
