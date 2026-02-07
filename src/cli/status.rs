@@ -1,9 +1,11 @@
-//! Quick status overview command.
+//! Status command.
+//!
+//! Shows a quick overview of the burrow state including secrets, team members,
+//! and sync status.
 
 use crate::cli::output;
 use crate::core::config::Config;
 use crate::error::Result;
-use colored::Colorize;
 
 /// Show quick status overview.
 pub fn execute() -> Result<()> {
@@ -17,17 +19,12 @@ pub fn execute() -> Result<()> {
 
     // Secret count
     let secret_count = config.secrets.len();
-    output::kv(
-        "secrets",
-        format!(
-            "{} encrypted",
-            if secret_count == 0 {
-                "none".dimmed().to_string()
-            } else {
-                secret_count.to_string().bold().to_string()
-            }
-        ),
-    );
+    let secrets_display = if secret_count == 0 {
+        String::from("none encrypted")
+    } else {
+        format!("{} encrypted", secret_count)
+    };
+    output::kv("secrets", secrets_display);
 
     // Team member count
     let team_count = config.recipients.len();
@@ -51,22 +48,14 @@ pub fn execute() -> Result<()> {
             .count();
 
         if env_count == secret_count {
-            format!("{} in sync", "✓".green())
+            String::from("✓ in sync")
         } else if env_count < secret_count {
-            format!(
-                "{} {} secrets behind",
-                "⚠".yellow(),
-                secret_count - env_count
-            )
+            format!("⚠ {} secrets behind", secret_count - env_count)
         } else {
-            format!(
-                "{} {} untracked secrets",
-                "!".red(),
-                env_count - secret_count
-            )
+            format!("⚠ {} untracked secrets", env_count - secret_count)
         }
     } else {
-        format!("{} not found", "✗".red())
+        String::from("✗ not found")
     };
     output::kv(".env", env_status);
 
@@ -90,11 +79,10 @@ pub fn execute() -> Result<()> {
             let perms = mode & 0o777;
 
             if perms == 0o600 {
-                format!("{} {}", "✓".green(), key_path.display())
+                format!("✓ {}", key_path.display())
             } else {
                 format!(
-                    "{} {} (insecure permissions: {:o})",
-                    "⚠".yellow(),
+                    "⚠ {} (insecure permissions: {:o})",
                     key_path.display(),
                     perms
                 )
@@ -102,10 +90,10 @@ pub fn execute() -> Result<()> {
         }
         #[cfg(not(unix))]
         {
-            format!("{} {}", "✓".green(), key_path.display())
+            format!("✓ {}", key_path.display())
         }
     } else {
-        format!("{} not found at {}", "✗".red(), key_path.display())
+        format!("✗ not found at {}", key_path.display())
     };
     output::kv("key file", key_status);
 

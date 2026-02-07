@@ -1,4 +1,6 @@
-//! Run a command with secrets injected as environment variables.
+//! Run command.
+//!
+//! Executes a command with decrypted secrets injected as environment variables.
 
 use crate::core::config::Config;
 use crate::core::secrets;

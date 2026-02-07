@@ -1,4 +1,6 @@
-//! Team member management commands.
+//! Team management commands.
+//!
+//! Add, list, and remove team members (recipients).
 
 use crate::cli::output;
 use crate::core::config::Config;

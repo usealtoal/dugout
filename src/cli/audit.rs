@@ -1,4 +1,6 @@
-//! Audit git history for accidentally committed secrets.
+//! Audit command.
+//!
+//! Scans git history for accidentally committed secrets and security issues.
 
 use crate::cli::output;
 use crate::core::config::Config;

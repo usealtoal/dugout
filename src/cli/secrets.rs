@@ -1,4 +1,6 @@
-//! Secret management commands (set, get, rm, list).
+//! Secret management commands.
+//!
+//! Implements set, get, rm, and list operations for secrets.
 
 use crate::cli::output;
 use crate::core::config::Config;

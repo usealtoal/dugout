@@ -8,6 +8,7 @@ use std::fs;
 use tempfile::TempDir;
 
 /// Helper to create a fresh burrow command with isolated temp directories.
+#[allow(deprecated)]
 fn burrow_cmd(tempdir: &TempDir) -> Command {
     let mut cmd = Command::cargo_bin("burrow").unwrap();
     // Set HOME to tempdir so keys don't pollute real home

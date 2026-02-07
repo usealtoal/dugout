@@ -1,6 +1,6 @@
-//! Import and export operations for .env files.
+//! .env file operations.
 //!
-//! Provides seamless integration with dotenv-style environment files.
+//! Import and export operations for seamless integration with dotenv-style files.
 
 use crate::core::config::Config;
 use crate::core::secrets;

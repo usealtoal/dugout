@@ -1,6 +1,6 @@
-//! Key rotation command.
+//! Rotate command.
 //!
-//! Rotate the project keypair by generating a new key and re-encrypting all secrets.
+//! Rotates the project keypair by generating a new key and re-encrypting all secrets.
 
 use crate::cli::output;
 use crate::core::{cipher, config, store};
@@ -56,11 +56,12 @@ fn archive_old_key(project_id: &str) -> Result<()> {
 
 /// Execute key rotation.
 ///
-/// 1. Load current config and decrypt all secrets
-/// 2. Generate new keypair
-/// 3. Archive old key
-/// 4. Re-encrypt all secrets with new key + existing recipients
-/// 5. Update config with new recipient
+/// Performs the following steps:
+/// 1. Decrypts all secrets with the current key
+/// 2. Archives the old key with a timestamp
+/// 3. Generates a new keypair
+/// 4. Re-encrypts all secrets with the new key and existing recipients
+/// 5. Updates configuration with the new public key
 pub fn execute() -> Result<()> {
     output::section("Key Rotation");
 

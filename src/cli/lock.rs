@@ -1,4 +1,6 @@
 //! Lock and unlock commands.
+//!
+//! Verifies encryption status (lock) and decrypts secrets to .env (unlock).
 
 use crate::cli::output;
 use crate::core::config::Config;

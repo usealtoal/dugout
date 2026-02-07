@@ -1,4 +1,6 @@
-//! Interactive subshell with secrets loaded as environment variables.
+//! Interactive shell command.
+//!
+//! Spawns a subshell with decrypted secrets loaded as environment variables.
 
 use crate::cli::output;
 use crate::core::config::Config;

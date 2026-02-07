@@ -1,4 +1,7 @@
-//! Initialize burrow in the current directory.
+//! Init command.
+//!
+//! Initializes burrow in the current directory by creating configuration
+//! and generating a keypair.
 
 use crate::cli::output;
 use crate::core::config::{self, Config};

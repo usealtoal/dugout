@@ -1,4 +1,6 @@
-//! ASCII art banner for interactive mode.
+//! ASCII art banner.
+//!
+//! Displays the burrow mole banner for interactive mode with color support.
 
 use std::io::IsTerminal;
 

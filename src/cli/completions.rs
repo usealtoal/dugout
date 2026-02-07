@@ -1,4 +1,6 @@
-//! Shell completion generation.
+//! Completions command.
+//!
+//! Generates shell completion scripts for bash, zsh, fish, and PowerShell.
 
 use clap::CommandFactory;
 use clap_complete::{generate, Shell as CompletionShell};

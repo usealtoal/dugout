@@ -1,4 +1,6 @@
-//! .env file import/export/diff commands.
+//! .env file operations.
+//!
+//! Import, export, and diff operations for .env file integration.
 
 use crate::cli::output;
 use crate::core::config::Config;
@@ -30,8 +32,6 @@ pub fn export() -> Result<()> {
 
 /// Show diff/status between encrypted and local .env.
 pub fn diff() -> Result<()> {
-    use colored::Colorize;
-
     let config = Config::load()?;
 
     // Parse .env file if it exists
@@ -59,20 +59,20 @@ pub fn diff() -> Result<()> {
 
     output::section("Diff");
 
-    // Synced keys (green)
+    // Synced keys
     if !synced.is_empty() {
-        println!("{} synced:", "✓".green());
+        output::success("synced:");
         for key in &synced {
-            println!("  {}", key.green());
+            println!("  {}", output::key(key));
         }
         println!();
     }
 
-    // Missing from .env (yellow)
+    // Missing from .env
     if !missing_from_env.is_empty() {
-        println!("{} in .burrow.toml but not in .env:", "⚠".yellow());
+        output::warn("in .burrow.toml but not in .env:");
         for key in &missing_from_env {
-            println!("  {}", key.yellow());
+            println!("  {}", output::key(key));
         }
         println!();
         output::hint(&format!(
@@ -81,11 +81,11 @@ pub fn diff() -> Result<()> {
         ));
     }
 
-    // Untracked in .env (red)
+    // Untracked in .env
     if !untracked.is_empty() {
-        println!("{} in .env but not tracked:", "!".red());
+        output::warn("in .env but not tracked:");
         for key in &untracked {
-            println!("  {}", key.red());
+            println!("  {}", output::key(key));
         }
         println!();
         output::hint(&format!(
