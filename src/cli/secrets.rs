@@ -5,23 +5,22 @@
 use tracing::info;
 
 use crate::cli::output;
-use crate::core::config::Config;
-use crate::core::secrets;
+use crate::core::vault::Vault;
 use crate::error::Result;
 
 /// Set a secret value.
 pub fn set(key: &str, value: &str, force: bool) -> Result<()> {
     info!("Setting secret: {} (force: {})", key, force);
-    let mut config = Config::load()?;
-    secrets::set(&mut config, key, value, force)?;
+    let mut vault = Vault::open()?;
+    vault.set(key, value, force)?;
     output::success(&format!("set: {}", output::key(key)));
     Ok(())
 }
 
 /// Get a secret value.
 pub fn get(key: &str) -> Result<()> {
-    let config = Config::load()?;
-    let value = secrets::get(&config, key)?;
+    let vault = Vault::open()?;
+    let value = vault.get(key)?;
     // Plain output for scripting - no decoration
     println!("{}", value.as_str());
     Ok(())
@@ -30,16 +29,16 @@ pub fn get(key: &str) -> Result<()> {
 /// Remove a secret.
 pub fn rm(key: &str) -> Result<()> {
     info!("Removing secret: {}", key);
-    let mut config = Config::load()?;
-    secrets::remove(&mut config, key)?;
+    let mut vault = Vault::open()?;
+    vault.remove(key)?;
     output::success(&format!("removed: {}", output::key(key)));
     Ok(())
 }
 
 /// List all secret keys.
 pub fn list(json: bool) -> Result<()> {
-    let config = Config::load()?;
-    let keys = secrets::list(&config);
+    let vault = Vault::open()?;
+    let keys = vault.list();
 
     if json {
         let result = serde_json::json!({

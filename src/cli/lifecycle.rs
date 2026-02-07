@@ -5,19 +5,19 @@
 use tracing::info;
 
 use crate::cli::output;
-use crate::core::{cipher, config, env, store};
+use crate::core::{cipher, config, store};
 use crate::error::Result;
 use std::fs;
 use std::path::PathBuf;
 
 /// Lock (status check - secrets are always encrypted).
 pub fn lock() -> Result<()> {
-    let config = config::Config::load()?;
+    let vault = crate::core::vault::Vault::open()?;
     output::progress("Checking encryption");
     output::progress_done(true);
     output::success(&format!(
         "locked: {} secrets encrypted in {}",
-        config.secrets.len(),
+        vault.list().len(),
         output::path(".burrow.toml")
     ));
     output::kv("status", "safe to commit");
@@ -26,9 +26,9 @@ pub fn lock() -> Result<()> {
 
 /// Unlock secrets to .env file.
 pub fn unlock() -> Result<()> {
-    let config = config::Config::load()?;
+    let vault = crate::core::vault::Vault::open()?;
     output::progress("Decrypting secrets");
-    let count = env::unlock(&config)?;
+    let count = vault.unlock()?;
     output::progress_done(true);
     output::success(&format!(
         "unlocked: {} secrets written to {}",
@@ -40,8 +40,8 @@ pub fn unlock() -> Result<()> {
 
 /// Import secrets from a .env file.
 pub fn import(path: &str) -> Result<()> {
-    let mut config = config::Config::load()?;
-    let imported = env::import(&mut config, path)?;
+    let mut vault = crate::core::vault::Vault::open()?;
+    let imported = vault.import(path)?;
     output::success(&format!(
         "imported {} secrets from {}",
         imported.len(),
@@ -55,15 +55,15 @@ pub fn import(path: &str) -> Result<()> {
 
 /// Export secrets as .env format to stdout.
 pub fn export() -> Result<()> {
-    let config = config::Config::load()?;
-    let result = env::export(&config)?;
+    let vault = crate::core::vault::Vault::open()?;
+    let result = vault.export()?;
     print!("{}", result);
     Ok(())
 }
 
 /// Show diff/status between encrypted and local .env.
 pub fn diff() -> Result<()> {
-    let config = config::Config::load()?;
+    let vault = crate::core::vault::Vault::open()?;
 
     // Parse .env file if it exists
     let mut env_keys = std::collections::HashSet::new();
@@ -81,7 +81,7 @@ pub fn diff() -> Result<()> {
     }
 
     // Get keys from .burrow.toml
-    let toml_keys: std::collections::HashSet<_> = config.secrets.keys().cloned().collect();
+    let toml_keys: std::collections::HashSet<_> = vault.list().into_iter().collect();
 
     // Calculate differences
     let synced: Vec<_> = toml_keys.intersection(&env_keys).collect();

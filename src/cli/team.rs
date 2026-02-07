@@ -5,20 +5,20 @@
 use tracing::info;
 
 use crate::cli::output;
-use crate::core::config::Config;
-use crate::core::team;
+use crate::core::vault::Vault;
 use crate::error::Result;
 
 /// Add a team member.
 pub fn add(name: &str, key: &str) -> Result<()> {
     info!("Adding team member: {}", name);
-    let mut config = Config::load()?;
-    team::add(&mut config, name, key)?;
+    let mut vault = Vault::open()?;
+    let secret_count = vault.list().len();
+    vault.add_recipient(name, key)?;
     output::success(&format!("team member added: {}", output::key(name)));
-    if !config.secrets.is_empty() {
+    if secret_count > 0 {
         output::kv(
             "re-encrypted",
-            format!("{} secrets for new recipient set", config.secrets.len()),
+            format!("{} secrets for new recipient set", secret_count),
         );
     }
     Ok(())
@@ -26,16 +26,16 @@ pub fn add(name: &str, key: &str) -> Result<()> {
 
 /// List team members.
 pub fn list(json: bool) -> Result<()> {
-    let config = Config::load()?;
-    let members = team::list(&config);
+    let vault = Vault::open()?;
+    let members = vault.recipients();
 
     if json {
         let members_json: Vec<_> = members
             .iter()
-            .map(|(name, key)| {
+            .map(|r| {
                 serde_json::json!({
-                    "name": name,
-                    "public_key": key
+                    "name": r.name(),
+                    "public_key": r.public_key()
                 })
             })
             .collect();
@@ -51,8 +51,11 @@ pub fn list(json: bool) -> Result<()> {
         println!();
         output::header(&format!("{} team members", members.len()));
         output::rule();
-        for (name, key) in members {
-            output::kv(&name, format!("{}...", &key[..24]));
+        for recipient in members {
+            output::kv(
+                recipient.name(),
+                format!("{}...", &recipient.public_key()[..24]),
+            );
         }
     }
 
@@ -61,8 +64,8 @@ pub fn list(json: bool) -> Result<()> {
 
 /// Remove a team member.
 pub fn rm(name: &str) -> Result<()> {
-    let mut config = Config::load()?;
-    team::remove(&mut config, name)?;
+    let mut vault = Vault::open()?;
+    vault.remove_recipient(name)?;
     output::success(&format!("team member removed: {}", output::key(name)));
     Ok(())
 }

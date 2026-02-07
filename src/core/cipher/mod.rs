@@ -75,7 +75,8 @@ pub trait Cipher {
     fn decrypt(&self, encrypted: &str, identity: &Self::Identity) -> Result<String>;
 }
 
-// Re-export commonly used age types for convenience
+// Re-export commonly used age types for convenience (used by internal modules)
+#[allow(unused_imports)]
 pub use ::age::x25519::{Identity, Recipient};
 
 // Convenience functions using the default age backend

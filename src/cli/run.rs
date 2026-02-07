@@ -2,27 +2,26 @@
 //!
 //! Executes a command with decrypted secrets injected as environment variables.
 
-use crate::core::config::Config;
-use crate::core::secrets;
+use crate::core::vault::Vault;
 use crate::error::Result;
 use zeroize::Zeroizing;
 
 /// Run a command with secrets injected as environment variables.
 pub fn execute(command: &[String]) -> Result<()> {
-    let config = Config::load()?;
-    let exit_code = run_with_secrets(&config, command)?;
+    let vault = Vault::open()?;
+    let exit_code = run_with_secrets(&vault, command)?;
     std::process::exit(exit_code);
 }
 
 /// Run a command with decrypted secrets as environment variables.
-fn run_with_secrets(config: &Config, command: &[String]) -> Result<i32> {
+fn run_with_secrets(vault: &Vault, command: &[String]) -> Result<i32> {
     if command.is_empty() {
         return Err(crate::error::Error::Other(
             "no command specified".to_string(),
         ));
     }
 
-    let pairs = secrets::decrypt_all(config)?;
+    let pairs = vault.decrypt_all()?;
 
     let mut cmd = std::process::Command::new(&command[0]);
     cmd.args(&command[1..]);

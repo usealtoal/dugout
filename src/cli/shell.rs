@@ -3,15 +3,14 @@
 //! Spawns a subshell with decrypted secrets loaded as environment variables.
 
 use crate::cli::output;
-use crate::core::config::Config;
-use crate::core::secrets;
+use crate::core::vault::Vault;
 use crate::error::Result;
 use zeroize::Zeroizing;
 
 /// Spawn an interactive shell with secrets loaded.
 pub fn execute() -> Result<()> {
-    let config = Config::load()?;
-    let pairs = secrets::decrypt_all(&config)?;
+    let vault = Vault::open()?;
+    let pairs = vault.decrypt_all()?;
 
     // Determine which shell to use
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());

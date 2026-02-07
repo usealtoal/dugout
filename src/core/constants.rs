@@ -6,6 +6,7 @@
 pub const CONFIG_FILE: &str = ".burrow.toml";
 
 /// Environment variables file name (.env).
+#[allow(dead_code)]
 pub const ENV_FILE: &str = ".env";
 
 /// Key storage directory relative to HOME (~/.burrow/keys).

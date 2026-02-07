@@ -3,22 +3,22 @@
 //! Status overview and git history auditing.
 
 use crate::cli::output;
-use crate::core::config::Config;
+use crate::core::vault::Vault;
 use crate::error::Result;
 use std::process::{Command, Stdio};
 
 /// Show quick status overview.
 pub fn status() -> Result<()> {
-    let config = Config::load()?;
+    let vault = Vault::open()?;
 
     output::section("Burrow Status");
 
     // Project name
-    let project = config.project_id();
-    output::kv("project", &project);
+    let project = vault.project_id();
+    output::kv("project", project);
 
     // Secret count
-    let secret_count = config.secrets.len();
+    let secret_count = vault.list().len();
     let secrets_display = if secret_count == 0 {
         String::from("none encrypted")
     } else {
@@ -27,7 +27,7 @@ pub fn status() -> Result<()> {
     output::kv("secrets", secrets_display);
 
     // Team member count
-    let team_count = config.recipients.len();
+    let team_count = vault.recipients().len();
     output::kv(
         "team",
         format!(
@@ -66,7 +66,7 @@ pub fn status() -> Result<()> {
     let key_path = home
         .join(".burrow")
         .join("keys")
-        .join(&project)
+        .join(project)
         .join("identity.key");
 
     let key_status = if key_path.exists() {
@@ -266,8 +266,8 @@ fn check_secret_patterns() -> Result<usize> {
 
 /// Check if .burrow.toml contains unencrypted private keys.
 fn check_burrow_keys() -> Result<usize> {
-    let config = Config::load().ok();
-    if config.is_none() {
+    let vault = Vault::open().ok();
+    if vault.is_none() {
         return Ok(0);
     }
 
