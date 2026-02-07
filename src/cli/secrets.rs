@@ -1,7 +1,6 @@
 //! Secret management commands (set, get, rm, list).
 
-use colored::Colorize;
-
+use crate::cli::output;
 use crate::core::config::Config;
 use crate::core::secrets;
 use crate::error::Result;
@@ -10,7 +9,7 @@ use crate::error::Result;
 pub fn set(key: &str, value: &str, force: bool) -> Result<()> {
     let mut config = Config::load()?;
     secrets::set(&mut config, key, value, force)?;
-    println!("{} {}", "set:".green().bold(), key);
+    output::success(&format!("set: {}", output::key(key)));
     Ok(())
 }
 
@@ -18,6 +17,7 @@ pub fn set(key: &str, value: &str, force: bool) -> Result<()> {
 pub fn get(key: &str) -> Result<()> {
     let config = Config::load()?;
     let value = secrets::get(&config, key)?;
+    // Plain output for scripting - no decoration
     println!("{}", value.as_str());
     Ok(())
 }
@@ -26,7 +26,7 @@ pub fn get(key: &str) -> Result<()> {
 pub fn rm(key: &str) -> Result<()> {
     let mut config = Config::load()?;
     secrets::remove(&mut config, key)?;
-    println!("{} {}", "removed:".green().bold(), key);
+    output::success(&format!("removed: {}", output::key(key)));
     Ok(())
 }
 
@@ -36,17 +36,19 @@ pub fn list(json: bool) -> Result<()> {
     let keys = secrets::list(&config);
 
     if json {
-        let output = serde_json::json!({
+        let result = serde_json::json!({
             "keys": keys,
             "count": keys.len()
         });
-        println!("{}", serde_json::to_string_pretty(&output)?);
+        println!("{}", serde_json::to_string_pretty(&result)?);
     } else if keys.is_empty() {
-        println!("{}", "no secrets stored".dimmed());
+        output::dimmed("no secrets stored");
     } else {
-        println!("{} secrets:", keys.len().to_string().green().bold());
+        println!();
+        output::header(&format!("{} secrets", keys.len()));
+        output::rule();
         for key in keys {
-            println!("  {}", key);
+            output::list_item(&key);
         }
     }
 

@@ -1,7 +1,6 @@
 //! Initialize burrow in the current directory.
 
-use colored::Colorize;
-
+use crate::cli::output;
 use crate::core::config::{self, Config};
 use crate::core::store;
 use crate::error::Result;
@@ -27,12 +26,19 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
 
     config::ensure_gitignore()?;
 
-    println!("{}", "burrow initialized".green().bold());
-    println!("  recipient: {} ({})", name, &public_key[..20]);
-    println!("  config:    .burrow.toml (commit this)");
-    println!("  key:       ~/.burrow/keys/{}/", project_id);
     println!();
-    println!("Next: {} to add secrets", "burrow set KEY VALUE".cyan());
+    output::success("burrow initialized");
+    output::kv("recipient", format!("{} ({})", name, &public_key[..20]));
+    output::kv(
+        "config",
+        format!("{} (commit this)", output::path(".burrow.toml")),
+    );
+    output::kv("key", format!("~/.burrow/keys/{}/", project_id));
+    println!();
+    output::hint(&format!(
+        "Next: {} to add secrets",
+        output::cmd("burrow set KEY VALUE")
+    ));
 
     Ok(())
 }

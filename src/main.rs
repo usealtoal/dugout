@@ -1,15 +1,15 @@
 //! Burrow - An extremely fast secrets manager for developers.
 
 use clap::Parser;
-use colored::Colorize;
 
+use burrow::cli::output;
 use burrow::cli::{execute, Cli};
 
 fn main() {
     let cli = Cli::parse();
 
     if let Err(e) = execute(cli.command) {
-        eprintln!("{} {}", "error:".red().bold(), e);
+        output::error(&e.to_string());
         std::process::exit(1);
     }
 }

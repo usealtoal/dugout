@@ -5,6 +5,7 @@ pub mod completions;
 pub mod env;
 pub mod init;
 pub mod lock;
+pub mod output;
 pub mod run;
 pub mod secrets;
 pub mod team;

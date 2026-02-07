@@ -1,7 +1,6 @@
 //! Lock and unlock commands.
 
-use colored::Colorize;
-
+use crate::cli::output;
 use crate::core::config::Config;
 use crate::core::env;
 use crate::error::Result;
@@ -9,23 +8,27 @@ use crate::error::Result;
 /// Lock (status check - secrets are always encrypted).
 pub fn lock() -> Result<()> {
     let config = Config::load()?;
-    println!(
-        "{} {} secrets encrypted in .burrow.toml",
-        "locked:".green().bold(),
-        config.secrets.len()
-    );
-    println!("  safe to commit");
+    output::progress("Checking encryption");
+    output::progress_done(true);
+    output::success(&format!(
+        "locked: {} secrets encrypted in {}",
+        config.secrets.len(),
+        output::path(".burrow.toml")
+    ));
+    output::kv("status", "safe to commit");
     Ok(())
 }
 
 /// Unlock secrets to .env file.
 pub fn unlock() -> Result<()> {
     let config = Config::load()?;
+    output::progress("Decrypting secrets");
     let count = env::unlock(&config)?;
-    println!(
-        "{} {} secrets written to .env",
-        "unlocked:".green().bold(),
-        count
-    );
+    output::progress_done(true);
+    output::success(&format!(
+        "unlocked: {} secrets written to {}",
+        count,
+        output::path(".env")
+    ));
     Ok(())
 }

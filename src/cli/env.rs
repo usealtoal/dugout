@@ -1,7 +1,6 @@
 //! .env file import/export/diff commands.
 
-use colored::Colorize;
-
+use crate::cli::output;
 use crate::core::config::Config;
 use crate::core::env;
 use crate::error::Result;
@@ -10,14 +9,13 @@ use crate::error::Result;
 pub fn import(path: &str) -> Result<()> {
     let mut config = Config::load()?;
     let imported = env::import(&mut config, path)?;
-    println!(
-        "{} {} secrets from {}",
-        "imported:".green().bold(),
+    output::success(&format!(
+        "imported {} secrets from {}",
         imported.len(),
-        path
-    );
+        output::path(path)
+    ));
     for key in &imported {
-        println!("  {}", key);
+        output::list_item(key);
     }
     Ok(())
 }
@@ -25,18 +23,20 @@ pub fn import(path: &str) -> Result<()> {
 /// Export secrets as .env format to stdout.
 pub fn export() -> Result<()> {
     let config = Config::load()?;
-    let output = env::export(&config)?;
-    print!("{}", output);
+    let result = env::export(&config)?;
+    print!("{}", result);
     Ok(())
 }
 
 /// Show diff/status between encrypted and local .env.
 pub fn diff() -> Result<()> {
     let config = Config::load()?;
-    println!(
-        "{} {} secrets in .burrow.toml",
-        "status:".green().bold(),
-        config.secrets.len()
+    println!();
+    output::header("Status");
+    output::rule();
+    output::kv(
+        ".burrow.toml",
+        format!("{} secrets (encrypted)", config.secrets.len()),
     );
 
     let env_path = std::path::Path::new(".env");
@@ -46,9 +46,14 @@ pub fn diff() -> Result<()> {
             .lines()
             .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
             .count();
-        println!("  .env has {} entries", env_count);
+        output::kv(".env", format!("{} entries (plaintext)", env_count));
     } else {
-        println!("  {} (run `burrow unlock`)", ".env not found".dimmed());
+        output::kv(".env", "not found");
+        println!();
+        output::hint(&format!(
+            "Run {} to create .env file",
+            output::cmd("burrow unlock")
+        ));
     }
 
     Ok(())

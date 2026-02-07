@@ -1,7 +1,6 @@
 //! Team member management commands.
 
-use colored::Colorize;
-
+use crate::cli::output;
 use crate::core::config::Config;
 use crate::core::team;
 use crate::error::Result;
@@ -10,11 +9,11 @@ use crate::error::Result;
 pub fn add(name: &str, key: &str) -> Result<()> {
     let mut config = Config::load()?;
     team::add(&mut config, name, key)?;
-    println!("{} {} added to team", "team:".green().bold(), name);
+    output::success(&format!("team member added: {}", output::key(name)));
     if !config.secrets.is_empty() {
-        println!(
-            "  re-encrypted {} secrets for new recipient set",
-            config.secrets.len()
+        output::kv(
+            "re-encrypted",
+            format!("{} secrets for new recipient set", config.secrets.len()),
         );
     }
     Ok(())
@@ -36,17 +35,19 @@ pub fn list(json: bool) -> Result<()> {
             })
             .collect();
 
-        let output = serde_json::json!({
+        let result = serde_json::json!({
             "members": members_json,
             "count": members.len()
         });
-        println!("{}", serde_json::to_string_pretty(&output)?);
+        println!("{}", serde_json::to_string_pretty(&result)?);
     } else if members.is_empty() {
-        println!("{}", "no team members".dimmed());
+        output::dimmed("no team members");
     } else {
-        println!("{} members:", members.len().to_string().green().bold());
+        println!();
+        output::header(&format!("{} team members", members.len()));
+        output::rule();
         for (name, key) in members {
-            println!("  {} ({}...)", name, &key[..24]);
+            output::kv(&name, format!("{}...", &key[..24]));
         }
     }
 
@@ -57,6 +58,6 @@ pub fn list(json: bool) -> Result<()> {
 pub fn rm(name: &str) -> Result<()> {
     let mut config = Config::load()?;
     team::remove(&mut config, name)?;
-    println!("{} {} removed from team", "team:".green().bold(), name);
+    output::success(&format!("team member removed: {}", output::key(name)));
     Ok(())
 }

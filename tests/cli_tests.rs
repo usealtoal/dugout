@@ -36,7 +36,11 @@ fn test_init_creates_config_and_key() {
     // Check that a key was created in ~/.burrow/keys/<project_id>/identity.key
     // project_id is derived from the current directory name
     let project_id = temp.path().file_name().unwrap().to_string_lossy();
-    let identity_path = temp.path().join(".burrow/keys").join(&*project_id).join("identity.key");
+    let identity_path = temp
+        .path()
+        .join(".burrow/keys")
+        .join(&*project_id)
+        .join("identity.key");
     assert!(identity_path.exists(), "identity key should exist");
 
     // Verify config is valid TOML
