@@ -1,5 +1,8 @@
+//! Command-line argument definitions using clap.
+
 use clap::{Parser, Subcommand};
 
+/// Burrow - An extremely fast secrets manager for developers.
 #[derive(Parser)]
 #[command(
     name = "burrow",
@@ -12,6 +15,7 @@ pub struct Cli {
     pub command: Command,
 }
 
+/// Top-level commands.
 #[derive(Subcommand)]
 pub enum Command {
     /// Initialize burrow in the current directory
@@ -19,6 +23,9 @@ pub enum Command {
         /// Your name (used as recipient identifier)
         #[arg(short, long)]
         name: Option<String>,
+        /// Skip ASCII art banner
+        #[arg(long)]
+        no_banner: bool,
     },
 
     /// Set a secret value
@@ -79,6 +86,7 @@ pub enum Command {
     Diff,
 }
 
+/// Team subcommands.
 #[derive(Subcommand)]
 pub enum TeamAction {
     /// Add a team member by their public key

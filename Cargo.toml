@@ -1,7 +1,9 @@
 [package]
 name = "burrow"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+rust-version = "1.70"
+authors = ["Rob Dekovich <rob@altoal.com>"]
 description = "An extremely fast secrets manager for developers, written in Rust"
 license = "MIT"
 repository = "https://github.com/usealtoal/burrow"
@@ -17,10 +19,13 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"
 thiserror = "2"
-anyhow = "1"
 whoami = "1"
+
+[dev-dependencies]
+tempfile = "3"
 
 [profile.release]
 opt-level = 3
 lto = true
 strip = true
+codegen-units = 1

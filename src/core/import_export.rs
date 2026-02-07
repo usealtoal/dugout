@@ -1,10 +1,28 @@
-use std::path::Path;
+//! Import and export operations for .env files.
+//!
+//! Provides seamless integration with dotenv-style environment files.
 
-use crate::config::BurrowConfig;
+use crate::core::config::BurrowConfig;
+use crate::core::secrets;
 use crate::error::Result;
-use crate::secrets;
 
-/// Import secrets from a .env file
+/// Import secrets from a .env file.
+///
+/// Parses a .env file and encrypts each key-value pair into the burrow.
+/// Skips empty lines and comments.
+///
+/// # Arguments
+///
+/// * `config` - Mutable reference to configuration
+/// * `path` - Path to the .env file
+///
+/// # Returns
+///
+/// Vector of imported key names.
+///
+/// # Errors
+///
+/// Returns error if file reading or encryption fails.
 pub fn import_env(config: &mut BurrowConfig, path: &str) -> Result<Vec<String>> {
     let contents = std::fs::read_to_string(path)?;
     let mut imported = Vec::new();
@@ -29,7 +47,22 @@ pub fn import_env(config: &mut BurrowConfig, path: &str) -> Result<Vec<String>> 
     Ok(imported)
 }
 
-/// Export secrets as .env format string
+/// Export secrets as .env format string.
+///
+/// Decrypts all secrets and formats them as KEY=value pairs.
+/// Quotes values containing spaces or special characters.
+///
+/// # Arguments
+///
+/// * `config` - Configuration reference
+///
+/// # Returns
+///
+/// .env-formatted string of all secrets.
+///
+/// # Errors
+///
+/// Returns error if decryption fails.
 pub fn export_env(config: &BurrowConfig) -> Result<String> {
     let pairs = secrets::decrypt_all(config)?;
     let mut output = String::new();
@@ -46,7 +79,21 @@ pub fn export_env(config: &BurrowConfig) -> Result<String> {
     Ok(output)
 }
 
-/// Write decrypted secrets to a .env file
+/// Write decrypted secrets to a .env file.
+///
+/// Unlocks all secrets and writes them to `.env` in the current directory.
+///
+/// # Arguments
+///
+/// * `config` - Configuration reference
+///
+/// # Returns
+///
+/// Number of secrets written.
+///
+/// # Errors
+///
+/// Returns error if decryption or file write fails.
 pub fn unlock_to_file(config: &BurrowConfig) -> Result<usize> {
     let env_content = export_env(config)?;
     let count = env_content.lines().count();
