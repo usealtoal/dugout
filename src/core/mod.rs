@@ -5,6 +5,8 @@
 
 // Public API
 pub mod audit;
+pub mod diff;
+pub mod env;
 pub mod identity;
 pub mod recipient;
 pub mod secret;
@@ -15,7 +17,6 @@ pub mod vault;
 pub(crate) mod cipher;
 pub(crate) mod config;
 pub(crate) mod constants;
-pub(crate) mod env;
 pub(crate) mod secrets;
 pub(crate) mod store;
 pub(crate) mod team;

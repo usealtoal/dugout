@@ -97,9 +97,10 @@ fn test_export_env() {
 
     // Export directly (without reloading)
     let exported = env.vault.export().unwrap();
+    let exported_str = format!("{}", exported);
 
-    assert!(exported.contains("KEY1=value1"));
-    assert!(exported.contains("KEY2=value_with_underscores"));
+    assert!(exported_str.contains("KEY1=value1"));
+    assert!(exported_str.contains("KEY2=value_with_underscores"));
 }
 
 #[test]
@@ -116,9 +117,9 @@ fn test_unlock_to_file() {
     fs::remove_file("test.env").unwrap();
 
     // Unlock to .env
-    let count = env.vault.unlock().unwrap();
+    let unlocked_env = env.vault.unlock().unwrap();
 
-    assert_eq!(count, 2);
+    assert_eq!(unlocked_env.len(), 2);
     assert!(fs::metadata(".env").unwrap().is_file());
 
     let unlocked = fs::read_to_string(".env").unwrap();

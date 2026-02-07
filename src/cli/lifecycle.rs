@@ -28,11 +28,11 @@ pub fn lock() -> Result<()> {
 pub fn unlock() -> Result<()> {
     let vault = crate::core::vault::Vault::open()?;
     output::progress("Decrypting secrets");
-    let count = vault.unlock()?;
+    let env = vault.unlock()?;
     output::progress_done(true);
     output::success(&format!(
         "unlocked: {} secrets written to {}",
-        count,
+        env.len(),
         output::path(".env")
     ));
     Ok(())
@@ -56,58 +56,49 @@ pub fn import(path: &str) -> Result<()> {
 /// Export secrets as .env format to stdout.
 pub fn export() -> Result<()> {
     let vault = crate::core::vault::Vault::open()?;
-    let result = vault.export()?;
-    print!("{}", result);
+    let env = vault.export()?;
+    print!("{}", env);
     Ok(())
 }
 
 /// Show diff/status between encrypted and local .env.
 pub fn diff() -> Result<()> {
     let vault = crate::core::vault::Vault::open()?;
-
-    // Parse .env file if it exists
-    let mut env_keys = std::collections::HashSet::new();
     let env_path = std::path::Path::new(".env");
-    if env_path.exists() {
-        let env_content = std::fs::read_to_string(env_path)?;
-        for line in env_content.lines() {
-            let line = line.trim();
-            if !line.is_empty() && !line.starts_with('#') {
-                if let Some((key, _)) = line.split_once('=') {
-                    env_keys.insert(key.trim().to_string());
-                }
-            }
-        }
-    }
-
-    // Get keys from .burrow.toml
-    let toml_keys: std::collections::HashSet<_> = vault
-        .list()
-        .into_iter()
-        .map(|s| s.key().to_string())
-        .collect();
-
-    // Calculate differences
-    let synced: Vec<_> = toml_keys.intersection(&env_keys).collect();
-    let missing_from_env: Vec<_> = toml_keys.difference(&env_keys).collect();
-    let untracked: Vec<_> = env_keys.difference(&toml_keys).collect();
+    let diff = vault.diff(env_path)?;
 
     output::section("Diff");
 
-    // Synced keys
+    // Synced entries
+    let synced = diff.synced();
     if !synced.is_empty() {
         output::success("synced:");
-        for key in &synced {
-            println!("  {}", output::key(key));
+        for entry in &synced {
+            println!("  {}", output::key(entry.key()));
         }
         println!();
     }
 
-    // Missing from .env
-    if !missing_from_env.is_empty() {
-        output::warn("in .burrow.toml but not in .env:");
-        for key in &missing_from_env {
-            println!("  {}", output::key(key));
+    // Modified entries
+    let modified = diff.modified();
+    if !modified.is_empty() {
+        output::warn("modified (values differ):");
+        for entry in &modified {
+            println!("  {}", output::key(entry.key()));
+        }
+        println!();
+        output::hint(&format!(
+            "Run {} to update .env with vault values",
+            output::cmd("burrow secrets unlock")
+        ));
+    }
+
+    // Vault-only entries
+    let vault_only = diff.vault_only();
+    if !vault_only.is_empty() {
+        output::warn("in vault but not in .env:");
+        for entry in &vault_only {
+            println!("  {}", output::key(entry.key()));
         }
         println!();
         output::hint(&format!(
@@ -116,11 +107,12 @@ pub fn diff() -> Result<()> {
         ));
     }
 
-    // Untracked in .env
-    if !untracked.is_empty() {
+    // Env-only entries
+    let env_only = diff.env_only();
+    if !env_only.is_empty() {
         output::warn("in .env but not tracked:");
-        for key in &untracked {
-            println!("  {}", output::key(key));
+        for entry in &env_only {
+            println!("  {}", output::key(entry.key()));
         }
         println!();
         output::hint(&format!(
@@ -130,17 +122,19 @@ pub fn diff() -> Result<()> {
     }
 
     // Summary
-    if synced.is_empty() && missing_from_env.is_empty() && untracked.is_empty() {
+    if diff.is_empty() {
         if env_path.exists() {
-            output::success("All secrets in sync");
+            output::warn(".env is empty");
         } else {
             output::warn(".env file not found");
-            println!();
-            output::hint(&format!(
-                "Run {} to create .env file",
-                output::cmd("burrow secrets unlock")
-            ));
         }
+        println!();
+        output::hint(&format!(
+            "Run {} to create .env file",
+            output::cmd("burrow secrets unlock")
+        ));
+    } else if diff.is_synced() {
+        output::success("All secrets in sync");
     }
 
     Ok(())

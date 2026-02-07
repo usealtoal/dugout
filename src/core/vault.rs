@@ -274,23 +274,39 @@ impl Vault {
     /// # Errors
     ///
     /// Returns error if file cannot be read or secrets cannot be encrypted.
-    pub fn import(&mut self, path: &str) -> Result<Vec<SecretKey>> {
-        crate::core::env::import(&mut self.config, path)
+    pub fn import(&mut self, path: impl AsRef<std::path::Path>) -> Result<Vec<SecretKey>> {
+        let env = crate::core::env::Env::load(path)?;
+        let mut imported = Vec::new();
+
+        for (key, value) in env.entries() {
+            secrets::set(&mut self.config, key, value, true)?;
+            imported.push(key.clone());
+        }
+
+        Ok(imported)
     }
 
     /// Export as .env format.
     ///
-    /// Decrypts all secrets and formats them as KEY=value pairs.
+    /// Decrypts all secrets and returns them as an Env instance.
     ///
     /// # Returns
     ///
-    /// String in .env format.
+    /// An `Env` containing all decrypted secrets.
     ///
     /// # Errors
     ///
     /// Returns error if decryption fails.
-    pub fn export(&self) -> Result<String> {
-        crate::core::env::export(&self.config)
+    pub fn export(&self) -> Result<crate::core::env::Env> {
+        let pairs = secrets::decrypt_all(&self.config)?
+            .into_iter()
+            .map(|(k, v)| (k, v.to_string()))
+            .collect();
+
+        Ok(crate::core::env::Env::from_pairs(
+            pairs,
+            std::path::PathBuf::from(".env"),
+        ))
     }
 
     /// Unlock to .env file.
@@ -299,13 +315,46 @@ impl Vault {
     ///
     /// # Returns
     ///
-    /// Number of secrets written.
+    /// The written `Env` file.
     ///
     /// # Errors
     ///
     /// Returns error if decryption or file write fails.
-    pub fn unlock(&self) -> Result<usize> {
-        crate::core::env::unlock(&self.config)
+    pub fn unlock(&self) -> Result<crate::core::env::Env> {
+        let env = self.export()?;
+        env.save()?;
+        Ok(env)
+    }
+
+    /// Compute diff between vault and .env file.
+    ///
+    /// Compares the vault's secrets with a .env file.
+    ///
+    /// # Arguments
+    ///
+    /// * `env_path` - Path to the .env file (defaults to `.env`)
+    ///
+    /// # Returns
+    ///
+    /// A `Diff` showing the comparison.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if decryption fails or .env file cannot be read.
+    pub fn diff(&self, env_path: impl AsRef<std::path::Path>) -> Result<crate::core::diff::Diff> {
+        let vault_pairs = secrets::decrypt_all(&self.config)?
+            .into_iter()
+            .map(|(k, v)| (k, v.to_string()))
+            .collect::<Vec<_>>();
+
+        let env_pairs = if env_path.as_ref().exists() {
+            let env = crate::core::env::Env::load(env_path)?;
+            env.entries().to_vec()
+        } else {
+            Vec::new()
+        };
+
+        Ok(crate::core::diff::Diff::compute(&vault_pairs, &env_pairs))
     }
 
     /// Get config reference.
@@ -417,7 +466,8 @@ mod tests {
         vault.set("EXPORT_KEY", "export_value", false).unwrap();
         vault.set("ANOTHER_KEY", "another_value", false).unwrap();
 
-        let exported = vault.export().unwrap();
+        let env = vault.export().unwrap();
+        let exported = format!("{}", env);
 
         assert!(exported.contains("EXPORT_KEY=export_value"));
         assert!(exported.contains("ANOTHER_KEY=another_value"));

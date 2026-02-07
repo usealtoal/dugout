@@ -69,6 +69,8 @@ pub mod error;
 
 // Re-export the public API
 pub use core::audit::{Finding, Severity};
+pub use core::diff::{Diff, DiffEntry, EntryStatus};
+pub use core::env::Env;
 pub use core::identity::Identity;
 pub use core::recipient::Recipient;
 pub use core::secret::Secret;
