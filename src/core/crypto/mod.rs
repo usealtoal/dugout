@@ -25,11 +25,11 @@
 //! ```
 
 use crate::error::Result;
-use age::x25519;
+use ::age::x25519;
 
-mod age;
+mod backend;
 
-pub use age::{parse_recipient, AgeBackend};
+pub use backend::{parse_recipient, AgeBackend};
 
 /// Cryptographic backend trait.
 ///
@@ -76,7 +76,7 @@ pub trait CryptoBackend {
 }
 
 // Re-export commonly used age types for convenience
-pub use age::x25519::{Identity, Recipient};
+pub use ::age::x25519::{Identity, Recipient};
 
 // Convenience functions using the default age backend
 /// Encrypt plaintext for multiple age recipients.
