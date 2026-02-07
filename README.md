@@ -63,12 +63,12 @@ burrow set DATABASE_URL "postgres://localhost/myapp"
 burrow set API_KEY "sk-live-abc123"
 
 # Encrypt and commit
-burrow lock
+burrow secrets lock
 git add .burrow.toml
 git commit -m "add encrypted secrets"
 
 # On another machine (after git pull)
-burrow unlock
+burrow secrets unlock
 # Creates .env file with decrypted secrets
 
 # Or run commands with secrets injected
@@ -79,8 +79,8 @@ burrow run npm start
 
 1. **`burrow init`** generates an age keypair. Public key goes in `.burrow.toml` (committed). Private key goes in `~/.burrow/keys/` (never committed).
 2. **`burrow set KEY VALUE`** stores secrets in `.burrow.toml`, encrypted with your project's public key.
-3. **`burrow lock`** ensures all secrets are encrypted (re-encrypts any plaintext).
-4. **`burrow unlock`** decrypts secrets to a local `.env` file (automatically gitignored).
+3. **`burrow secrets lock`** ensures all secrets are encrypted (re-encrypts any plaintext).
+4. **`burrow secrets unlock`** decrypts secrets to a local `.env` file (automatically gitignored).
 5. **`burrow run <command>`** injects secrets as environment variables and runs your command.
 
 Secrets are encrypted with [age](https://age-encryption.org/) (modern, audited, simple). Multiple team members can be added as recipients, each with their own private key.
@@ -133,23 +133,49 @@ burrow list
 # STRIPE_SECRET
 ```
 
-### Lock/Unlock
+### Secret Lifecycle
 
-#### `burrow lock`
+#### `burrow secrets lock`
 Encrypt all secrets. Ensures nothing is stored in plaintext.
 
 ```bash
-burrow lock
+burrow secrets lock
 ```
 
-#### `burrow unlock`
+#### `burrow secrets unlock`
 Decrypt all secrets to `.env` file.
 
 ```bash
-burrow unlock
+burrow secrets unlock
+```
 
-# Specify custom output file
-burrow unlock --output .env.local
+#### `burrow secrets import <file>`
+Import secrets from a `.env` file.
+
+```bash
+burrow secrets import .env
+burrow secrets import production.env
+```
+
+#### `burrow secrets export`
+Export decrypted secrets in `.env` format.
+
+```bash
+burrow secrets export
+```
+
+#### `burrow secrets diff`
+Show differences between encrypted secrets and local `.env` file.
+
+```bash
+burrow secrets diff
+```
+
+#### `burrow secrets rotate`
+Rotate the project encryption key. Generates a new keypair and re-encrypts all secrets.
+
+```bash
+burrow secrets rotate
 ```
 
 ### Running Commands
@@ -163,14 +189,11 @@ burrow run cargo test
 burrow run python manage.py migrate
 ```
 
-#### `burrow shell`
+#### `burrow env`
 Start an interactive shell with secrets loaded.
 
 ```bash
-burrow shell
-
-# Custom shell
-burrow shell --shell zsh
+burrow env
 ```
 
 ### Team Management
@@ -312,9 +335,9 @@ Burrow uses [age](https://age-encryption.org/) for encryption:
 
 1. **Never commit `.env` files** - Burrow automatically adds them to `.gitignore`
 2. **Protect private keys** - Store in `~/.burrow/keys/`, never commit
-3. **Use `burrow lock`** - Ensures all secrets are encrypted before committing
-4. **Audit regularly** - Run `burrow audit` to scan for leaked secrets
-5. **Rotate on compromise** - If a key is leaked, run `burrow rotate` and remove the compromised recipient
+3. **Use `burrow secrets lock`** - Ensures all secrets are encrypted before committing
+4. **Audit regularly** - Run `burrow check audit` to scan for leaked secrets
+5. **Rotate on compromise** - If a key is leaked, run `burrow secrets rotate` and remove the compromised recipient
 
 For vulnerability reports, see [SECURITY.md](SECURITY.md).
 
@@ -364,7 +387,7 @@ Alice clones the repo and can immediately decrypt secrets:
 # Alice clones and unlocks
 git clone git@github.com:company/my-app.git
 cd my-app
-burrow unlock
+burrow secrets unlock
 
 # Secrets are now in .env (gitignored)
 burrow run npm start

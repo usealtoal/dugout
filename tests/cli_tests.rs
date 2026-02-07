@@ -260,7 +260,11 @@ fn test_unlock_creates_env_file() {
         .assert()
         .success();
 
-    burrow_cmd(&temp).arg("unlock").assert().success();
+    burrow_cmd(&temp)
+        .arg("secrets")
+        .arg("unlock")
+        .assert()
+        .success();
 
     // Check that .env was created
     let env_path = temp.path().join(".env");
@@ -338,6 +342,7 @@ fn test_import_from_env_file() {
     .unwrap();
 
     burrow_cmd(&temp)
+        .arg("secrets")
         .arg("import")
         .arg("test.env")
         .assert()
@@ -379,6 +384,7 @@ fn test_export_outputs_env_format() {
         .success();
 
     burrow_cmd(&temp)
+        .arg("secrets")
         .arg("export")
         .assert()
         .success()

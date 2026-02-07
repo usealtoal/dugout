@@ -3,16 +3,17 @@
 pub mod audit;
 pub mod banner;
 pub mod completions;
-pub mod env;
 pub mod init;
-pub mod lock;
 pub mod output;
-pub mod rotate;
 pub mod run;
 pub mod secrets;
 pub mod shell;
 pub mod status;
 pub mod team;
+
+// Import submodule folders
+pub mod check;
+pub mod secrets_mgmt;
 
 use clap::{Parser, Subcommand};
 
@@ -72,12 +73,6 @@ pub enum Command {
         json: bool,
     },
 
-    /// Encrypt all secrets (lock the burrow)
-    Lock,
-
-    /// Decrypt secrets to local .env file
-    Unlock,
-
     /// Run a command with secrets injected as env vars
     Run {
         /// Command and arguments to run
@@ -89,31 +84,16 @@ pub enum Command {
     Env,
 
     /// Manage team members
-    Team {
-        #[command(subcommand)]
-        action: TeamAction,
-    },
+    #[command(subcommand)]
+    Team(TeamAction),
 
-    /// Import secrets from a .env file
-    Import {
-        /// Path to .env file
-        path: String,
-    },
+    /// Secret lifecycle operations (lock, unlock, import, export, diff, rotate)
+    #[command(subcommand)]
+    Secrets(SecretsCommand),
 
-    /// Export secrets as .env format
-    Export,
-
-    /// Show diff between .burrow.toml and .env
-    Diff,
-
-    /// Show quick status overview
-    Status,
-
-    /// Audit git history for leaked secrets
-    Audit,
-
-    /// Rotate the project keypair and re-encrypt all secrets
-    Rotate,
+    /// Run diagnostic checks (status, audit)
+    #[command(subcommand)]
+    Check(CheckCommand),
 
     /// Generate shell completions
     Completions {
@@ -157,6 +137,41 @@ pub enum TeamAction {
     },
 }
 
+/// Secrets lifecycle subcommands.
+#[derive(Subcommand)]
+pub enum SecretsCommand {
+    /// Encrypt all secrets (verify encryption status)
+    Lock,
+
+    /// Decrypt secrets to local .env file
+    Unlock,
+
+    /// Import secrets from a .env file
+    Import {
+        /// Path to .env file
+        path: String,
+    },
+
+    /// Export secrets as .env format
+    Export,
+
+    /// Show diff between .burrow.toml and .env
+    Diff,
+
+    /// Rotate the project keypair and re-encrypt all secrets
+    Rotate,
+}
+
+/// Check/diagnostic subcommands.
+#[derive(Subcommand)]
+pub enum CheckCommand {
+    /// Show quick status overview
+    Status,
+
+    /// Audit git history for leaked secrets
+    Audit,
+}
+
 /// Execute a command.
 pub fn execute(command: Command) -> crate::error::Result<()> {
     use Command::*;
@@ -167,21 +182,25 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
         Get { key } => secrets::get(&key),
         Rm { key } => secrets::rm(&key),
         List { json } => secrets::list(json),
-        Lock => lock::lock(),
-        Unlock => lock::unlock(),
         Run { command } => run::execute(&command),
         Env => shell::execute(),
-        Team { action } => match action {
+        Team(action) => match action {
             TeamAction::Add { name, key } => team::add(&name, &key),
             TeamAction::List { json } => team::list(json),
             TeamAction::Rm { name } => team::rm(&name),
         },
-        Import { path } => env::import(&path),
-        Export => env::export(),
-        Diff => env::diff(),
-        Status => status::execute(),
-        Audit => audit::execute(),
-        Rotate => rotate::execute(),
+        Secrets(cmd) => match cmd {
+            SecretsCommand::Lock => secrets_mgmt::lock(),
+            SecretsCommand::Unlock => secrets_mgmt::unlock(),
+            SecretsCommand::Import { path } => secrets_mgmt::import(&path),
+            SecretsCommand::Export => secrets_mgmt::export(),
+            SecretsCommand::Diff => secrets_mgmt::diff(),
+            SecretsCommand::Rotate => secrets_mgmt::rotate(),
+        },
+        Check(cmd) => match cmd {
+            CheckCommand::Status => check::status(),
+            CheckCommand::Audit => check::audit(),
+        },
         Completions { shell } => completions::execute(shell),
     }
 }
