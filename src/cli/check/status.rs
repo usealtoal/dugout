@@ -1,15 +1,13 @@
-//! Diagnostic and check commands.
+//! Status command.
 //!
-//! Status overview and git history auditing.
+//! Show quick status overview of the burrow project.
 
 use crate::cli::output;
-use crate::core::audit;
 use crate::core::vault::Vault;
 use crate::error::Result;
-use std::process::{Command, Stdio};
 
 /// Show quick status overview.
-pub fn status() -> Result<()> {
+pub fn execute() -> Result<()> {
     let vault = Vault::open()?;
 
     output::section("Burrow Status");
@@ -118,87 +116,4 @@ pub fn status() -> Result<()> {
     }
 
     Ok(())
-}
-
-/// Scan git history for leaked secrets.
-pub fn audit() -> Result<()> {
-    // Check if we're in a git repository
-    if !is_git_repo() {
-        output::warn("Not a git repository");
-        output::hint("Run 'git init' to start tracking this project");
-        return Ok(());
-    }
-
-    output::section("Security Audit");
-
-    let findings = audit::scan_git_history()?;
-
-    if findings.is_empty() {
-        output::success("No obvious secrets found in git history");
-        output::dimmed("(This is a basic scan. Always review commits manually)");
-    } else {
-        output::warn(&format!(
-            "{} potential issue{} found",
-            findings.len(),
-            if findings.len() == 1 { "" } else { "s" }
-        ));
-        println!();
-
-        // Group findings by severity
-        let high: Vec<_> = findings
-            .iter()
-            .filter(|f| f.severity == audit::Severity::High)
-            .collect();
-        let medium: Vec<_> = findings
-            .iter()
-            .filter(|f| f.severity == audit::Severity::Medium)
-            .collect();
-        let low: Vec<_> = findings
-            .iter()
-            .filter(|f| f.severity == audit::Severity::Low)
-            .collect();
-
-        if !high.is_empty() {
-            output::warn(&format!("High severity ({}):", high.len()));
-            for finding in high.iter().take(10) {
-                output::list_item(&format!("{}", finding));
-            }
-            if high.len() > 10 {
-                output::dimmed(&format!("  ... and {} more", high.len() - 10));
-            }
-            println!();
-        }
-
-        if !medium.is_empty() {
-            output::dimmed(&format!("Medium severity ({}):", medium.len()));
-            for finding in medium.iter().take(5) {
-                output::list_item(&format!("{}", finding));
-            }
-            if medium.len() > 5 {
-                output::dimmed(&format!("  ... and {} more", medium.len() - 5));
-            }
-            println!();
-        }
-
-        if !low.is_empty() {
-            output::dimmed(&format!("Low severity: {} findings (not shown)", low.len()));
-            println!();
-        }
-
-        output::hint("Use 'git filter-repo' or 'BFG Repo-Cleaner' to remove sensitive data");
-        output::hint("Rotate any exposed credentials immediately");
-    }
-
-    Ok(())
-}
-
-/// Check if we're in a git repository.
-fn is_git_repo() -> bool {
-    Command::new("git")
-        .args(["rev-parse", "--is-inside-work-tree"])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
 }

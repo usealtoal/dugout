@@ -1,12 +1,27 @@
 //! Secret management commands.
 //!
-//! Implements set, get, rm, and list operations for secrets.
+//! Implements set, get, rm, list operations and lifecycle subcommands.
+
+mod diff;
+mod export;
+mod import;
+mod lock;
+mod rotate;
+mod unlock;
 
 use tracing::info;
 
 use crate::cli::output;
 use crate::core::vault::Vault;
 use crate::error::Result;
+
+// Re-export subcommand functions
+pub use diff::execute as diff;
+pub use export::execute as export;
+pub use import::execute as import;
+pub use lock::execute as lock;
+pub use rotate::execute as rotate;
+pub use unlock::execute as unlock;
 
 /// Set a secret value.
 pub fn set(key: &str, value: &str, force: bool) -> Result<()> {

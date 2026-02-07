@@ -1,31 +1,13 @@
-//! Team management commands.
+//! Team list command.
 //!
-//! Add, list, and remove team members (recipients).
-
-use tracing::info;
+//! List all team members (recipients).
 
 use crate::cli::output;
 use crate::core::vault::Vault;
 use crate::error::Result;
 
-/// Add a team member.
-pub fn add(name: &str, key: &str) -> Result<()> {
-    info!("Adding team member: {}", name);
-    let mut vault = Vault::open()?;
-    let secret_count = vault.list().len();
-    vault.add_recipient(name, key)?;
-    output::success(&format!("team member added: {}", output::key(name)));
-    if secret_count > 0 {
-        output::kv(
-            "re-encrypted",
-            format!("{} secrets for new recipient set", secret_count),
-        );
-    }
-    Ok(())
-}
-
 /// List team members.
-pub fn list(json: bool) -> Result<()> {
+pub fn execute(json: bool) -> Result<()> {
     let vault = Vault::open()?;
     let members = vault.recipients();
 
@@ -59,13 +41,5 @@ pub fn list(json: bool) -> Result<()> {
         }
     }
 
-    Ok(())
-}
-
-/// Remove a team member.
-pub fn rm(name: &str) -> Result<()> {
-    let mut vault = Vault::open()?;
-    vault.remove_recipient(name)?;
-    output::success(&format!("team member removed: {}", output::key(name)));
     Ok(())
 }

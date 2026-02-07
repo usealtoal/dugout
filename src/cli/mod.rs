@@ -11,7 +11,6 @@ pub mod team;
 
 // Subcommand groups
 pub mod check;
-pub mod lifecycle;
 
 use clap::{Parser, Subcommand};
 
@@ -192,12 +191,12 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
             TeamAction::Rm { name } => team::rm(&name),
         },
         Secrets(cmd) => match cmd {
-            SecretsCommand::Lock => lifecycle::lock(),
-            SecretsCommand::Unlock => lifecycle::unlock(),
-            SecretsCommand::Import { path } => lifecycle::import(&path),
-            SecretsCommand::Export => lifecycle::export(),
-            SecretsCommand::Diff => lifecycle::diff(),
-            SecretsCommand::Rotate => lifecycle::rotate(),
+            SecretsCommand::Lock => secrets::lock(),
+            SecretsCommand::Unlock => secrets::unlock(),
+            SecretsCommand::Import { path } => secrets::import(&path),
+            SecretsCommand::Export => secrets::export(),
+            SecretsCommand::Diff => secrets::diff(),
+            SecretsCommand::Rotate => secrets::rotate(),
         },
         Check(cmd) => match cmd {
             CheckCommand::Status => check::status(),

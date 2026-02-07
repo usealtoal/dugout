@@ -1,6 +1,6 @@
-//! Secret lifecycle management commands.
+//! Rotate command.
 //!
-//! Lock, unlock, import, export, diff, and rotate operations.
+//! Rotate the project keypair and re-encrypt all secrets.
 
 use tracing::info;
 
@@ -9,136 +9,6 @@ use crate::core::{cipher, config, store};
 use crate::error::Result;
 use std::fs;
 use std::path::PathBuf;
-
-/// Lock (status check - secrets are always encrypted).
-pub fn lock() -> Result<()> {
-    let vault = crate::core::vault::Vault::open()?;
-    output::progress("Checking encryption");
-    output::progress_done(true);
-    output::success(&format!(
-        "locked: {} secrets encrypted in {}",
-        vault.list().len(),
-        output::path(".burrow.toml")
-    ));
-    output::kv("status", "safe to commit");
-    Ok(())
-}
-
-/// Unlock secrets to .env file.
-pub fn unlock() -> Result<()> {
-    let vault = crate::core::vault::Vault::open()?;
-    output::progress("Decrypting secrets");
-    let env = vault.unlock()?;
-    output::progress_done(true);
-    output::success(&format!(
-        "unlocked: {} secrets written to {}",
-        env.len(),
-        output::path(".env")
-    ));
-    Ok(())
-}
-
-/// Import secrets from a .env file.
-pub fn import(path: &str) -> Result<()> {
-    let mut vault = crate::core::vault::Vault::open()?;
-    let imported = vault.import(path)?;
-    output::success(&format!(
-        "imported {} secrets from {}",
-        imported.len(),
-        output::path(path)
-    ));
-    for key in &imported {
-        output::list_item(key);
-    }
-    Ok(())
-}
-
-/// Export secrets as .env format to stdout.
-pub fn export() -> Result<()> {
-    let vault = crate::core::vault::Vault::open()?;
-    let env = vault.export()?;
-    print!("{}", env);
-    Ok(())
-}
-
-/// Show diff/status between encrypted and local .env.
-pub fn diff() -> Result<()> {
-    let vault = crate::core::vault::Vault::open()?;
-    let env_path = std::path::Path::new(".env");
-    let diff = vault.diff(env_path)?;
-
-    output::section("Diff");
-
-    // Synced entries
-    let synced = diff.synced();
-    if !synced.is_empty() {
-        output::success("synced:");
-        for entry in &synced {
-            println!("  {}", output::key(entry.key()));
-        }
-        println!();
-    }
-
-    // Modified entries
-    let modified = diff.modified();
-    if !modified.is_empty() {
-        output::warn("modified (values differ):");
-        for entry in &modified {
-            println!("  {}", output::key(entry.key()));
-        }
-        println!();
-        output::hint(&format!(
-            "Run {} to update .env with vault values",
-            output::cmd("burrow secrets unlock")
-        ));
-    }
-
-    // Vault-only entries
-    let vault_only = diff.vault_only();
-    if !vault_only.is_empty() {
-        output::warn("in vault but not in .env:");
-        for entry in &vault_only {
-            println!("  {}", output::key(entry.key()));
-        }
-        println!();
-        output::hint(&format!(
-            "Run {} to sync these secrets",
-            output::cmd("burrow secrets unlock")
-        ));
-    }
-
-    // Env-only entries
-    let env_only = diff.env_only();
-    if !env_only.is_empty() {
-        output::warn("in .env but not tracked:");
-        for entry in &env_only {
-            println!("  {}", output::key(entry.key()));
-        }
-        println!();
-        output::hint(&format!(
-            "Use {} to encrypt untracked secrets",
-            output::cmd("burrow secrets import .env")
-        ));
-    }
-
-    // Summary
-    if diff.is_empty() {
-        if env_path.exists() {
-            output::warn(".env is empty");
-        } else {
-            output::warn(".env file not found");
-        }
-        println!();
-        output::hint(&format!(
-            "Run {} to create .env file",
-            output::cmd("burrow secrets unlock")
-        ));
-    } else if diff.is_synced() {
-        output::success("All secrets in sync");
-    }
-
-    Ok(())
-}
 
 /// Get the key archive directory.
 fn archive_dir(project_id: &str) -> Result<PathBuf> {
@@ -193,7 +63,7 @@ fn archive_old_key(project_id: &str) -> Result<()> {
 /// 3. Generates a new keypair
 /// 4. Re-encrypts all secrets with the new key and existing recipients
 /// 5. Updates configuration with the new public key
-pub fn rotate() -> Result<()> {
+pub fn execute() -> Result<()> {
     info!("Starting key rotation");
     output::section("Key Rotation");
 
