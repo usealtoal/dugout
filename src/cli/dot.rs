@@ -44,6 +44,18 @@ pub fn execute() -> Result<()> {
     let kind = project_kind.unwrap();
     let command = kind.command();
 
-    // Silent: just run the command
+    // Check if the tool exists before trying to run
+    if which::which(&command[0]).is_err() {
+        output::error(&format!("{} not found", command[0]));
+        output::hint(&format!(
+            "install {} or use: burrow run -- <command>",
+            command[0]
+        ));
+        return Err(crate::error::Error::Other(format!(
+            "{} not found",
+            command[0]
+        )));
+    }
+
     crate::cli::run::execute(&command)
 }

@@ -47,27 +47,58 @@ impl ProjectKind {
         None
     }
 
-    /// Get the default command for this project type
+    /// Get the default command for this project type.
+    ///
+    /// Checks for available tools and common project patterns to pick
+    /// the most appropriate command.
     pub fn command(&self) -> Vec<String> {
         match self {
-            Self::Python => vec!["uv".to_string(), "run".to_string()],
-            Self::Node => {
-                // Prefer bun if available, otherwise npm
-                if which::which("bun").is_ok() {
-                    vec!["bun".to_string(), "dev".to_string()]
+            Self::Python => {
+                if which::which("uv").is_ok() {
+                    // Check for common entry points
+                    if Path::new("manage.py").exists() {
+                        vec![
+                            "uv".into(),
+                            "run".into(),
+                            "python".into(),
+                            "manage.py".into(),
+                            "runserver".into(),
+                        ]
+                    } else if Path::new("app.py").exists() || Path::new("main.py").exists() {
+                        let entry = if Path::new("app.py").exists() {
+                            "app.py"
+                        } else {
+                            "main.py"
+                        };
+                        vec!["uv".into(), "run".into(), "python".into(), entry.into()]
+                    } else {
+                        vec!["uv".into(), "run".into(), "python".into()]
+                    }
+                } else if which::which("python3").is_ok() {
+                    vec!["python3".into()]
                 } else {
-                    vec!["npm".to_string(), "run".to_string(), "dev".to_string()]
+                    vec!["python".into()]
                 }
             }
-            Self::Rust => vec!["cargo".to_string(), "run".to_string()],
-            Self::Go => vec!["go".to_string(), "run".to_string(), ".".to_string()],
-            Self::Docker => vec![
-                "docker".to_string(),
-                "compose".to_string(),
-                "up".to_string(),
-            ],
-            Self::Make => vec!["make".to_string(), "dev".to_string()],
-            Self::Just => vec!["just".to_string(), "dev".to_string()],
+            Self::Node => {
+                // Check if a dev script exists in package.json
+                let has_dev_script = std::fs::read_to_string("package.json")
+                    .map(|s| s.contains("\"dev\""))
+                    .unwrap_or(false);
+
+                let tool = if which::which("bun").is_ok() {
+                    "bun"
+                } else {
+                    "npm"
+                };
+                let script = if has_dev_script { "dev" } else { "start" };
+                vec![tool.into(), "run".into(), script.into()]
+            }
+            Self::Rust => vec!["cargo".into(), "run".into()],
+            Self::Go => vec!["go".into(), "run".into(), ".".into()],
+            Self::Docker => vec!["docker".into(), "compose".into(), "up".into()],
+            Self::Make => vec!["make".into(), "dev".into()],
+            Self::Just => vec!["just".into(), "dev".into()],
         }
     }
 
@@ -151,7 +182,10 @@ mod tests {
 
     #[test]
     fn test_command_generation() {
-        assert_eq!(ProjectKind::Python.command(), vec!["uv", "run"]);
+        let _ctx = setup_test_dir();
+        // Python without entry points defaults to uv run python (if uv available)
+        let py_cmd = ProjectKind::Python.command();
+        assert!(py_cmd[0] == "uv" || py_cmd[0] == "python3" || py_cmd[0] == "python");
         assert_eq!(ProjectKind::Rust.command(), vec!["cargo", "run"]);
     }
 }
