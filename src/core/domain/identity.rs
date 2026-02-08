@@ -6,11 +6,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use age::x25519;
-use tracing::{debug, warn};
+use tracing::debug;
+#[cfg(unix)]
+use tracing::warn;
 
 use crate::core::constants;
 use crate::core::types::PublicKey;
-use crate::error::{Result, StoreError, ValidationError};
+#[cfg(unix)]
+use crate::error::ValidationError;
+use crate::error::{Result, StoreError};
 
 /// A private key identity for decrypting secrets
 pub struct Identity {
