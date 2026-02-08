@@ -189,6 +189,7 @@ fn test_full_onboarding_with_separate_identities() {
     let output = t
         .cmd()
         .env("HOME", alice_home.path())
+        .env("USERPROFILE", alice_home.path())
         .arg("setup")
         .output()
         .unwrap();
@@ -203,6 +204,7 @@ fn test_full_onboarding_with_separate_identities() {
     let output = t
         .cmd()
         .env("HOME", alice_home.path())
+        .env("USERPROFILE", alice_home.path())
         .args(["init", "--name", "alice"])
         .output()
         .unwrap();
@@ -212,6 +214,7 @@ fn test_full_onboarding_with_separate_identities() {
     let output = t
         .cmd()
         .env("HOME", alice_home.path())
+        .env("USERPROFILE", alice_home.path())
         .args(["set", "API_KEY", "super_secret_123"])
         .output()
         .unwrap();
@@ -221,6 +224,7 @@ fn test_full_onboarding_with_separate_identities() {
     let output = t
         .cmd()
         .env("HOME", alice_home.path())
+        .env("USERPROFILE", alice_home.path())
         .args(["get", "API_KEY"])
         .output()
         .unwrap();
@@ -234,6 +238,7 @@ fn test_full_onboarding_with_separate_identities() {
     let output = t
         .cmd()
         .env("HOME", bob_home.path())
+        .env("USERPROFILE", bob_home.path())
         .arg("setup")
         .output()
         .unwrap();
@@ -254,6 +259,7 @@ fn test_full_onboarding_with_separate_identities() {
     let output = t
         .cmd()
         .env("HOME", bob_home.path())
+        .env("USERPROFILE", bob_home.path())
         .args(["knock", "bob"])
         .output()
         .unwrap();
@@ -269,6 +275,7 @@ fn test_full_onboarding_with_separate_identities() {
     let output = t
         .cmd()
         .env("HOME", alice_home.path())
+        .env("USERPROFILE", alice_home.path())
         .args(["admit", "bob"])
         .output()
         .unwrap();
@@ -281,6 +288,7 @@ fn test_full_onboarding_with_separate_identities() {
     let output = t
         .cmd()
         .env("HOME", alice_home.path())
+        .env("USERPROFILE", alice_home.path())
         .args(["team", "list", "--json"])
         .output()
         .unwrap();
@@ -299,6 +307,7 @@ fn test_full_onboarding_with_separate_identities() {
     let output = t
         .cmd()
         .env("HOME", bob_home.path())
+        .env("USERPROFILE", bob_home.path())
         .args(["get", "API_KEY"])
         .output()
         .unwrap();

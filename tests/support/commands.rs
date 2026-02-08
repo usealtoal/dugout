@@ -13,6 +13,8 @@ impl Test {
     pub fn cmd(&self) -> Command {
         let mut cmd = Command::cargo_bin("dugout").expect("failed to find dugout binary");
         cmd.env("HOME", self.home.path());
+        // Windows uses USERPROFILE instead of HOME for home directory
+        cmd.env("USERPROFILE", self.home.path());
         cmd.current_dir(self.dir.path());
         cmd
     }
