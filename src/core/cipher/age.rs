@@ -6,7 +6,7 @@
 use std::io::{Read, Write};
 
 use ::age::x25519;
-use tracing::debug;
+use tracing::trace;
 
 use super::Cipher;
 use crate::error::{CipherError, Result};
@@ -21,10 +21,10 @@ impl Cipher for Age {
     type Identity = x25519::Identity;
 
     fn encrypt(&self, plaintext: &str, recipients: &[x25519::Recipient]) -> Result<String> {
-        debug!(
-            "Encrypting plaintext ({} bytes) for {} recipient(s)",
-            plaintext.len(),
-            recipients.len()
+        trace!(
+            recipients = recipients.len(),
+            plaintext_len = plaintext.len(),
+            "encrypting"
         );
 
         let encryptor =
@@ -47,17 +47,14 @@ impl Cipher for Age {
             .finish()
             .map_err(|e| CipherError::ArmorFailed(format!("{}", e)))?;
 
-        debug!(
-            "Encryption successful, ciphertext size: {} bytes",
-            encrypted.len()
-        );
+        trace!(ciphertext_len = encrypted.len(), "encrypted");
 
         String::from_utf8(encrypted)
             .map_err(|e| CipherError::EncryptionFailed(format!("UTF-8 error: {}", e)).into())
     }
 
     fn decrypt(&self, encrypted: &str, identity: &x25519::Identity) -> Result<String> {
-        debug!("Decrypting ciphertext ({} bytes)", encrypted.len());
+        trace!(ciphertext_len = encrypted.len(), "decrypting");
 
         let reader = age::armor::ArmoredReader::new(encrypted.as_bytes());
         let decryptor = age::Decryptor::new(reader)
@@ -70,10 +67,7 @@ impl Cipher for Age {
 
         reader.read_to_end(&mut decrypted)?;
 
-        debug!(
-            "Decryption successful, plaintext size: {} bytes",
-            decrypted.len()
-        );
+        trace!(plaintext_len = decrypted.len(), "decrypted");
 
         String::from_utf8(decrypted)
             .map_err(|e| CipherError::DecryptionFailed(format!("UTF-8 error: {}", e)).into())

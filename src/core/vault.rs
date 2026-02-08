@@ -8,6 +8,7 @@ use crate::core::domain::{Diff, Env, Identity, Recipient, Secret};
 use crate::core::store;
 use crate::core::types::{MemberName, PublicKey, SecretKey};
 use crate::error::{ConfigError, Result, SecretError, ValidationError};
+use tracing::{debug, info, instrument};
 use zeroize::Zeroizing;
 
 /// The primary interface for burrow operations.
@@ -126,7 +127,10 @@ impl Vault {
     ///
     /// Returns `ValidationError` if key or value is invalid.
     /// Returns `SecretError::AlreadyExists` if key exists and `force` is false.
+    #[instrument(skip(self, value))]
     pub fn set(&mut self, key: &str, value: &str, force: bool) -> Result<Secret> {
+        info!(key = %key, force = force, "setting secret");
+
         // Validate input
         validate_key(key)?;
         validate_value(key, value)?;
@@ -147,6 +151,7 @@ impl Vault {
             .insert(key.to_string(), encrypted.clone());
         self.config.save()?;
 
+        debug!(key = %key, "secret set, saving config");
         Ok(Secret::new(key.to_string(), encrypted))
     }
 
@@ -164,6 +169,7 @@ impl Vault {
     ///
     /// Returns `SecretError::NotFound` if the key doesn't exist.
     /// Returns `CipherError` if decryption fails.
+    #[instrument(skip(self))]
     pub fn get(&self, key: &str) -> Result<Zeroizing<String>> {
         let encrypted = self.config.secrets.get(key).ok_or_else(|| {
             let available: Vec<String> = self.config.secrets.keys().cloned().collect();
@@ -184,7 +190,10 @@ impl Vault {
     /// # Errors
     ///
     /// Returns `SecretError::NotFound` if the key doesn't exist.
+    #[instrument(skip(self))]
     pub fn remove(&mut self, key: &str) -> Result<()> {
+        info!(key = %key, "removing secret");
+
         if self.config.secrets.remove(key).is_none() {
             let available: Vec<String> = self.config.secrets.keys().cloned().collect();
             return Err(
@@ -215,7 +224,10 @@ impl Vault {
     /// # Errors
     ///
     /// Returns error if decryption of any secret fails.
+    #[instrument(skip(self))]
     pub fn decrypt_all(&self) -> Result<Vec<(SecretKey, Zeroizing<String>)>> {
+        debug!(count = self.config.secrets.len(), "decrypting all secrets");
+
         let mut pairs = Vec::new();
         for (key, encrypted) in &self.config.secrets {
             let plaintext = cipher::decrypt(encrypted, self.identity.as_age())?;
@@ -265,7 +277,10 @@ impl Vault {
     ///
     /// Returns `CipherError` if the public key is invalid.
     /// Returns error if re-encryption fails.
+    #[instrument(skip(self, key))]
     pub fn add_recipient(&mut self, name: &str, key: &str) -> Result<()> {
+        info!(name = %name, "adding team member");
+
         // Validate the key format first - this will return a clear error if invalid
         cipher::parse_recipient(key)?;
 
@@ -295,7 +310,10 @@ impl Vault {
     ///
     /// Returns `ConfigError::RecipientNotFound` if the member doesn't exist.
     /// Returns error if re-encryption fails.
+    #[instrument(skip(self))]
     pub fn remove_recipient(&mut self, name: &str) -> Result<()> {
+        info!(name = %name, "removing team member");
+
         if self.config.recipients.remove(name).is_none() {
             return Err(ConfigError::RecipientNotFound(name.to_string()).into());
         }
@@ -337,7 +355,11 @@ impl Vault {
     /// # Errors
     ///
     /// Returns error if file cannot be read or secrets cannot be encrypted.
+    #[instrument(skip(self, path))]
     pub fn import(&mut self, path: impl AsRef<std::path::Path>) -> Result<Vec<SecretKey>> {
+        let path_str = path.as_ref().display().to_string();
+        info!(path = %path_str, "importing secrets");
+
         let env = Env::load(path)?;
         let mut imported = Vec::new();
 
@@ -347,6 +369,7 @@ impl Vault {
             imported.push(key.clone());
         }
 
+        debug!(count = imported.len(), "import complete");
         Ok(imported)
     }
 
@@ -361,7 +384,10 @@ impl Vault {
     /// # Errors
     ///
     /// Returns error if decryption fails.
+    #[instrument(skip(self))]
     pub fn export(&self) -> Result<Env> {
+        info!("exporting secrets as env");
+
         let pairs = self
             .decrypt_all()?
             .into_iter()
@@ -382,9 +408,14 @@ impl Vault {
     /// # Errors
     ///
     /// Returns error if decryption or file write fails.
+    #[instrument(skip(self))]
     pub fn unlock(&self) -> Result<Env> {
+        info!("unlocking vault to .env");
+
         let env = self.export()?;
         env.save()?;
+
+        debug!(count = env.len(), "unlock complete");
         Ok(env)
     }
 

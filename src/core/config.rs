@@ -62,7 +62,7 @@ impl Config {
     /// or `ConfigError::Parse` if the TOML is malformed.
     pub fn load() -> Result<Self> {
         let path = Self::config_path();
-        debug!("Loading configuration from {}", path.display());
+        debug!(path = %path.display(), "loading config");
 
         if !path.exists() {
             return Err(ConfigError::NotInitialized.into());
@@ -71,9 +71,9 @@ impl Config {
         let config: Self = toml::from_str(&contents).map_err(ConfigError::Parse)?;
 
         debug!(
-            "Loaded config: {} recipient(s), {} secret(s)",
-            config.recipients.len(),
-            config.secrets.len()
+            secrets = config.secrets.len(),
+            recipients = config.recipients.len(),
+            "config loaded"
         );
 
         // Validate the loaded configuration
@@ -88,16 +88,11 @@ impl Config {
     ///
     /// Returns error if serialization or file write fails.
     pub fn save(&self) -> Result<()> {
-        debug!(
-            "Saving configuration: {} recipient(s), {} secret(s)",
-            self.recipients.len(),
-            self.secrets.len()
-        );
+        debug!("saving config");
 
         let contents = toml::to_string_pretty(self).map_err(ConfigError::Serialize)?;
         std::fs::write(Self::config_path(), contents)?;
 
-        debug!("Configuration saved to .burrow.toml");
         Ok(())
     }
 
@@ -122,6 +117,8 @@ impl Config {
     /// Returns `ConfigError::InvalidValue` or `ConfigError::MissingField` on validation failure.
     pub fn validate(&self) -> Result<()> {
         use crate::core::cipher;
+
+        debug!("validating config");
 
         // Check version is valid semver
         if self.burrow.version.is_empty() {

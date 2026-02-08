@@ -22,7 +22,7 @@ impl Identity {
     /// Load an identity from the key directory.
     pub fn load(key_dir: &Path) -> Result<Self> {
         let key_path = key_dir.join("identity.key");
-        debug!("Loading identity from: {}", key_path.display());
+        debug!(path = %key_path.display(), "loading identity");
 
         if !key_path.exists() {
             return Err(StoreError::NoPrivateKey(key_dir.display().to_string()).into());
@@ -31,11 +31,19 @@ impl Identity {
         // Verify permissions on Unix
         #[cfg(unix)]
         {
-            if let Err(e) = Self::validate_file_permissions(&key_path, 0o600) {
+            if Self::validate_file_permissions(&key_path, 0o600).is_err() {
+                let metadata = fs::metadata(&key_path).ok();
+                let mode = metadata
+                    .map(|m| {
+                        use std::os::unix::fs::PermissionsExt;
+                        format!("{:o}", m.permissions().mode() & 0o777)
+                    })
+                    .unwrap_or_else(|| "unknown".to_string());
+
                 warn!(
-                    "Insecure key file permissions: {}. Run: chmod 600 {}",
-                    e,
-                    key_path.display()
+                    path = %key_path.display(),
+                    mode = %mode,
+                    "insecure key file permissions"
                 );
             }
         }
@@ -47,7 +55,7 @@ impl Identity {
             .parse()
             .map_err(|e: &str| StoreError::InvalidFormat(e.to_string()))?;
 
-        debug!("Identity loaded successfully");
+        debug!("identity loaded");
 
         Ok(Self {
             inner,
@@ -57,7 +65,7 @@ impl Identity {
 
     /// Generate a new identity and save to disk.
     pub fn generate(key_dir: &Path) -> Result<Self> {
-        debug!("Generating new identity in: {}", key_dir.display());
+        debug!(path = %key_dir.display(), "generating new identity");
 
         let inner = x25519::Identity::generate();
 
@@ -79,7 +87,7 @@ impl Identity {
                 .map_err(StoreError::WriteFailed)?;
         }
 
-        debug!("Identity generated and saved to: {}", key_path.display());
+        debug!(path = %key_path.display(), "identity saved");
 
         Ok(Self {
             inner,
