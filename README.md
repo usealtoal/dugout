@@ -9,19 +9,19 @@
 </p>
 
 <p align="center">
-  <strong>A local secrets manager for development teams, written in Rust.</strong>
+  <strong>Git-native secrets manager for development teams, written in Rust.</strong>
 </p>
 
 ## Highlights
 
-- **Encrypted at rest** — age encryption by default, optional support for AWS KMS, GCP KMS, and GPG
-- **Vendor-agnostic** — no cloud lock-in, works with any git host and any infrastructure
-- **Team-friendly** — add members, share secrets, rotate keys, all through git
-- **Fast** — encrypts in ~100µs, single binary, no runtime dependencies
+- **Git-native** — secrets live in your repo as encrypted values, access control is git commits
+- **No server required** — no SaaS, no cloud dependency, no infrastructure to manage
+- **Team-friendly** — `knock` / `admit` workflow for access requests, all through git
+- **Encrypted at rest** — age encryption by default, optional AWS KMS, GCP KMS, GPG
 - **Zero config** — `dugout init` and start adding secrets
 - **Auto-detect** — `dugout .` detects your stack and runs with secrets injected
-- **No server required** — secrets live in your repo, encrypted
-- **Language-agnostic** — works with Python, Node, Rust, Go, Docker, and anything else
+- **Fast** — encrypts in ~100µs, single binary, no runtime dependencies
+- **Vendor-agnostic** — works with any git host, any infrastructure, any language
 
 ## Installation
 
