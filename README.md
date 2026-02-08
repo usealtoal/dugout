@@ -162,18 +162,27 @@ cargo install dugout --features aws
 
 See the full [KMS Integration Guide](KMS.md) for AWS, GCP, IAM setup, and multi-region.
 
-## Deployment
+## CI/CD
 
-dugout works in CI/CD and production. Set `DUGOUT_IDENTITY` and go:
+### GitHub Actions
 
 ```yaml
-# GitHub Actions
-- env:
-    DUGOUT_IDENTITY: ${{ secrets.DUGOUT_IDENTITY }}
-  run: dugout run -- ./deploy.sh
+- uses: usealtoal/setup-dugout@v1
+  with:
+    identity: ${{ secrets.DUGOUT_IDENTITY }}
+
+- run: dugout run -- npm test
 ```
 
+See [`usealtoal/setup-dugout`](https://github.com/usealtoal/setup-dugout) for version pinning, KMS-only mode, and more examples.
+
+### Other environments
+
 ```bash
+# Any CI — just set the env var
+export DUGOUT_IDENTITY="AGE-SECRET-KEY-1..."
+dugout run -- ./deploy.sh
+
 # Docker
 docker run -e DUGOUT_IDENTITY="$KEY" myapp
 ```
