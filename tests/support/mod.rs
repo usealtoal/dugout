@@ -10,6 +10,7 @@ pub mod fixtures;
 pub mod skip;
 
 pub use assertions::*;
+#[allow(unused_imports)]
 pub use fixtures::*;
 
 use std::env;

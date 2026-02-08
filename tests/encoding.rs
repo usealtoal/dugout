@@ -395,7 +395,7 @@ fn test_secrets_unlock_roundtrip_unicode() {
     assert_success(&output);
 
     let env_path = t.dir.path().join(".env");
-    let env_content = std::fs::read_to_string(&env_path).unwrap();
+    let _env_content = std::fs::read_to_string(&env_path).unwrap();
 
     let output = t.secrets_lock();
     assert_success(&output);

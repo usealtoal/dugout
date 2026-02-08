@@ -11,6 +11,7 @@ impl Test {
     /// - HOME set to the temporary home directory
     /// - Current directory set to the test project directory
     pub fn cmd(&self) -> Command {
+        #[allow(deprecated)]
         let mut cmd = Command::cargo_bin("dugout").expect("failed to find dugout binary");
         cmd.env("HOME", self.home.path());
         // Windows uses USERPROFILE instead of HOME for home directory

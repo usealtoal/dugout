@@ -49,7 +49,7 @@ fn test_add_replaces_existing_when_confirmed() {
 
     // Try to add again with new value - should fail in test since we can't interact
     // In a real scenario, dialoguer would prompt
-    let output = t
+    let _output = t
         .cmd()
         .args(["add", "API_KEY"])
         .write_stdin("new_value\n")
