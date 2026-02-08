@@ -2,6 +2,8 @@
 //!
 //! Provides reusable test environment setup and helper commands.
 
+#![allow(dead_code)]
+
 pub mod assertions;
 pub mod commands;
 pub mod fixtures;

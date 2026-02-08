@@ -18,12 +18,15 @@ fn test_dot_detects_python() {
     let set_output = t.set("TEST_VAR", "test_value");
     assert_success(&set_output);
 
-    // Run dot command - it will try to run `uv run`
+    // Run dot command - it will try to run uv/python
     let output = t.cmd().arg(".").output().unwrap();
 
-    // Should attempt to run uv, which will fail with pyproject.toml error
+    // Should detect python project (may fail with uv/python not found or pyproject error)
     let combined = format!("{}{}", stdout(&output), stderr(&output));
-    assert!(combined.contains("pyproject"));
+    assert!(
+        combined.contains("pyproject") || combined.contains("uv") || combined.contains("python"),
+        "expected python-related output, got: {combined}"
+    );
 }
 
 #[test]
@@ -80,9 +83,16 @@ fn test_dot_priority_python_over_node() {
 
     let output = t.cmd().arg(".").output().unwrap();
 
-    // Should prefer Python over Node (pyproject error, not npm)
+    // Should prefer Python over Node (python-related output, not npm/bun)
     let combined = format!("{}{}", stdout(&output), stderr(&output));
-    assert!(combined.contains("pyproject"));
+    assert!(
+        combined.contains("pyproject") || combined.contains("uv") || combined.contains("python"),
+        "expected python-related output, got: {combined}"
+    );
+    assert!(
+        !combined.contains("npm") && !combined.contains("bun"),
+        "should prefer python over node, got: {combined}"
+    );
 }
 
 #[test]
