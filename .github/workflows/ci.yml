@@ -68,6 +68,35 @@ jobs:
       - name: Run benchmarks
         run: cargo bench
 
+  kms-tests:
+    name: KMS Integration Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-kms-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run AWS KMS tests
+        if: env.AWS_ACCESS_KEY_ID != ''
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+          DUGOUT_TEST_KMS_KEY: ${{ secrets.DUGOUT_TEST_KMS_KEY }}
+        run: cargo test --features aws,test-aws,test-kms --test aws_kms -- --test-threads=1
+
   lint:
     name: Lints
     runs-on: ubuntu-latest
