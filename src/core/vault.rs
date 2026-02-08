@@ -83,7 +83,7 @@ impl Vault {
     ///
     /// Returns `ConfigError::AlreadyInitialized` if vault already exists.
     /// Returns error if keypair generation or file operations fail.
-    pub fn init(name: &str, kms_key: Option<String>) -> Result<Self> {
+    pub fn init(name: &str, cipher: Option<String>, kms_key: Option<String>) -> Result<Self> {
         validate_member_name(name)?;
 
         if Config::exists() {
@@ -91,6 +91,11 @@ impl Vault {
         }
 
         let mut config = Config::new();
+
+        // Set cipher override if specified
+        if let Some(ref c) = cipher {
+            config.dugout.cipher = Some(c.clone());
+        }
 
         // Enable hybrid mode if KMS key provided
         if let Some(ref key) = kms_key {
@@ -670,7 +675,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(tmp.path()).unwrap();
-        let vault = Vault::init("alice", None).unwrap();
+        let vault = Vault::init("alice", None, None).unwrap();
         let ctx = TestContext {
             _tmp: tmp,
             _original_dir: original_dir,

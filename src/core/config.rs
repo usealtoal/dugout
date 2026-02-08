@@ -46,6 +46,9 @@ pub struct KmsConfig {
 pub struct Meta {
     /// Configuration version
     pub version: String,
+    /// Cipher backend override: "age" (default), "gpg"
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cipher: Option<String>,
 }
 
 impl Config {
@@ -54,6 +57,7 @@ impl Config {
         Self {
             dugout: Meta {
                 version: env!("CARGO_PKG_VERSION").to_string(),
+                cipher: None,
             },
             kms: None,
             recipients: BTreeMap::new(),
@@ -119,6 +123,11 @@ impl Config {
             .ok()
             .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
             .unwrap_or_else(|| "default".to_string())
+    }
+
+    /// Get the configured cipher backend name, if explicitly set.
+    pub fn cipher(&self) -> Option<&str> {
+        self.dugout.cipher.as_deref()
     }
 
     /// Check if KMS hybrid mode is configured.
