@@ -4,7 +4,7 @@ dugout supports hybrid encryption: secrets encrypted for both **age keys** (deve
 
 ## How It Works
 
-When KMS is configured, each secret is stored as an envelope:
+When KMS is configured, secrets are encrypted in **hybrid mode**: each secret is stored as an envelope containing both age-encrypted and KMS-encrypted ciphertext:
 
 ```json
 {
@@ -84,16 +84,20 @@ gcloud kms keys add-iam-policy-binding my-key \
 dugout run -- ./start.sh
 ```
 
-## Adding KMS to an Existing Project
+## Adding KMS to an Existing Vault
+
+To add KMS to an existing age-only vault:
 
 ```bash
 # Edit .dugout.toml and add:
 # [kms]
-# key = "arn:aws:kms:..."
+# key = "arn:aws:kms:us-east-1:123456789012:key/abc-123"
 
 # Re-encrypt all secrets with hybrid envelope
 dugout secrets rotate
 ```
+
+After rotation, all secrets will be encrypted for both age recipients and the KMS key.
 
 ## Provider Detection
 

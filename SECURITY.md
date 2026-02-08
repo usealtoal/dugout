@@ -30,8 +30,9 @@ Dugout is designed to protect secrets in the following scenarios:
 Dugout uses modern authenticated encryption, with **age** (Actually Good Encryption) as the default backend.
 
 - **Default backend (`age`):** X25519 recipients + ChaCha20-Poly1305
-- **Optional backends:** `aws-kms`, `gcp-kms`, `gpg` (feature-gated builds)
-- **KMS backends:** plaintext is encrypted by cloud KMS, then wrapped for team recipients before storage
+- **Hybrid mode:** age + cloud KMS (AWS or GCP) — secrets encrypted for both age keys and KMS
+- **GPG backend:** GPG encryption via CLI (feature-gated, `--features gpg`)
+- **Hybrid encryption:** plaintext is encrypted by both age (for team) and cloud KMS (for production) in an envelope format
 
 - **Cipher:** ChaCha20-Poly1305 (authenticated encryption)
 - **Key Exchange:** X25519 (elliptic curve Diffie-Hellman)

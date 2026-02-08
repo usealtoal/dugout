@@ -11,8 +11,13 @@ pub fn execute() -> Result<()> {
     // Project name
     output::kv("vault", ".dugout.toml");
 
-    // Cipher backend
-    output::kv("cipher", "age");
+    // Cipher backend - show actual configured backend
+    let backend_name = if vault.config().has_kms() {
+        "hybrid (age + kms)"
+    } else {
+        vault.config().cipher().unwrap_or("age")
+    };
+    output::kv("cipher", backend_name);
 
     // Secret count
     let secret_count = vault.list().len();
