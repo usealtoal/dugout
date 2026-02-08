@@ -48,7 +48,11 @@ fn test_dot_detects_rust() {
     let t = Test::init("alice");
 
     // Create Cargo.toml
-    fs::write(t.dir.path().join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+    fs::write(
+        t.dir.path().join("Cargo.toml"),
+        "[package]\nname = \"test\"\n",
+    )
+    .unwrap();
 
     let set_output = t.set("TEST_VAR", "test_value");
     assert_success(&set_output);

@@ -17,10 +17,7 @@ fn test_setup_creates_global_identity() {
 
     // Check that ~/.burrow/identity.pub exists
     let pubkey_path = t.home.path().join(".burrow/identity.pub");
-    assert!(
-        pubkey_path.exists(),
-        "~/.burrow/identity.pub should exist"
-    );
+    assert!(pubkey_path.exists(), "~/.burrow/identity.pub should exist");
 
     // Verify public key starts with age1
     let pubkey = fs::read_to_string(&pubkey_path).unwrap();

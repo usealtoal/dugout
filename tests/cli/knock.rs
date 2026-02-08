@@ -49,7 +49,8 @@ fn test_knock_when_already_member() {
     let global_pubkey = fs::read_to_string(&pubkey_path).unwrap().trim().to_string();
 
     // Init vault
-    let init_output = t.cmd()
+    let init_output = t
+        .cmd()
         .args(["init", "--no-banner", "--name", "alice"])
         .output()
         .unwrap();
@@ -58,9 +59,10 @@ fn test_knock_when_already_member() {
     // Manually add the global public key to recipients to simulate already being a member
     let config_path = t.dir.path().join(".burrow.toml");
     let config_content = fs::read_to_string(&config_path).unwrap();
-    
+
     // Replace the project-specific key with the global key
-    let updated_config = config_content.lines()
+    let updated_config = config_content
+        .lines()
         .map(|line| {
             if line.contains("age1") && !line.contains(&global_pubkey) {
                 // Replace any age key with the global key
@@ -71,7 +73,7 @@ fn test_knock_when_already_member() {
         })
         .collect::<Vec<_>>()
         .join("\n");
-    
+
     fs::write(&config_path, updated_config).unwrap();
 
     // Try to knock - should warn already a member

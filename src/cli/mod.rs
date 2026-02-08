@@ -1,5 +1,6 @@
 //! Command-line interface.
 
+pub mod add;
 pub mod admit;
 pub mod banner;
 pub mod completions;
@@ -237,7 +238,7 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
             kms_key,
             gcp_key,
         } => init::execute(name, no_banner, cipher, kms_key, gcp_key),
-        Add { key } => secrets::add(&key),
+        Add { key } => add::execute(&key),
         Set { key, value, force } => secrets::set(&key, &value, force),
         Get { key } => secrets::get(&key),
         Rm { key } => secrets::rm(&key),
