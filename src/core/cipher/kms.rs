@@ -1,7 +1,5 @@
 //! Shared KMS types, provider detection, and hybrid envelope.
 
-#![allow(dead_code)]
-
 use serde::{Deserialize, Serialize};
 
 use crate::error::{CipherError, Result};
@@ -10,11 +8,13 @@ const ENVELOPE_V2: &str = "dugout-envelope-v2";
 
 /// Supported KMS providers.
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum KmsProvider {
     Aws,
     Gcp,
 }
 
+#[allow(dead_code)]
 impl KmsProvider {
     /// Auto-detect provider from a key identifier.
     ///
@@ -45,6 +45,7 @@ impl KmsProvider {
 /// and KMS (production). At decrypt time, age is tried first (fast, local),
 /// then KMS if no age identity is available.
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct Envelope {
     version: String,
     /// Age-encrypted ciphertext (always present)
@@ -57,6 +58,7 @@ pub struct Envelope {
     pub provider: Option<String>,
 }
 
+#[allow(dead_code)]
 impl Envelope {
     /// Create a new hybrid envelope.
     pub fn new(
@@ -100,6 +102,7 @@ impl Envelope {
 /// Trait for KMS encrypt/decrypt operations.
 ///
 /// Implemented by real providers (AWS, GCP) and mock for testing.
+#[allow(dead_code)]
 pub trait KmsBackend: std::fmt::Debug {
     fn encrypt(&self, plaintext: &str) -> Result<String>;
     fn decrypt(&self, ciphertext: &str) -> Result<String>;

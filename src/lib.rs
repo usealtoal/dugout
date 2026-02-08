@@ -44,7 +44,7 @@
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! // Initialize a new vault with default age cipher
-//! let mut vault = Vault::init("alice", None, None, None)?;
+//! let mut vault = Vault::init("alice", None)?;
 //!
 //! // Set a secret
 //! vault.set("DATABASE_URL", "postgres://localhost/db", false)?;

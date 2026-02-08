@@ -83,12 +83,7 @@ impl Vault {
     ///
     /// Returns `ConfigError::AlreadyInitialized` if vault already exists.
     /// Returns error if keypair generation or file operations fail.
-    pub fn init(
-        name: &str,
-        cipher_type: Option<String>,
-        kms_key_id: Option<String>,
-        gcp_resource: Option<String>,
-    ) -> Result<Self> {
+    pub fn init(name: &str, kms_key: Option<String>) -> Result<Self> {
         validate_member_name(name)?;
 
         if Config::exists() {
@@ -97,18 +92,9 @@ impl Vault {
 
         let mut config = Config::new();
 
-        // Set cipher configuration
-        config.dugout.cipher = cipher_type.clone();
-        config.dugout.kms_key_id = kms_key_id.clone();
-        config.dugout.gcp_resource = gcp_resource;
-
-        // If --kms-key provided without --cipher, enable hybrid mode
-        if config.dugout.cipher.is_none() || config.dugout.cipher.as_deref() == Some("age") {
-            if let Some(ref key) = kms_key_id {
-                if cipher::KmsProvider::detect(key).is_some() {
-                    config.kms = Some(crate::core::config::KmsConfig { key: key.clone() });
-                }
-            }
+        // Enable hybrid mode if KMS key provided
+        if let Some(ref key) = kms_key {
+            config.kms = Some(crate::core::config::KmsConfig { key: key.clone() });
         }
 
         let project_id = config.project_id();
@@ -684,7 +670,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(tmp.path()).unwrap();
-        let vault = Vault::init("alice", None, None, None).unwrap();
+        let vault = Vault::init("alice", None).unwrap();
         let ctx = TestContext {
             _tmp: tmp,
             _original_dir: original_dir,
