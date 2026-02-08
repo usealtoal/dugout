@@ -108,13 +108,11 @@ fn test_list_shows_keys() {
     t.set("KEY_ONE", "value1");
     t.set("KEY_TWO", "value2");
 
-    // List should show both
+    // List should show both keys (one per line, no count)
     let output = t.list();
     assert_success(&output);
     assert_stdout_contains(&output, "KEY_ONE");
     assert_stdout_contains(&output, "KEY_TWO");
-    let out = stdout(&output);
-    assert!(out.contains("2") || out.contains("secrets"));
 }
 
 #[test]

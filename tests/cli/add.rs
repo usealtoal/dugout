@@ -15,7 +15,7 @@ fn test_add_via_stdin() {
         .unwrap();
 
     assert_success(&output);
-    assert_stdout_contains(&output, "added");
+    assert_stdout_contains(&output, "✓ set");
     assert_stdout_contains(&output, "API_KEY");
 
     // Verify secret was stored

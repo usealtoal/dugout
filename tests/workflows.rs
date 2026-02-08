@@ -18,7 +18,7 @@ fn test_full_solo_developer_workflow() {
         ],
     );
 
-    // List
+    // List all secrets (no count shown in minimal output)
     let output = t.list();
     assert_success(&output);
     assert_stdout_contains(&output, "DATABASE_URL");
@@ -26,7 +26,6 @@ fn test_full_solo_developer_workflow() {
     assert_stdout_contains(&output, "JWT_SECRET");
     assert_stdout_contains(&output, "REDIS_URL");
     assert_stdout_contains(&output, "S3_BUCKET");
-    assert_stdout_contains(&output, "5");
 
     // Unlock
     let output = t.secrets_unlock();

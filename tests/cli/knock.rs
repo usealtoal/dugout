@@ -15,7 +15,7 @@ fn test_knock_creates_request_file() {
     // Run knock
     let output = t.cmd().args(["knock", "bob"]).output().unwrap();
     assert_success(&output);
-    assert_stdout_contains(&output, "access request created");
+    assert_stdout_contains(&output, "created access request");
 
     // Check that request file exists
     let request_path = t.dir.path().join(".burrow/requests/bob.pub");
@@ -32,7 +32,7 @@ fn test_knock_without_global_identity_fails() {
 
     let output = t.cmd().args(["knock", "bob"]).output().unwrap();
     assert_failure(&output);
-    assert_stderr_contains(&output, "no global identity");
+    assert_stderr_contains(&output, "no identity found");
     assert_stdout_contains(&output, "burrow setup");
 }
 
@@ -159,7 +159,6 @@ fn test_knock_pending_admit_workflow() {
     // Check pending - should show bob
     let pending_output = t.cmd().arg("pending").output().unwrap();
     assert_success(&pending_output);
-    assert_stdout_contains(&pending_output, "1 pending");
     assert_stdout_contains(&pending_output, "bob");
 
     // Admit bob
@@ -187,8 +186,7 @@ fn test_knock_output_includes_instructions() {
     let output = t.cmd().args(["knock", "bob"]).output().unwrap();
     assert_success(&output);
 
-    let out = stdout(&output);
-    assert!(out.contains(".burrow/requests/bob.pub"));
-    assert!(out.contains("commit"));
-    assert!(out.contains("burrow admit bob"));
+    // Should show success and hint about sharing the request file
+    assert_stdout_contains(&output, "created access request");
+    assert_stdout_contains(&output, ".burrow/requests/bob.pub");
 }

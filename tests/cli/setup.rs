@@ -9,7 +9,7 @@ fn test_setup_creates_global_identity() {
 
     let output = t.cmd().arg("setup").output().unwrap();
     assert_success(&output);
-    assert_stdout_contains(&output, "global identity created");
+    assert_stdout_contains(&output, "generated identity");
 
     // Check that ~/.burrow/identity exists
     let identity_path = t.home.path().join(".burrow/identity");
@@ -61,7 +61,7 @@ fn test_setup_with_force_overwrites() {
     // Second setup with --force should overwrite
     let output = t.cmd().args(["setup", "--force"]).output().unwrap();
     assert_success(&output);
-    assert_stdout_contains(&output, "global identity created");
+    assert_stdout_contains(&output, "generated identity");
 
     let second_pubkey = fs::read_to_string(&pubkey_path).unwrap();
     assert_ne!(
@@ -97,7 +97,7 @@ fn test_whoami_without_setup_fails() {
 
     let output = t.cmd().arg("whoami").output().unwrap();
     assert_failure(&output);
-    assert_stderr_contains(&output, "no global identity");
+    assert_stderr_contains(&output, "no identity found");
     assert_stdout_contains(&output, "burrow setup");
 }
 
@@ -108,8 +108,8 @@ fn test_setup_output_includes_paths() {
     let output = t.cmd().arg("setup").output().unwrap();
     assert_success(&output);
 
+    // Should show success and the public key
+    assert_stdout_contains(&output, "generated identity");
     let out = stdout(&output);
-    assert!(out.contains(".burrow/identity"));
-    assert!(out.contains("private key"));
-    assert!(out.contains("public key"));
+    assert!(out.contains("age1")); // public key should be displayed
 }

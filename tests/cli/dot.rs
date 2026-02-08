@@ -18,13 +18,12 @@ fn test_dot_detects_python() {
     let set_output = t.set("TEST_VAR", "test_value");
     assert_success(&set_output);
 
-    // Run dot command - it will try to run `uv run` which might not exist
-    // So we expect it to detect the project type correctly
+    // Run dot command - it will try to run `uv run`
     let output = t.cmd().arg(".").output().unwrap();
 
-    // Should show detected project type
+    // Should attempt to run uv, which will fail with pyproject.toml error
     let combined = format!("{}{}", stdout(&output), stderr(&output));
-    assert!(combined.contains("python") || combined.contains("uv"));
+    assert!(combined.contains("pyproject"));
 }
 
 #[test]
@@ -59,8 +58,9 @@ fn test_dot_detects_rust() {
 
     let output = t.cmd().arg(".").output().unwrap();
 
+    // Should attempt to run cargo, which will fail with Cargo.toml error
     let combined = format!("{}{}", stdout(&output), stderr(&output));
-    assert!(combined.contains("rust") || combined.contains("cargo"));
+    assert!(combined.contains("Cargo"));
 }
 
 #[test]
@@ -80,9 +80,9 @@ fn test_dot_priority_python_over_node() {
 
     let output = t.cmd().arg(".").output().unwrap();
 
-    // Should prefer Python
+    // Should prefer Python over Node (pyproject error, not npm)
     let combined = format!("{}{}", stdout(&output), stderr(&output));
-    assert!(combined.contains("python") || combined.contains("uv"));
+    assert!(combined.contains("pyproject"));
 }
 
 #[test]
@@ -108,7 +108,7 @@ fn test_dot_without_vault_fails() {
     let output = t.cmd().arg(".").output().unwrap();
 
     assert_failure(&output);
-    assert_stderr_contains(&output, "no burrow vault");
+    assert_stderr_contains(&output, "no vault found");
 }
 
 #[test]
@@ -167,6 +167,7 @@ fn test_dot_detects_makefile() {
 
     let output = t.cmd().arg(".").output().unwrap();
 
+    // Should run make dev successfully (outputs "echo test")
     let combined = format!("{}{}", stdout(&output), stderr(&output));
-    assert!(combined.contains("make"));
+    assert!(combined.contains("test") || combined.contains("echo"));
 }
