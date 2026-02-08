@@ -278,7 +278,7 @@ mod tests {
         let mut config = Config::new();
         config.burrow.cipher = Some("aws-kms".to_string());
         config.burrow.kms_key_id = Some("test-key".to_string());
-        
+
         let result = CipherBackend::from_config(&config);
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
@@ -291,7 +291,7 @@ mod tests {
         let mut config = Config::new();
         config.burrow.cipher = Some("gcp-kms".to_string());
         config.burrow.gcp_resource = Some("test-resource".to_string());
-        
+
         let result = CipherBackend::from_config(&config);
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
@@ -303,7 +303,7 @@ mod tests {
     fn test_backend_gpg_not_compiled() {
         let mut config = Config::new();
         config.burrow.cipher = Some("gpg".to_string());
-        
+
         let result = CipherBackend::from_config(&config);
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();

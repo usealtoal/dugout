@@ -14,7 +14,7 @@
 //! key_id = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
 //! ```
 //!
-//! The KMS cipher uses AWS credentials from the environment (AWS_ACCESS_KEY_ID, etc.)
+//! The AWS KMS cipher uses AWS credentials from the environment (AWS_ACCESS_KEY_ID, etc.)
 //! or from the default credential provider chain.
 
 use tracing::trace;
@@ -35,7 +35,7 @@ pub struct AwsKms {
 
 #[cfg(feature = "aws")]
 impl AwsKms {
-    /// Create a new KMS cipher with the specified key ID.
+    /// Create a new AWS KMS cipher with the specified key ID.
     ///
     /// # Arguments
     ///

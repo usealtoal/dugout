@@ -196,7 +196,7 @@ impl Vault {
             SecretError::not_found_with_suggestions(key.to_string(), &available)
         })?;
 
-        let plaintext = cipher::decrypt(encrypted, self.identity.as_age())?;
+        let plaintext = self.backend.decrypt(encrypted, self.identity.as_age())?;
 
         Ok(Zeroizing::new(plaintext))
     }
@@ -250,7 +250,7 @@ impl Vault {
 
         let mut pairs = Vec::new();
         for (key, encrypted) in &self.config.secrets {
-            let plaintext = cipher::decrypt(encrypted, self.identity.as_age())?;
+            let plaintext = self.backend.decrypt(encrypted, self.identity.as_age())?;
             pairs.push((key.clone(), Zeroizing::new(plaintext)));
         }
 
@@ -266,13 +266,14 @@ impl Vault {
     ///
     /// Returns error if decryption or re-encryption fails.
     pub fn reencrypt_all(&mut self) -> Result<()> {
-        let recipients = get_recipients(&self.config)?;
+        let recipients = get_recipients_as_strings(&self.config);
 
         let mut updated = std::collections::BTreeMap::new();
         for (key, encrypted) in &self.config.secrets {
             // Use Zeroizing to ensure plaintext is wiped after re-encryption
-            let plaintext = Zeroizing::new(cipher::decrypt(encrypted, self.identity.as_age())?);
-            let reencrypted = cipher::encrypt(&plaintext, &recipients)?;
+            let plaintext =
+                Zeroizing::new(self.backend.decrypt(encrypted, self.identity.as_age())?);
+            let reencrypted = self.backend.encrypt(&plaintext, &recipients)?;
             updated.insert(key.clone(), reencrypted);
         }
 
@@ -530,19 +531,6 @@ fn validate_value(key: &str, value: &str) -> Result<()> {
     }
 
     Ok(())
-}
-
-/// Get all recipient public keys from config.
-///
-/// # Errors
-///
-/// Returns error if any recipient key is invalid.
-fn get_recipients(config: &Config) -> Result<Vec<age::x25519::Recipient>> {
-    config
-        .recipients
-        .values()
-        .map(|k| cipher::parse_recipient(k))
-        .collect()
 }
 
 /// Get all recipient public keys as strings.
