@@ -268,6 +268,7 @@ fn test_very_long_value_10kb() {
 }
 
 #[test]
+#[cfg_attr(windows, ignore)] // Windows 260-char path limit
 fn test_very_long_value_100kb() {
     let t = Test::init("test-user");
 
