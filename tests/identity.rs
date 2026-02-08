@@ -25,9 +25,9 @@ fn test_identity_generate_creates_file() {
 
     // Verify identity file was created somewhere in ~/.burrow/keys/
     let keys_dir = PathBuf::from(home_dir.path()).join(".burrow").join("keys");
-    
+
     assert!(keys_dir.exists(), "Keys directory should exist");
-    
+
     // Find the identity.key file
     let mut found_key = false;
     if let Ok(entries) = std::fs::read_dir(&keys_dir) {
@@ -35,7 +35,7 @@ fn test_identity_generate_creates_file() {
             let key_file = entry.path().join("identity.key");
             if key_file.exists() {
                 found_key = true;
-                
+
                 // Verify file has restrictive permissions on Unix
                 #[cfg(unix)]
                 {
@@ -53,7 +53,7 @@ fn test_identity_generate_creates_file() {
             }
         }
     }
-    
+
     assert!(found_key, "Should have created identity.key file");
 
     let _ = env::set_current_dir(&original_dir);
@@ -130,9 +130,9 @@ fn test_identity_roundtrip() {
 #[cfg(unix)]
 #[test]
 fn test_identity_insecure_permissions_warns() {
-    use std::os::unix::fs::PermissionsExt;
     use burrow::Vault;
     use std::env;
+    use std::os::unix::fs::PermissionsExt;
     use tempfile::TempDir;
 
     let original_dir = env::current_dir().unwrap();
@@ -148,7 +148,7 @@ fn test_identity_insecure_permissions_warns() {
     // Find the identity file
     let keys_dir = PathBuf::from(home_dir.path()).join(".burrow").join("keys");
     let mut key_path = None;
-    
+
     if let Ok(entries) = std::fs::read_dir(&keys_dir) {
         for entry in entries.flatten() {
             let candidate = entry.path().join("identity.key");
@@ -158,7 +158,7 @@ fn test_identity_insecure_permissions_warns() {
             }
         }
     }
-    
+
     let key_path = key_path.expect("Should find identity.key");
 
     // Change to insecure permissions
@@ -169,7 +169,10 @@ fn test_identity_insecure_permissions_warns() {
     // Try to use the vault - should work but could warn
     // burrow is forgiving, we're mainly verifying it doesn't crash
     let result = Vault::open();
-    assert!(result.is_ok(), "Vault should still open with insecure permissions");
+    assert!(
+        result.is_ok(),
+        "Vault should still open with insecure permissions"
+    );
 
     let _ = env::set_current_dir(&original_dir);
 }

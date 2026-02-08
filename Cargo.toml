@@ -20,6 +20,12 @@ exclude = [
     "tests/fixtures/",
 ]
 
+[features]
+default = []
+aws = ["dep:aws-sdk-kms", "dep:aws-config", "dep:tokio", "dep:base64"]
+gcp = ["dep:base64"]
+gpg = []
+
 [dependencies]
 age = { version = "0.11", features = ["armor"] }
 chrono = "0.4"
@@ -36,6 +42,12 @@ whoami = "1"
 zeroize = "1"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
+
+# Optional dependencies for cipher backends
+aws-sdk-kms = { version = "1", optional = true }
+aws-config = { version = "1", optional = true }
+tokio = { version = "1", features = ["rt"], optional = true }
+base64 = { version = "0.22", optional = true }
 
 [dev-dependencies]
 tempfile = "3"

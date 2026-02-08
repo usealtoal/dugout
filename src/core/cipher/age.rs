@@ -20,6 +20,10 @@ impl Cipher for Age {
     type Recipient = x25519::Recipient;
     type Identity = x25519::Identity;
 
+    fn name(&self) -> &'static str {
+        "age"
+    }
+
     fn encrypt(&self, plaintext: &str, recipients: &[x25519::Recipient]) -> Result<String> {
         trace!(
             recipients = recipients.len(),

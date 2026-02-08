@@ -1,33 +1,35 @@
 //! Cryptographic operations.
 //!
 //! Provides encryption/decryption abstraction and implementations.
-//! Currently supports age encryption with plans for KMS/GPG backends.
+//! Supports multiple backends: age (default), AWS KMS, GCP KMS, and GPG.
+//!
+//! ## Backends
+//!
+//! - **age**: Default, always available. Uses x25519 public-key encryption.
+//! - **AWS KMS**: Feature-gated (`aws`). Uses AWS Key Management Service.
+//! - **GCP KMS**: Feature-gated (`gcp`). Uses Google Cloud KMS via gcloud CLI.
+//! - **GPG**: Feature-gated (`gpg`). Uses GnuPG via gpg CLI.
 //!
 //! ## Adding a New Backend
 //!
 //! 1. Implement the `Cipher` trait
 //! 2. Add the implementation in a new file (e.g., `kms.rs`, `gpg.rs`)
-//! 3. Re-export from this module
-//!
-//! ## Example
-//!
-//! ```ignore
-//! struct KmsBackend { /* ... */ }
-//!
-//! impl Cipher for KmsBackend {
-//!     fn encrypt(&self, plaintext: &str, recipients: &[Recipient]) -> Result<String> {
-//!         // KMS-specific encryption
-//!     }
-//!     fn decrypt(&self, encrypted: &str, identity: &Identity) -> Result<String> {
-//!         // KMS-specific decryption
-//!     }
-//! }
-//! ```
+//! 3. Feature-gate if appropriate
+//! 4. Re-export from this module
 
 use crate::error::Result;
 use ::age::x25519;
 
 mod age;
+
+#[cfg(feature = "aws")]
+pub mod kms;
+
+#[cfg(feature = "gcp")]
+pub mod gcp;
+
+#[cfg(feature = "gpg")]
+pub mod gpg;
 
 pub use age::{parse_recipient, Age};
 
@@ -35,6 +37,12 @@ pub use age::{parse_recipient, Age};
 ///
 /// Abstracts encryption and decryption operations to support
 /// multiple cryptographic backends (age, KMS, GPG, etc.).
+///
+/// Recipients are backend-specific:
+/// - age: public keys (age1...)
+/// - AWS KMS: key ARNs or IDs
+/// - GCP KMS: resource names (projects/.../cryptoKeys/...)
+/// - GPG: key fingerprints or email addresses
 pub trait Cipher {
     /// Type representing a recipient public key.
     type Recipient;
@@ -47,7 +55,7 @@ pub trait Cipher {
     /// # Arguments
     ///
     /// * `plaintext` - The string to encrypt
-    /// * `recipients` - List of recipient public keys
+    /// * `recipients` - List of recipient identifiers (backend-specific)
     ///
     /// # Returns
     ///
@@ -73,6 +81,10 @@ pub trait Cipher {
     ///
     /// Returns `CipherError` if decryption fails.
     fn decrypt(&self, encrypted: &str, identity: &Self::Identity) -> Result<String>;
+
+    /// Backend name for display/config.
+    #[allow(dead_code)]
+    fn name(&self) -> &'static str;
 }
 
 // Re-export commonly used age types for convenience (used by internal modules)

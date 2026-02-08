@@ -317,19 +317,118 @@ Keys are named after the project directory. Never commit these files.
 
 ## Security
 
-Burrow uses [age](https://age-encryption.org/) for encryption:
+Burrow supports multiple cipher backends for encryption:
+
+### Cipher Backends
+
+#### age (default)
+
+Uses [age](https://age-encryption.org/) for encryption - always available, no feature flags needed.
 
 - **Algorithm:** X25519 (key agreement) + ChaCha20-Poly1305 (encryption)
 - **Key size:** 256-bit
 - **Authenticated encryption:** Yes (AEAD)
+- **Best for:** General use, offline-first workflows, developer teams
+
+```bash
+burrow init  # Uses age by default
+```
+
+#### AWS KMS
+
+Enterprise encryption using AWS Key Management Service. Enable with `--features aws`.
+
+- **Algorithm:** Configurable (AES-256-GCM, RSA, etc.)
+- **Key management:** AWS manages keys in the cloud
+- **Best for:** AWS-native environments, compliance requirements, central key management
+- **Requires:** AWS credentials (via env vars or AWS config)
+
+```bash
+# Build with AWS support
+cargo install burrow --features aws
+
+# Initialize with AWS KMS
+burrow init --cipher aws-kms --kms-key arn:aws:kms:us-east-1:123456:key/abc-def
+
+# Or update existing vault
+# .burrow.toml:
+[meta]
+cipher = "aws-kms"
+
+[meta.kms]
+key_id = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+```
+
+#### GCP KMS
+
+Google Cloud Key Management Service via gcloud CLI. Enable with `--features gcp`.
+
+- **Algorithm:** Configurable (AES-256-GCM, RSA, etc.)
+- **Key management:** GCP manages keys in the cloud
+- **Best for:** GCP-native environments, Google Workspace integration
+- **Requires:** `gcloud` CLI installed and authenticated
+
+```bash
+# Build with GCP support
+cargo install burrow --features gcp
+
+# Initialize with GCP KMS
+burrow init --cipher gcp-kms --gcp-key projects/my-project/locations/global/keyRings/my-ring/cryptoKeys/my-key
+
+# Or update existing vault
+# .burrow.toml:
+[meta]
+cipher = "gcp-kms"
+
+[meta.gcp]
+resource_name = "projects/my-project/locations/global/keyRings/my-ring/cryptoKeys/my-key"
+```
+
+#### GPG
+
+Uses GnuPG for OpenPGP-compatible encryption. Enable with `--features gpg`.
+
+- **Algorithm:** Configurable (RSA, ECC, etc.)
+- **Key management:** Local GPG keyring
+- **Best for:** Organizations already using GPG/PGP, compliance with PGP standards
+- **Requires:** `gpg` CLI installed with keys in your keyring
+
+```bash
+# Build with GPG support
+cargo install burrow --features gpg
+
+# Initialize with GPG
+burrow init --cipher gpg
+
+# Recipients are GPG key fingerprints or email addresses
+burrow team add alice alice@example.com
+burrow team add bob ABCD1234ABCD1234ABCD1234ABCD1234ABCD1234
+
+# Or update existing vault
+# .burrow.toml:
+[meta]
+cipher = "gpg"
+
+[recipients]
+alice = "alice@example.com"
+bob = "ABCD1234ABCD1234ABCD1234ABCD1234ABCD1234"
+```
+
+#### Multi-Backend Builds
+
+Enable multiple backends at once:
+
+```bash
+cargo install burrow --features aws,gcp,gpg
+```
 
 ### Security Properties
 
 - **Encrypted at rest:** Secrets in `.burrow.toml` are always encrypted
-- **No network calls:** Everything happens locally
+- **No network calls:** Everything happens locally (except cloud KMS backends)
 - **No telemetry:** Zero tracking or analytics
 - **Memory safety:** Rust + zeroization of decrypted values
-- **Multi-recipient:** Each team member has their own private key
+- **Multi-recipient:** Each team member has their own private key (age, GPG)
 
 ### Best Practices
 
