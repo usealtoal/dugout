@@ -9,17 +9,17 @@
 </p>
 
 <p align="center">
-  A local secrets manager for development teams, written in Rust.
+  <strong>A local secrets manager for development teams, written in Rust.</strong>
 </p>
 
 ## Highlights
 
-- 🔒 **Encrypted at rest** — age encryption by default, with AWS KMS, GCP KMS, and GPG backends
-- 👥 **Team-friendly** — add members, share secrets, rotate keys, all through git
-- ⚡ **Fast** — encrypts in ~100µs, single binary, no runtime dependencies
-- 🔌 **Zero config** — `burrow init` and start adding secrets
-- 🚀 **Auto-detect** — `burrow .` injects secrets and runs your project
-- 🔑 **No server required** — secrets live in your repo, encrypted
+- **Encrypted at rest** — age encryption by default, with AWS KMS, GCP KMS, and GPG backends
+- **Team-friendly** — add members, share secrets, rotate keys, all through git
+- **Fast** — encrypts in ~100µs, single binary, no runtime dependencies
+- **Zero config** — `burrow init` and start adding secrets
+- **Auto-detect** — `burrow .` injects secrets and runs your project
+- **No server required** — secrets live in your repo, encrypted
 
 ## Installation
 
