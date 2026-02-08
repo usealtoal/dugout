@@ -44,11 +44,35 @@ impl Vault {
         let config = Config::load()?;
         let project_id = config.project_id();
 
-        // Try project-specific key first, fall back to global identity
-        let identity = match store::load_identity(&project_id) {
-            Ok(id) => id,
-            Err(_) if Identity::has_global().unwrap_or(false) => Identity::load_global()?,
-            Err(e) => return Err(e),
+        // Prefer project identity, but gracefully fall back to global identity
+        // when project keys are stale or no longer recipients.
+        let project_identity = store::load_identity(&project_id);
+        let identity = match project_identity {
+            Ok(identity) if identity_has_access(&config, &identity) => identity,
+            Ok(_) => {
+                if Identity::has_global()? {
+                    let global = Identity::load_global()?;
+                    if identity_has_access(&config, &global) {
+                        global
+                    } else {
+                        return Err(ConfigError::AccessDenied.into());
+                    }
+                } else {
+                    return Err(ConfigError::AccessDenied.into());
+                }
+            }
+            Err(project_err) => {
+                if Identity::has_global()? {
+                    let global = Identity::load_global()?;
+                    if identity_has_access(&config, &global) {
+                        global
+                    } else {
+                        return Err(ConfigError::AccessDenied.into());
+                    }
+                } else {
+                    return Err(project_err);
+                }
+            }
         };
 
         let backend = cipher::CipherBackend::from_config(&config)?;
@@ -76,6 +100,8 @@ impl Vault {
         kms_key_id: Option<String>,
         gcp_resource: Option<String>,
     ) -> Result<Self> {
+        validate_member_name(name)?;
+
         if Config::exists() {
             return Err(crate::error::ConfigError::AlreadyInitialized.into());
         }
@@ -290,6 +316,8 @@ impl Vault {
     pub fn add_recipient(&mut self, name: &str, key: &str) -> Result<()> {
         info!(name = %name, "adding team member");
 
+        validate_member_name(name)?;
+
         // Validate the key format first - this will return a clear error if invalid
         cipher::parse_recipient(key)?;
 
@@ -383,6 +411,8 @@ impl Vault {
     #[instrument(skip(self))]
     pub fn admit(&mut self, name: &str) -> Result<()> {
         info!(name = %name, "admitting team member from request");
+
+        validate_member_name(name)?;
 
         let request_path = std::path::PathBuf::from(format!(".dugout/requests/{}.pub", name));
 
@@ -555,6 +585,52 @@ pub(crate) fn validate_key(key: &str) -> Result<()> {
     Ok(())
 }
 
+/// Validate a team member name.
+///
+/// Names are used in user-facing output and request-file paths, so they must
+/// stay path-safe and shell-friendly.
+pub(crate) fn validate_member_name(name: &str) -> Result<()> {
+    if name.is_empty() {
+        return Err(ValidationError::InvalidMemberName {
+            name: name.to_string(),
+            reason: "cannot be empty".to_string(),
+        }
+        .into());
+    }
+
+    if name.len() > 64 {
+        return Err(ValidationError::InvalidMemberName {
+            name: name.to_string(),
+            reason: "must be at most 64 characters".to_string(),
+        }
+        .into());
+    }
+
+    if name.starts_with('.') {
+        return Err(ValidationError::InvalidMemberName {
+            name: name.to_string(),
+            reason: "cannot start with '.'".to_string(),
+        }
+        .into());
+    }
+
+    for (i, ch) in name.chars().enumerate() {
+        if !ch.is_ascii_alphanumeric() && ch != '_' && ch != '-' && ch != '.' && ch != '@' {
+            return Err(ValidationError::InvalidMemberName {
+                name: name.to_string(),
+                reason: format!(
+                    "invalid character '{}' at position {}. Allowed: A-Z, a-z, 0-9, _, -, ., @",
+                    ch,
+                    i + 1
+                ),
+            }
+            .into());
+        }
+    }
+
+    Ok(())
+}
+
 /// Validate a secret value (cannot be empty)
 fn validate_value(key: &str, value: &str) -> Result<()> {
     if value.is_empty() {
@@ -576,6 +652,14 @@ fn list_recipients(config: &Config) -> Vec<(MemberName, PublicKey)> {
         .iter()
         .map(|(name, key)| (name.clone(), key.clone()))
         .collect()
+}
+
+fn identity_has_access(config: &Config, identity: &Identity) -> bool {
+    let identity_pubkey = identity.public_key();
+    config
+        .recipients
+        .values()
+        .any(|key| key == &identity_pubkey)
 }
 
 // --- Tests ---
@@ -721,6 +805,31 @@ mod tests {
         assert_eq!(all_secrets.len(), 1);
         assert_eq!(all_secrets[0].0, "TEAM_SECRET");
         assert_eq!(all_secrets[0].1.as_str(), "original");
+    }
+
+    #[test]
+    fn test_vault_open_denies_non_member_identity() {
+        let (_ctx, _vault) = setup_test_vault();
+
+        let outsider = age::x25519::Identity::generate();
+        let outsider_key = outsider.to_public().to_string();
+
+        let mut cfg = Config::load().unwrap();
+        cfg.recipients.clear();
+        cfg.recipients.insert("bob".to_string(), outsider_key);
+        cfg.save().unwrap();
+
+        let err = Vault::open().unwrap_err();
+        assert!(matches!(
+            err,
+            crate::error::Error::Config(ConfigError::AccessDenied)
+        ));
+    }
+
+    #[test]
+    fn test_validate_member_name_rejects_path_separators() {
+        let result = validate_member_name("../bob");
+        assert!(result.is_err());
     }
 
     // --- Lifecycle tests ---

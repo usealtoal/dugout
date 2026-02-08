@@ -3,6 +3,7 @@
 use tracing::info;
 
 use crate::cli::output;
+use crate::core::vault::Vault;
 use crate::core::{cipher, config, store};
 use crate::error::Result;
 use std::fs;
@@ -39,9 +40,14 @@ fn archive_old_key(project_id: &str) -> Result<()> {
 pub fn execute() -> Result<()> {
     info!("Starting key rotation");
 
+    // Verify access and pick the effective identity for decryption.
+    let vault = Vault::open()?;
+    let old_public_key = vault.identity().public_key();
+
     // Load config
     let mut cfg = config::Config::load()?;
     let project_id = cfg.project_id();
+    let backend = cipher::CipherBackend::from_config(&cfg)?;
 
     // Check that we have a key to rotate
     if !store::has_key(&project_id) {
@@ -49,11 +55,9 @@ pub fn execute() -> Result<()> {
     }
 
     // Step 1: Decrypt all secrets
-    let identity = store::load_identity(&project_id)?;
-
     let mut decrypted_secrets = Vec::new();
     for (key, ciphertext) in &cfg.secrets {
-        let plaintext = cipher::decrypt(ciphertext, identity.as_age())?;
+        let plaintext = backend.decrypt(ciphertext, vault.identity().as_age())?;
         decrypted_secrets.push((key.clone(), plaintext));
     }
 
@@ -63,21 +67,29 @@ pub fn execute() -> Result<()> {
     // Step 3: Generate new keypair
     let new_public_key = store::generate_keypair(&project_id)?;
 
-    // Step 4: Get all recipient public keys (including new one)
-    let mut recipients = Vec::new();
-    recipients.push(cipher::parse_recipient(&new_public_key)?);
-
-    for key in cfg.recipients.values() {
-        if key != &new_public_key {
-            recipients.push(cipher::parse_recipient(key)?);
-        }
+    // Step 4: Build recipient set with rotated owner key.
+    let mut recipients: Vec<String> = cfg
+        .recipients
+        .values()
+        .map(|key| {
+            if key == &old_public_key {
+                new_public_key.clone()
+            } else {
+                key.clone()
+            }
+        })
+        .collect();
+    if !recipients.iter().any(|key| key == &new_public_key) {
+        recipients.push(new_public_key.clone());
     }
+    recipients.sort();
+    recipients.dedup();
 
     // Step 5: Re-encrypt all secrets
     let secret_count = decrypted_secrets.len();
     cfg.secrets.clear();
     for (key, plaintext) in decrypted_secrets {
-        let ciphertext = cipher::encrypt(&plaintext, &recipients)?;
+        let ciphertext = backend.encrypt(&plaintext, &recipients)?;
         cfg.secrets.insert(key, ciphertext);
     }
 
@@ -85,7 +97,7 @@ pub fn execute() -> Result<()> {
     let owner_name = cfg
         .recipients
         .iter()
-        .find(|(_, key)| *key != &new_public_key)
+        .find(|(_, key)| *key == &old_public_key)
         .map(|(name, _)| name.clone())
         .or_else(|| cfg.recipients.keys().next().cloned());
 

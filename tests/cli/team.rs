@@ -93,3 +93,12 @@ fn test_team_add_reencrypts_secrets() {
     assert_success(&output);
     assert_stdout_contains(&output, "team_value");
 }
+
+#[test]
+fn test_team_add_rejects_invalid_member_name() {
+    let t = Test::init("alice");
+
+    let output = t.team_add("../bob", BOB_PUBLIC_KEY);
+    assert_failure(&output);
+    assert_stderr_contains(&output, "invalid member name");
+}

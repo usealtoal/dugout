@@ -2,7 +2,6 @@
 
 use crate::support::*;
 use std::fs;
-use std::path::PathBuf;
 
 #[test]
 fn test_knock_creates_request_file() {
@@ -355,4 +354,22 @@ fn test_knock_output_includes_instructions() {
     // Should show success and hint about sharing the request file
     assert_stdout_contains(&output, "created access request");
     assert_stdout_contains(&output, ".dugout/requests/bob.pub");
+}
+
+#[test]
+fn test_knock_rejects_invalid_member_name() {
+    let t = Test::init("alice");
+
+    let setup_output = t.cmd().arg("setup").output().unwrap();
+    assert_success(&setup_output);
+
+    let output = t.cmd().args(["knock", "../bob"]).output().unwrap();
+    assert_failure(&output);
+    assert_stderr_contains(&output, "invalid member name");
+
+    let request_path = t.dir.path().join(".dugout/requests/../bob.pub");
+    assert!(
+        !request_path.exists(),
+        "invalid names must not create request files"
+    );
 }

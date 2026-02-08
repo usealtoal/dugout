@@ -83,6 +83,7 @@ pub use ::age::x25519::{Identity, Recipient};
 /// # Errors
 ///
 /// Returns `CipherError` if encryption fails.
+#[allow(dead_code)]
 pub fn encrypt(plaintext: &str, recipients: &[x25519::Recipient]) -> Result<String> {
     Age.encrypt(plaintext, recipients)
 }
@@ -94,6 +95,7 @@ pub fn encrypt(plaintext: &str, recipients: &[x25519::Recipient]) -> Result<Stri
 /// # Errors
 ///
 /// Returns `CipherError` if decryption fails or the key doesn't match.
+#[allow(dead_code)]
 pub fn decrypt(encrypted: &str, identity: &x25519::Identity) -> Result<String> {
     Age.decrypt(encrypted, identity)
 }

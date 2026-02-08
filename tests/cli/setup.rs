@@ -183,3 +183,56 @@ fn test_setup_output_includes_paths() {
     let out = stdout(&output);
     assert!(out.contains("age1")); // public key should be displayed
 }
+
+#[test]
+fn test_open_falls_back_to_global_identity_when_project_key_stale() {
+    use age::secrecy::ExposeSecret;
+
+    let t = Test::new();
+
+    // Setup global identity and initialize vault.
+    let output = t.cmd().arg("setup").output().unwrap();
+    assert_success(&output);
+    let output = t.cmd().args(["init", "--name", "alice"]).output().unwrap();
+    assert_success(&output);
+
+    // Store a secret while global/project identity are aligned.
+    let output = t
+        .cmd()
+        .args(["set", "FALLBACK_KEY", "fallback_value"])
+        .output()
+        .unwrap();
+    assert_success(&output);
+
+    // Corrupt the project identity with a different key.
+    let project_id = t
+        .dir
+        .path()
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
+    let project_identity_path = t
+        .home
+        .path()
+        .join(".dugout/keys")
+        .join(project_id)
+        .join("identity.key");
+    let stale_identity = age::x25519::Identity::generate();
+    let stale_secret = stale_identity.to_string();
+    fs::write(
+        &project_identity_path,
+        format!("{}\n", stale_secret.expose_secret()),
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&project_identity_path, fs::Permissions::from_mode(0o600)).unwrap();
+    }
+
+    // Commands should still work via global identity fallback.
+    let output = t.cmd().args(["get", "FALLBACK_KEY"]).output().unwrap();
+    assert_success(&output);
+    assert_eq!(stdout(&output).trim(), "fallback_value");
+}

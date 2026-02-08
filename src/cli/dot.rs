@@ -24,7 +24,7 @@ pub fn execute() -> Result<()> {
         if !config.recipients.values().any(|k| k == &pubkey) {
             output::error("no access to this vault");
             output::hint("run: dugout knock");
-            return Err(crate::error::ConfigError::NoRecipients.into());
+            return Err(crate::error::ConfigError::AccessDenied.into());
         }
     }
 

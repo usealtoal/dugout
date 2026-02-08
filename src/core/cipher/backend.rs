@@ -3,10 +3,80 @@
 //! Provides a unified interface for multiple cipher backends.
 
 use crate::core::config::Config;
-#[cfg(any(feature = "aws", feature = "gcp"))]
-use crate::error::ConfigError;
 use crate::error::{CipherError, Result};
+#[cfg(any(test, feature = "aws", feature = "gcp"))]
+use crate::error::{ConfigError, Error};
+#[cfg(any(test, feature = "aws", feature = "gcp"))]
+use serde::{Deserialize, Serialize};
 use tracing::debug;
+
+#[cfg(any(test, feature = "aws", feature = "gcp"))]
+const WRAPPED_CIPHERTEXT_VERSION: &str = "dugout-ciphertext-envelope-v1";
+
+#[cfg(any(test, feature = "aws", feature = "gcp"))]
+#[derive(Debug, Serialize, Deserialize)]
+struct WrappedCiphertext {
+    version: String,
+    ciphertext: String,
+}
+
+#[cfg(any(test, feature = "aws", feature = "gcp"))]
+fn wrap_for_recipients(ciphertext: &str, recipients: &[String]) -> Result<String> {
+    use super::Cipher;
+
+    let age_recipients: Result<Vec<_>> = recipients
+        .iter()
+        .map(|recipient| super::parse_recipient(recipient))
+        .collect();
+    let age_recipients = age_recipients?;
+
+    if age_recipients.is_empty() {
+        return Err(ConfigError::NoRecipients.into());
+    }
+
+    let ciphertext = super::Age.encrypt(ciphertext, &age_recipients)?;
+    let envelope = WrappedCiphertext {
+        version: WRAPPED_CIPHERTEXT_VERSION.to_string(),
+        ciphertext,
+    };
+
+    serde_json::to_string(&envelope).map_err(Error::from)
+}
+
+#[cfg(any(test, feature = "aws", feature = "gcp"))]
+fn unwrap_for_identity(payload: &str, identity: &age::x25519::Identity) -> Result<Option<String>> {
+    use super::Cipher;
+
+    let envelope = match serde_json::from_str::<WrappedCiphertext>(payload) {
+        Ok(envelope) => envelope,
+        Err(_) => {
+            // Reject malformed envelope-like JSON payloads rather than attempting KMS decryption.
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(payload) {
+                if value.get("version").is_some()
+                    || value.get("ciphertext").is_some()
+                    || value.get("wrapped_kms_ciphertext").is_some()
+                {
+                    return Err(CipherError::DecryptionFailed(
+                        "invalid ciphertext envelope format".to_string(),
+                    )
+                    .into());
+                }
+            }
+            return Ok(None);
+        }
+    };
+
+    if envelope.version != WRAPPED_CIPHERTEXT_VERSION {
+        return Err(CipherError::DecryptionFailed(format!(
+            "unsupported ciphertext envelope version: {}",
+            envelope.version
+        ))
+        .into());
+    }
+
+    let ciphertext = super::Age.decrypt(&envelope.ciphertext, identity)?;
+    Ok(Some(ciphertext))
+}
 
 /// Vault cipher selection and dispatch
 ///
@@ -133,15 +203,15 @@ impl CipherBackend {
             #[cfg(feature = "aws")]
             Self::AwsKms { key_id } => {
                 let kms = super::aws::AwsKms::new(key_id.clone());
-                // KMS doesn't use recipients in the traditional sense
-                // Just pass empty vector for the trait interface
-                kms.encrypt(plaintext, &[])
+                let kms_ciphertext = kms.encrypt(plaintext, &[])?;
+                wrap_for_recipients(&kms_ciphertext, recipients)
             }
 
             #[cfg(feature = "gcp")]
             Self::GcpKms { resource } => {
                 let gcp = super::gcp::GcpKms::new(resource.clone());
-                gcp.encrypt(plaintext, &[])
+                let kms_ciphertext = gcp.encrypt(plaintext, &[])?;
+                wrap_for_recipients(&kms_ciphertext, recipients)
             }
 
             #[cfg(feature = "gpg")]
@@ -163,13 +233,17 @@ impl CipherBackend {
             #[cfg(feature = "aws")]
             Self::AwsKms { .. } => {
                 let kms = super::aws::AwsKms::new(String::new()); // key_id not needed for decrypt
-                kms.decrypt(ciphertext, &())
+                let kms_ciphertext = unwrap_for_identity(ciphertext, identity)?
+                    .unwrap_or_else(|| ciphertext.to_string());
+                kms.decrypt(&kms_ciphertext, &())
             }
 
             #[cfg(feature = "gcp")]
             Self::GcpKms { resource } => {
                 let gcp = super::gcp::GcpKms::new(resource.clone());
-                gcp.decrypt(ciphertext, &())
+                let kms_ciphertext = unwrap_for_identity(ciphertext, identity)?
+                    .unwrap_or_else(|| ciphertext.to_string());
+                gcp.decrypt(&kms_ciphertext, &())
             }
 
             #[cfg(feature = "gpg")]
@@ -250,6 +324,94 @@ mod tests {
         let decrypted = backend.decrypt(&encrypted, &identity).unwrap();
 
         assert_eq!(decrypted, plaintext);
+    }
+
+    #[test]
+    fn test_wrap_roundtrip_for_identity() {
+        let identity = age::x25519::Identity::generate();
+        let recipients = vec![identity.to_public().to_string()];
+        let kms_ciphertext = "kms-base64-ciphertext";
+
+        let wrapped = wrap_for_recipients(kms_ciphertext, &recipients).unwrap();
+        let unwrapped = unwrap_for_identity(&wrapped, &identity)
+            .unwrap()
+            .expect("wrapped payload should unwrap");
+
+        assert_eq!(unwrapped, kms_ciphertext);
+    }
+
+    #[test]
+    fn test_wrap_requires_recipients() {
+        let kms_ciphertext = "kms-base64-ciphertext";
+        let recipients: Vec<String> = Vec::new();
+
+        let result = wrap_for_recipients(kms_ciphertext, &recipients);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_wrap_rejects_invalid_recipient_key() {
+        let kms_ciphertext = "kms-base64-ciphertext";
+        let recipients = vec!["not-an-age-key".to_string()];
+
+        let result = wrap_for_recipients(kms_ciphertext, &recipients);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_wrap_rejects_wrong_identity() {
+        let identity = age::x25519::Identity::generate();
+        let outsider = age::x25519::Identity::generate();
+        let recipients = vec![identity.to_public().to_string()];
+        let kms_ciphertext = "kms-base64-ciphertext";
+
+        let wrapped = wrap_for_recipients(kms_ciphertext, &recipients).unwrap();
+        let result = unwrap_for_identity(&wrapped, &outsider);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_unwrap_legacy_ciphertext_passthrough() {
+        let identity = age::x25519::Identity::generate();
+        let legacy = "legacy-kms-ciphertext";
+
+        let unwrapped = unwrap_for_identity(legacy, &identity).unwrap();
+        assert!(unwrapped.is_none());
+    }
+
+    #[test]
+    fn test_unwrap_rejects_unknown_wrapper_version() {
+        let identity = age::x25519::Identity::generate();
+        let payload = r#"{"version":"dugout-ciphertext-envelope-v0","ciphertext":"x"}"#;
+
+        let result = unwrap_for_identity(payload, &identity);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_unwrap_rejects_legacy_wrapper_version() {
+        let identity = age::x25519::Identity::generate();
+        let recipients = vec![identity.to_public().to_string()];
+        let wrapped = wrap_for_recipients("kms-base64-ciphertext", &recipients).unwrap();
+        let wrapped: WrappedCiphertext = serde_json::from_str(&wrapped).unwrap();
+        let payload = serde_json::json!({
+            "version": "dugout-kms-wrap-v1",
+            "ciphertext": wrapped.ciphertext,
+        })
+        .to_string();
+
+        let result = unwrap_for_identity(&payload, &identity);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_unwrap_rejects_legacy_field_name() {
+        let identity = age::x25519::Identity::generate();
+        let payload = r#"{"version":"dugout-ciphertext-envelope-v1","wrapped_kms_ciphertext":"x"}"#;
+
+        let result = unwrap_for_identity(payload, &identity);
+        assert!(result.is_err());
     }
 
     #[test]

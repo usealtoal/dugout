@@ -33,6 +33,9 @@ fn main() {
             dugout::error::Error::Store(dugout::error::StoreError::NoPrivateKey(_)) => {
                 Some("run: dugout init")
             }
+            dugout::error::Error::Config(dugout::error::ConfigError::AccessDenied) => {
+                Some("run: dugout knock")
+            }
             _ => None,
         };
 
