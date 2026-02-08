@@ -1,6 +1,4 @@
-//! Team list command.
-//!
-//! List all team members (recipients).
+//! Team list command - list all team members.
 
 use crate::cli::output;
 use crate::core::vault::Vault;
@@ -28,16 +26,15 @@ pub fn execute(json: bool) -> Result<()> {
         });
         output::data(&serde_json::to_string_pretty(&result)?);
     } else if members.is_empty() {
-        output::dimmed("no team members");
+        output::data("no team members");
     } else {
-        output::blank();
-        output::header(&format!("{} team members", output::count(members.len())));
-        output::rule();
         for recipient in members {
-            output::kv(
-                recipient.name(),
-                format!("{}...", &recipient.public_key()[..24]),
-            );
+            let truncated = if recipient.public_key().len() > 20 {
+                format!("{}...", &recipient.public_key()[..20])
+            } else {
+                recipient.public_key().to_string()
+            };
+            println!("{:<15} {}", recipient.name(), truncated);
         }
     }
 

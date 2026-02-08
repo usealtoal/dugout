@@ -72,6 +72,7 @@ impl ProjectKind {
     }
 
     /// Display name for user-facing messages
+    #[allow(dead_code)]
     pub fn display_name(&self) -> &'static str {
         match self {
             Self::Python => "python (uv)",

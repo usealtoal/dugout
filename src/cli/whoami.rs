@@ -1,6 +1,4 @@
-//! Whoami command.
-//!
-//! Prints your global public key.
+//! Whoami command - print your public key.
 
 use crate::cli::output;
 use crate::core::domain::Identity;
@@ -9,10 +7,8 @@ use crate::error::Result;
 /// Print your public key.
 pub fn execute() -> Result<()> {
     if !Identity::has_global()? {
-        output::blank();
-        output::error("no global identity found");
-        output::blank();
-        output::hint(&format!("run {} first", output::cmd("burrow setup")));
+        output::error("no identity found");
+        output::hint("run: burrow setup");
         return Err(
             crate::error::StoreError::NoPrivateKey("~/.burrow/identity".to_string()).into(),
         );

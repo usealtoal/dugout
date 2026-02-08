@@ -1,6 +1,4 @@
 //! Secret management commands.
-//!
-//! Implements set, get, rm, list operations and lifecycle subcommands.
 
 mod diff;
 mod export;
@@ -26,10 +24,9 @@ pub use unlock::execute as unlock;
 /// Set a secret value.
 pub fn set(key: &str, value: &str, force: bool) -> Result<()> {
     info!("Setting secret: {} (force: {})", key, force);
-    let sp = output::spinner("encrypting...");
     let mut vault = Vault::open()?;
     vault.set(key, value, force)?;
-    output::spinner_success(&sp, &format!("set {}", output::key(key)));
+    output::success(&format!("set {}", key));
     Ok(())
 }
 
@@ -47,7 +44,7 @@ pub fn rm(key: &str) -> Result<()> {
     info!("Removing secret: {}", key);
     let mut vault = Vault::open()?;
     vault.remove(key)?;
-    output::success(&format!("removed {}", output::key(key)));
+    output::success(&format!("removed {}", key));
     Ok(())
 }
 
@@ -64,11 +61,8 @@ pub fn list(json: bool) -> Result<()> {
         });
         output::data(&serde_json::to_string_pretty(&result)?);
     } else if secrets.is_empty() {
-        output::dimmed("no secrets");
+        output::data("no secrets");
     } else {
-        output::blank();
-        output::header(&format!("{} secrets", output::count(secrets.len())));
-        output::rule();
         for secret in secrets {
             output::list_item(secret.key());
         }

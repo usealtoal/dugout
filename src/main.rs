@@ -28,18 +28,17 @@ fn main() {
         let error_msg = e.to_string();
         let suggestion = match &e {
             burrow::error::Error::Config(burrow::error::ConfigError::NotInitialized) => {
-                Some("run 'burrow init' to get started")
+                Some("run: burrow init")
             }
             burrow::error::Error::Store(burrow::error::StoreError::NoPrivateKey(_)) => {
-                Some("run 'burrow init' or check your key directory")
+                Some("run: burrow init")
             }
             _ => None,
         };
 
-        if suggestion.is_some() {
-            output::error_box("error", &error_msg, suggestion);
-        } else {
-            output::error(&error_msg);
+        output::error(&error_msg);
+        if let Some(hint) = suggestion {
+            output::hint(hint);
         }
         std::process::exit(1);
     }

@@ -1,6 +1,4 @@
-//! Run command.
-//!
-//! Executes a command with decrypted secrets injected as environment variables.
+//! Run command - execute a command with secrets injected.
 
 use crate::core::vault::Vault;
 use crate::error::Result;
@@ -27,15 +25,11 @@ fn run_with_secrets(vault: &Vault, command: &[String]) -> Result<i32> {
     cmd.args(&command[1..]);
 
     // Inject secrets as environment variables
-    // Use Zeroizing to ensure secrets are wiped from memory after use
     for (key, value) in pairs {
         let zeroized_value = Zeroizing::new(value);
         cmd.env(key, zeroized_value.as_str());
     }
-    // Secrets are now zeroized as they go out of scope
 
     let status = cmd.status()?;
-    // If the process was terminated by a signal, return 128 + signal number convention
-    // Otherwise return the actual exit code, or 1 if unavailable
     Ok(status.code().unwrap_or(1))
 }

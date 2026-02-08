@@ -1,8 +1,5 @@
-//! Interactive shell command.
-//!
-//! Spawns a subshell with decrypted secrets loaded as environment variables.
+//! Interactive shell command - spawn shell with secrets loaded.
 
-use crate::cli::output;
 use crate::core::vault::Vault;
 use crate::error::Result;
 use zeroize::Zeroizing;
@@ -15,12 +12,6 @@ pub fn execute() -> Result<()> {
     // Determine which shell to use
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
 
-    output::success(&format!(
-        "{} secrets loaded. type 'exit' to leave",
-        output::count(pairs.len())
-    ));
-    output::blank();
-
     let mut cmd = std::process::Command::new(&shell);
 
     // Inject secrets as environment variables
@@ -28,13 +19,7 @@ pub fn execute() -> Result<()> {
         let zeroized_value = Zeroizing::new(value);
         cmd.env(key, zeroized_value.as_str());
     }
-    // Secrets are now zeroized as they go out of scope
 
     let status = cmd.status()?;
-
-    output::blank();
-    output::success("shell closed. secrets cleared");
-
-    // Return the shell's exit code
     std::process::exit(status.code().unwrap_or(0));
 }

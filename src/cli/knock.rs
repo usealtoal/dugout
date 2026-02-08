@@ -1,6 +1,4 @@
-//! Knock command.
-//!
-//! Request access to a vault by creating a request file with your public key.
+//! Knock command - request access to a vault.
 
 use dialoguer::Input;
 use std::io::{self, IsTerminal};
@@ -14,10 +12,8 @@ use crate::error::Result;
 pub fn execute(name: Option<String>) -> Result<()> {
     // Check if global identity exists
     if !Identity::has_global()? {
-        output::blank();
-        output::error("no global identity found");
-        output::blank();
-        output::hint(&format!("run {} first", output::cmd("burrow setup")));
+        output::error("no identity found");
+        output::hint("run: burrow setup");
         return Err(
             crate::error::StoreError::NoPrivateKey("~/.burrow/identity".to_string()).into(),
         );
@@ -29,16 +25,7 @@ pub fn execute(name: Option<String>) -> Result<()> {
         let pubkey = Identity::load_global_pubkey()?;
 
         if config.recipients.values().any(|k| k == &pubkey) {
-            output::blank();
-            output::warn("you already have access to this vault");
-            output::blank();
-            let your_name = config
-                .recipients
-                .iter()
-                .find(|(_, k)| *k == &pubkey)
-                .map(|(n, _)| n.as_str())
-                .unwrap_or("unknown");
-            output::kv("your name", your_name);
+            output::warn("you already have access");
             return Ok(());
         }
     }
@@ -51,7 +38,7 @@ pub fn execute(name: Option<String>) -> Result<()> {
             .with_prompt("What's your name?")
             .interact_text()?
     } else {
-        output::error("name required when not in interactive mode");
+        output::error("name required in non-interactive mode");
         return Err(crate::error::ValidationError::EmptyKey.into());
     };
 
@@ -64,20 +51,8 @@ pub fn execute(name: Option<String>) -> Result<()> {
     let request_path = format!(".burrow/requests/{}.pub", name);
     std::fs::write(&request_path, format!("{}\n", pubkey))?;
 
-    output::blank();
-    output::success(&format!(
-        "access request created for {}",
-        output::key(&name)
-    ));
-    output::blank();
-    output::kv("file", output::path(&request_path));
-    output::kv("public key", format!("{}...", &pubkey[..40]));
-    output::blank();
-    output::hint("commit and push this file, then ask an admin to run:");
-    output::note(&format!(
-        "  {}",
-        output::cmd(&format!("burrow admit {}", name))
-    ));
+    output::success("created access request");
+    output::hint(&format!("share {} with an admin", request_path));
 
     Ok(())
 }

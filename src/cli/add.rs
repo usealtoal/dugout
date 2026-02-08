@@ -1,6 +1,4 @@
-//! Add command.
-//!
-//! Interactively add a secret with hidden input.
+//! Add command - interactively add a secret.
 
 use std::io::{self, IsTerminal};
 
@@ -26,7 +24,7 @@ pub fn execute(key: &str) -> Result<()> {
     } else {
         // Interactive prompt with hidden input
         Password::new()
-            .with_prompt(format!("Value for {}", output::key(key)))
+            .with_prompt(format!("Value for {}", key))
             .interact()?
     };
 
@@ -37,7 +35,7 @@ pub fn execute(key: &str) -> Result<()> {
 
     // Check if key already exists
     let force = if vault.list().iter().any(|s| s.key() == key) {
-        output::warn(&format!("{} already exists", output::key(key)));
+        output::warn(&format!("{} already exists", key));
         dialoguer::Confirm::new()
             .with_prompt("Overwrite?")
             .default(false)
@@ -46,9 +44,8 @@ pub fn execute(key: &str) -> Result<()> {
         false
     };
 
-    let sp = output::spinner("encrypting...");
     vault.set(key, &value, force)?;
-    output::spinner_success(&sp, &format!("added {}", output::key(key)));
+    output::success(&format!("set {}", key));
 
     Ok(())
 }

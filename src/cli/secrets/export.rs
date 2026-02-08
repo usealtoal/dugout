@@ -1,6 +1,4 @@
-//! Export command.
-//!
-//! Export secrets as .env format to stdout.
+//! Export command - export secrets as .env format to stdout.
 
 use crate::cli::output;
 use crate::error::Result;

@@ -1,6 +1,4 @@
-//! Rotate command.
-//!
-//! Rotate the project keypair and re-encrypt all secrets.
+//! Rotate command - rotate keypair and re-encrypt secrets.
 
 use tracing::info;
 
@@ -36,38 +34,23 @@ fn archive_old_key(project_id: &str) -> Result<()> {
         .join("identity.key");
 
     if !old_key_path.exists() {
-        // No old key to archive
         return Ok(());
     }
 
     let archive_path = archive_dir(project_id)?;
     fs::create_dir_all(&archive_path)?;
 
-    // Create timestamped archive filename
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let archive_file = archive_path.join(format!("identity.key.{}", timestamp));
 
-    // Move old key to archive
     fs::rename(&old_key_path, &archive_file)?;
-
-    output::dimmed(&format!("  archived old key: {}", archive_file.display()));
 
     Ok(())
 }
 
 /// Execute key rotation.
-///
-/// Performs the following steps:
-/// 1. Decrypts all secrets with the current key
-/// 2. Archives the old key with a timestamp
-/// 3. Generates a new keypair
-/// 4. Re-encrypts all secrets with the new key and existing recipients
-/// 5. Updates configuration with the new public key
 pub fn execute() -> Result<()> {
-    use std::time::Instant;
-
     info!("Starting key rotation");
-    let start = Instant::now();
 
     // Load config
     let mut cfg = config::Config::load()?;
@@ -79,10 +62,6 @@ pub fn execute() -> Result<()> {
     }
 
     // Step 1: Decrypt all secrets
-    let sp = output::spinner(&format!(
-        "decrypting {} secrets...",
-        output::count(cfg.secrets.len())
-    ));
     let identity = store::load_identity(&project_id)?;
 
     let mut decrypted_secrets = Vec::new();
@@ -90,27 +69,18 @@ pub fn execute() -> Result<()> {
         let plaintext = cipher::decrypt(ciphertext, identity.as_age())?;
         decrypted_secrets.push((key.clone(), plaintext));
     }
-    sp.finish_and_clear();
 
     // Step 2: Archive old key
-    let sp = output::spinner("archiving old key...");
     archive_old_key(&project_id)?;
-    sp.finish_and_clear();
 
     // Step 3: Generate new keypair
-    let sp = output::spinner("generating new keypair...");
     let new_public_key = store::generate_keypair(&project_id)?;
-    sp.finish_and_clear();
 
     // Step 4: Get all recipient public keys (including new one)
     let mut recipients = Vec::new();
-
-    // Add new key as a recipient
     recipients.push(cipher::parse_recipient(&new_public_key)?);
 
-    // Add existing recipients (except if it's the old version of the project key)
     for key in cfg.recipients.values() {
-        // Skip if it's the old project key (we already added the new one)
         if key != &new_public_key {
             recipients.push(cipher::parse_recipient(key)?);
         }
@@ -118,17 +88,13 @@ pub fn execute() -> Result<()> {
 
     // Step 5: Re-encrypt all secrets
     let secret_count = decrypted_secrets.len();
-    let pb = output::progress_bar(secret_count as u64, "re-encrypting secrets");
     cfg.secrets.clear();
     for (key, plaintext) in decrypted_secrets {
         let ciphertext = cipher::encrypt(&plaintext, &recipients)?;
         cfg.secrets.insert(key, ciphertext);
-        pb.inc(1);
     }
-    pb.finish_and_clear();
 
-    // Step 6: Update config with new public key for the project owner
-    // Find the project owner recipient (the one with the old key) and update it
+    // Step 6: Update config with new public key
     let owner_name = cfg
         .recipients
         .iter()
@@ -140,16 +106,9 @@ pub fn execute() -> Result<()> {
         cfg.recipients.insert(name, new_public_key.clone());
     }
 
-    // Save updated config
     cfg.save()?;
 
-    output::timed(
-        &format!(
-            "rotated key, re-encrypted {} secrets",
-            output::count(secret_count)
-        ),
-        start.elapsed(),
-    );
+    output::success(&format!("rotated ({} secrets re-encrypted)", secret_count));
 
     Ok(())
 }
