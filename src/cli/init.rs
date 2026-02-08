@@ -6,6 +6,7 @@
 use tracing::info;
 
 use crate::cli::output;
+use crate::core::domain::Identity;
 use crate::core::vault::Vault;
 use crate::error::Result;
 
@@ -21,7 +22,16 @@ pub fn execute(
         crate::cli::banner::print_banner();
     }
 
-    let name = name.unwrap_or_else(whoami::username);
+    // Try to use global identity if it exists and no name was provided
+    let name = if let Some(n) = name {
+        n
+    } else if Identity::has_global()? {
+        // Global identity exists - derive name from the config or use username
+        output::hint("using global identity from ~/.burrow/identity");
+        whoami::username()
+    } else {
+        whoami::username()
+    };
 
     info!("Initializing for user: {}", name);
 

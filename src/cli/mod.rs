@@ -1,13 +1,19 @@
 //! Command-line interface.
 
+pub mod admit;
 pub mod banner;
 pub mod completions;
+pub mod dot;
 pub mod init;
+pub mod knock;
 pub mod output;
+pub mod pending;
 pub mod run;
 pub mod secrets;
+pub mod setup;
 pub mod shell;
 pub mod team;
+pub mod whoami;
 
 // Subcommand groups
 pub mod check;
@@ -34,6 +40,16 @@ pub struct Cli {
 /// Top-level commands.
 #[derive(Subcommand)]
 pub enum Command {
+    /// Generate global identity at ~/.burrow/identity
+    Setup {
+        /// Overwrite existing identity
+        #[arg(short, long)]
+        force: bool,
+    },
+
+    /// Print your public key
+    Whoami,
+
     /// Initialize burrow in the current directory
     Init {
         /// Your name (used as recipient identifier)
@@ -51,6 +67,12 @@ pub enum Command {
         /// GCP KMS resource name (required for --cipher gcp-kms)
         #[arg(long, value_name = "RESOURCE")]
         gcp_key: Option<String>,
+    },
+
+    /// Add a secret interactively with hidden input
+    Add {
+        /// Secret key (e.g., DATABASE_URL)
+        key: String,
     },
 
     /// Set a secret value
@@ -82,6 +104,25 @@ pub enum Command {
         #[arg(long)]
         json: bool,
     },
+
+    /// Request access to a vault
+    Knock {
+        /// Your name (optional, will prompt if not provided)
+        name: Option<String>,
+    },
+
+    /// List pending access requests
+    Pending,
+
+    /// Approve an access request
+    Admit {
+        /// Name of the person to admit
+        name: String,
+    },
+
+    /// Auto-detect project and run with secrets
+    #[command(name = ".")]
+    Dot,
 
     /// Run a command with secrets injected as env vars
     Run {
@@ -187,6 +228,8 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
     use Command::*;
 
     match command {
+        Setup { force } => setup::execute(force),
+        Whoami => whoami::execute(),
         Init {
             name,
             no_banner,
@@ -194,10 +237,15 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
             kms_key,
             gcp_key,
         } => init::execute(name, no_banner, cipher, kms_key, gcp_key),
+        Add { key } => secrets::add(&key),
         Set { key, value, force } => secrets::set(&key, &value, force),
         Get { key } => secrets::get(&key),
         Rm { key } => secrets::rm(&key),
         List { json } => secrets::list(json),
+        Knock { name } => knock::execute(name),
+        Pending => pending::execute(),
+        Admit { name } => admit::execute(&name),
+        Dot => dot::execute(),
         Run { command } => run::execute(&command),
         Env => shell::execute(),
         Team(action) => match action {

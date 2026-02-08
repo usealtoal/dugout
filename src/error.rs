@@ -159,8 +159,18 @@ pub enum Error {
     #[error("JSON serialization error: {0}")]
     Json(#[from] serde_json::Error),
 
+    #[error("interactive prompt failed: {0}")]
+    Dialog(String),
+
     #[error("{0}")]
     Other(String),
+}
+
+// Manual From impl for dialoguer::Error since it doesn't implement std::error::Error
+impl From<dialoguer::Error> for Error {
+    fn from(err: dialoguer::Error) -> Self {
+        Error::Dialog(format!("{}", err))
+    }
 }
 
 /// Result type alias for all burrow operations

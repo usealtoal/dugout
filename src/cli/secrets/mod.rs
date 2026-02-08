@@ -2,6 +2,7 @@
 //!
 //! Implements set, get, rm, list operations and lifecycle subcommands.
 
+mod add;
 mod diff;
 mod export;
 mod import;
@@ -16,6 +17,7 @@ use crate::core::vault::Vault;
 use crate::error::Result;
 
 // Re-export subcommand functions
+pub use add::execute as add;
 pub use diff::execute as diff;
 pub use export::execute as export;
 pub use import::execute as import;

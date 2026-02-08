@@ -306,6 +306,75 @@ impl Vault {
             .collect()
     }
 
+    /// List pending access requests
+    ///
+    /// Returns a vector of (name, public_key) pairs from `.burrow/requests/` directory.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the directory cannot be read.
+    pub fn pending_requests(&self) -> Result<Vec<(String, String)>> {
+        let requests_dir = std::path::Path::new(".burrow/requests");
+
+        if !requests_dir.exists() {
+            return Ok(Vec::new());
+        }
+
+        let mut requests = Vec::new();
+        for entry in std::fs::read_dir(requests_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.extension().and_then(|s| s.to_str()) == Some("pub") {
+                let name = path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("unknown")
+                    .to_string();
+
+                let pubkey = std::fs::read_to_string(&path)?.trim().to_string();
+
+                requests.push((name, pubkey));
+            }
+        }
+
+        Ok(requests)
+    }
+
+    /// Admit a team member from a pending request
+    ///
+    /// Reads the request file, adds the recipient, deletes the request file,
+    /// and re-encrypts all secrets for the new team.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the request file doesn't exist or operations fail.
+    #[instrument(skip(self))]
+    pub fn admit(&mut self, name: &str) -> Result<()> {
+        info!(name = %name, "admitting team member from request");
+
+        let request_path = std::path::PathBuf::from(format!(".burrow/requests/{}.pub", name));
+
+        if !request_path.exists() {
+            return Err(ConfigError::RecipientNotFound(format!(
+                "no pending request from '{}'",
+                name
+            ))
+            .into());
+        }
+
+        let pubkey = std::fs::read_to_string(&request_path)?.trim().to_string();
+
+        // Add the recipient
+        self.add_recipient(name, &pubkey)?;
+
+        // Delete the request file
+        std::fs::remove_file(&request_path)?;
+
+        debug!(name = %name, "team member admitted, request file deleted");
+        Ok(())
+    }
+
     // --- Lifecycle ---
     /// Import secrets from .env file
     ///

@@ -12,4 +12,5 @@ pub mod vault;
 pub(crate) mod cipher;
 pub(crate) mod config;
 pub(crate) mod constants;
+pub(crate) mod detect;
 pub(crate) mod store;

@@ -123,6 +123,125 @@ impl Identity {
         Ok(Self::base_dir()?.join(project_id))
     }
 
+    /// Global identity directory (`~/.burrow/`)
+    pub fn global_dir() -> Result<PathBuf> {
+        let home = dirs::home_dir().ok_or_else(|| {
+            StoreError::GenerationFailed("unable to determine home directory".to_string())
+        })?;
+        Ok(home.join(".burrow"))
+    }
+
+    /// Global identity file path (`~/.burrow/identity`)
+    pub fn global_path() -> Result<PathBuf> {
+        Ok(Self::global_dir()?.join("identity"))
+    }
+
+    /// Global public key path (`~/.burrow/identity.pub`)
+    pub fn global_pubkey_path() -> Result<PathBuf> {
+        Ok(Self::global_dir()?.join("identity.pub"))
+    }
+
+    /// Check if a global identity exists
+    pub fn has_global() -> Result<bool> {
+        Ok(Self::global_path()?.exists())
+    }
+
+    /// Load the global identity
+    pub fn load_global() -> Result<Self> {
+        let global_dir = Self::global_dir()?;
+        let key_path = Self::global_path()?;
+
+        if !key_path.exists() {
+            return Err(StoreError::NoPrivateKey(global_dir.display().to_string()).into());
+        }
+
+        // Verify permissions on Unix
+        #[cfg(unix)]
+        {
+            if Self::validate_file_permissions(&key_path, 0o600).is_err() {
+                let metadata = fs::metadata(&key_path).ok();
+                let mode = metadata
+                    .map(|m| {
+                        use std::os::unix::fs::PermissionsExt;
+                        format!("{:o}", m.permissions().mode() & 0o777)
+                    })
+                    .unwrap_or_else(|| "unknown".to_string());
+
+                warn!(
+                    path = %key_path.display(),
+                    mode = %mode,
+                    "insecure key file permissions"
+                );
+            }
+        }
+
+        let contents = fs::read_to_string(&key_path).map_err(StoreError::ReadFailed)?;
+
+        let inner: x25519::Identity = contents
+            .trim()
+            .parse()
+            .map_err(|e: &str| StoreError::InvalidFormat(e.to_string()))?;
+
+        debug!("global identity loaded");
+
+        Ok(Self {
+            inner,
+            path: key_path,
+        })
+    }
+
+    /// Generate and save a global identity
+    pub fn generate_global() -> Result<Self> {
+        let global_dir = Self::global_dir()?;
+        debug!(path = %global_dir.display(), "generating global identity");
+
+        let inner = x25519::Identity::generate();
+
+        fs::create_dir_all(&global_dir).map_err(StoreError::WriteFailed)?;
+
+        let key_path = Self::global_path()?;
+        let pubkey_path = Self::global_pubkey_path()?;
+
+        // Write private key
+        use age::secrecy::ExposeSecret;
+        let secret_str = inner.to_string();
+        fs::write(&key_path, format!("{}\n", secret_str.expose_secret()))
+            .map_err(StoreError::WriteFailed)?;
+
+        // Write public key
+        let pubkey = inner.to_public().to_string();
+        fs::write(&pubkey_path, format!("{}\n", pubkey)).map_err(StoreError::WriteFailed)?;
+
+        // Restrict permissions on key files (Unix only)
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&key_path, fs::Permissions::from_mode(0o600))
+                .map_err(StoreError::WriteFailed)?;
+            fs::set_permissions(&pubkey_path, fs::Permissions::from_mode(0o644))
+                .map_err(StoreError::WriteFailed)?;
+        }
+
+        debug!(path = %key_path.display(), "global identity saved");
+
+        Ok(Self {
+            inner,
+            path: key_path,
+        })
+    }
+
+    /// Load the global public key without loading the full identity
+    pub fn load_global_pubkey() -> Result<PublicKey> {
+        let pubkey_path = Self::global_pubkey_path()?;
+
+        if !pubkey_path.exists() {
+            return Err(StoreError::NoPrivateKey("~/.burrow/identity".to_string()).into());
+        }
+
+        let contents = fs::read_to_string(&pubkey_path).map_err(StoreError::ReadFailed)?;
+        Ok(contents.trim().to_string())
+    }
+
     /// Validate file permissions (Unix only)
     #[cfg(unix)]
     fn validate_file_permissions(path: &Path, expected_mode: u32) -> Result<()> {
