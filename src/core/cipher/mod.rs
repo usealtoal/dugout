@@ -18,7 +18,6 @@
 //! 4. Re-export from this module
 
 use crate::error::Result;
-use ::age::x25519;
 
 mod age;
 mod backend;
@@ -71,31 +70,5 @@ pub trait Cipher {
     fn name(&self) -> &'static str;
 }
 
-// Re-export commonly used age types for convenience (used by internal modules)
-#[allow(unused_imports)]
-pub use ::age::x25519::{Identity, Recipient};
-
-// Convenience functions using the default age backend
-/// Encrypt plaintext for multiple age recipients
-///
-/// Convenience wrapper around `Age::encrypt`.
-///
-/// # Errors
-///
-/// Returns `CipherError` if encryption fails.
-#[allow(dead_code)]
-pub fn encrypt(plaintext: &str, recipients: &[x25519::Recipient]) -> Result<String> {
-    Age.encrypt(plaintext, recipients)
-}
-
-/// Decrypt an age-encrypted string using a private identity
-///
-/// Convenience wrapper around `Age::decrypt`.
-///
-/// # Errors
-///
-/// Returns `CipherError` if decryption fails or the key doesn't match.
-#[allow(dead_code)]
-pub fn decrypt(encrypted: &str, identity: &x25519::Identity) -> Result<String> {
-    Age.decrypt(encrypted, identity)
-}
+// Direct encrypt/decrypt helpers removed — use CipherBackend for all operations.
+// Age types (Identity, Recipient) accessed directly via age::x25519 where needed.

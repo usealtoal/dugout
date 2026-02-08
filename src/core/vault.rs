@@ -44,36 +44,19 @@ impl Vault {
         let config = Config::load()?;
         let project_id = config.project_id();
 
-        // Prefer project identity, but gracefully fall back to global identity
-        // when project keys are stale or no longer recipients.
-        let project_identity = store::load_identity(&project_id);
-        let identity = match project_identity {
-            Ok(identity) if identity_has_access(&config, &identity) => identity,
-            Ok(_) => {
-                if Identity::has_global()? {
-                    let global = Identity::load_global()?;
-                    if identity_has_access(&config, &global) {
-                        global
-                    } else {
-                        return Err(ConfigError::AccessDenied.into());
-                    }
-                } else {
-                    return Err(ConfigError::AccessDenied.into());
-                }
-            }
-            Err(project_err) => {
-                if Identity::has_global()? {
-                    let global = Identity::load_global()?;
-                    if identity_has_access(&config, &global) {
-                        global
-                    } else {
-                        return Err(ConfigError::AccessDenied.into());
-                    }
-                } else {
-                    return Err(project_err);
-                }
-            }
-        };
+        // Prefer project identity, fall back to global when project key is
+        // missing or no longer a recipient.
+        let identity = store::load_identity(&project_id)
+            .ok()
+            .filter(|id| identity_has_access(&config, id))
+            .or_else(|| {
+                Identity::has_global()
+                    .ok()
+                    .filter(|has| *has)
+                    .and_then(|_| Identity::load_global().ok())
+                    .filter(|id| identity_has_access(&config, id))
+            })
+            .ok_or(ConfigError::AccessDenied)?;
 
         let backend = cipher::CipherBackend::from_config(&config)?;
 
