@@ -78,3 +78,14 @@ pub mod bench {
     pub use crate::core::cipher::{Age, Cipher};
     pub use crate::core::config::Config;
 }
+
+/// Test-only exports for KMS integration tests.
+#[cfg(any(feature = "test-aws", feature = "test-gcp"))]
+#[doc(hidden)]
+pub mod test {
+    #[cfg(feature = "test-aws")]
+    pub use crate::core::cipher::aws;
+    #[cfg(feature = "test-gcp")]
+    pub use crate::core::cipher::gcp;
+    pub use crate::core::cipher::Cipher;
+}
