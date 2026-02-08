@@ -51,11 +51,14 @@ impl CipherBackend {
             "aws-kms" => {
                 #[cfg(feature = "aws")]
                 {
-                    let key_id = config.burrow.kms_key_id.clone().ok_or_else(|| {
-                        ConfigError::MissingField {
-                            field: "kms_key_id",
-                        }
-                    })?;
+                    let key_id =
+                        config
+                            .burrow
+                            .kms_key_id
+                            .clone()
+                            .ok_or(ConfigError::MissingField {
+                                field: "kms_key_id",
+                            })?;
                     Ok(Self::AwsKms { key_id })
                 }
                 #[cfg(not(feature = "aws"))]
@@ -69,11 +72,14 @@ impl CipherBackend {
             "gcp-kms" => {
                 #[cfg(feature = "gcp")]
                 {
-                    let resource = config.burrow.gcp_resource.clone().ok_or_else(|| {
-                        ConfigError::MissingField {
-                            field: "gcp_resource",
-                        }
-                    })?;
+                    let resource =
+                        config
+                            .burrow
+                            .gcp_resource
+                            .clone()
+                            .ok_or(ConfigError::MissingField {
+                                field: "gcp_resource",
+                            })?;
                     Ok(Self::GcpKms { resource })
                 }
                 #[cfg(not(feature = "gcp"))]
