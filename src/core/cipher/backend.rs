@@ -8,7 +8,7 @@ use crate::core::config::Config;
 use crate::error::{CipherError, Result};
 use tracing::debug;
 
-use super::kms::{Envelope, KmsProvider};
+use super::provider::kms::{Envelope, KmsProvider};
 
 /// Cipher backend for vault operations.
 ///
@@ -96,7 +96,7 @@ impl CipherBackend {
 
             #[cfg(any(test, feature = "test-kms"))]
             Self::Hybrid { .. } => {
-                use super::kms::{KmsBackend, MockKms};
+                use super::provider::kms::{KmsBackend, MockKms};
                 MockKms.encrypt(plaintext)
             }
 
@@ -106,7 +106,7 @@ impl CipherBackend {
                 key,
             } => {
                 use super::Cipher;
-                super::aws::AwsKms::new(key.clone()).encrypt(plaintext, &[])
+                super::provider::aws::AwsKms::new(key.clone()).encrypt(plaintext, &[])
             }
 
             #[cfg(all(not(test), not(feature = "test-kms"), feature = "gcp"))]
@@ -115,7 +115,7 @@ impl CipherBackend {
                 key,
             } => {
                 use super::Cipher;
-                super::gcp::GcpKms::new(key.clone()).encrypt(plaintext, &[])
+                super::provider::gcp::GcpKms::new(key.clone()).encrypt(plaintext, &[])
             }
 
             #[cfg(all(not(test), not(feature = "test-kms")))]
@@ -136,7 +136,7 @@ impl CipherBackend {
 
             #[cfg(any(test, feature = "test-kms"))]
             Self::Hybrid { .. } => {
-                use super::kms::{KmsBackend, MockKms};
+                use super::provider::kms::{KmsBackend, MockKms};
                 MockKms.decrypt(ciphertext)
             }
 
@@ -146,7 +146,7 @@ impl CipherBackend {
                 ..
             } => {
                 use super::Cipher;
-                super::aws::AwsKms::new(String::new()).decrypt(ciphertext, &())
+                super::provider::aws::AwsKms::new(String::new()).decrypt(ciphertext, &())
             }
 
             #[cfg(all(not(test), not(feature = "test-kms"), feature = "gcp"))]
@@ -155,7 +155,7 @@ impl CipherBackend {
                 key,
             } => {
                 use super::Cipher;
-                super::gcp::GcpKms::new(key.clone()).decrypt(ciphertext, &())
+                super::provider::gcp::GcpKms::new(key.clone()).decrypt(ciphertext, &())
             }
 
             #[cfg(all(not(test), not(feature = "test-kms")))]

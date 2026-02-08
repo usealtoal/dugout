@@ -19,7 +19,7 @@
 
 use tracing::trace;
 
-use super::Cipher;
+use crate::core::cipher::Cipher;
 use crate::error::{CipherError, Result};
 
 /// AWS KMS cipher backend

@@ -1,27 +1,25 @@
 //! Cryptographic operations.
 //!
-//! Two backends:
+//! Three backends:
 //! - **age** (default): x25519 public-key encryption
 //! - **hybrid**: age + cloud KMS (AWS or GCP)
+//! - **gpg**: GPG encryption via CLI (feature-gated)
 //!
-//! KMS backends are feature-gated: `--features aws` or `--features gcp`.
+//! Cloud KMS providers live in `provider/`.
 
 use crate::error::Result;
 
 mod age;
 mod backend;
-pub mod kms;
+pub mod provider;
 
-#[cfg(feature = "aws")]
-pub mod aws;
-
-#[cfg(feature = "gcp")]
-pub mod gcp;
+#[cfg(feature = "gpg")]
+pub mod gpg;
 
 pub use age::{parse_recipient, Age};
 pub use backend::CipherBackend;
 #[allow(unused_imports)]
-pub use kms::KmsProvider;
+pub use provider::{Envelope, KmsProvider};
 
 /// Cryptographic backend trait.
 pub trait Cipher {
