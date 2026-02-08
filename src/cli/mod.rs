@@ -56,6 +56,12 @@ pub enum Command {
         /// Overwrite existing identity
         #[arg(short, long)]
         force: bool,
+        /// Identity name (non-interactive)
+        #[arg(short, long)]
+        name: Option<String>,
+        /// Write private key to path (use - for stdout)
+        #[arg(short, long, value_name = "PATH")]
+        output: Option<String>,
     },
 
     /// Print your public key
@@ -239,7 +245,11 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
     use Command::*;
 
     match command {
-        Setup { force } => setup::execute(force),
+        Setup {
+            force,
+            name,
+            output,
+        } => setup::execute(force, name, output),
         Whoami => whoami::execute(),
         Init {
             name,

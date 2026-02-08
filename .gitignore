@@ -4,3 +4,4 @@
 !.env.example
 .dugout.toml
 .dugout/
+docs/plans/

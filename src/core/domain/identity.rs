@@ -214,6 +214,52 @@ impl Identity {
         })
     }
 
+    /// Load identity from environment variables.
+    ///
+    /// Checks in order:
+    /// 1. `DUGOUT_IDENTITY` — raw AGE-SECRET-KEY inline
+    /// 2. `DUGOUT_IDENTITY_FILE` — path to a file containing the key
+    ///
+    /// Returns `None` if neither is set or the key is invalid.
+    pub fn from_env() -> Option<Self> {
+        // Inline key
+        if let Ok(key) = std::env::var("DUGOUT_IDENTITY") {
+            debug!("found DUGOUT_IDENTITY env var");
+            if let Ok(inner) = key.trim().parse::<x25519::Identity>() {
+                return Some(Self {
+                    inner,
+                    path: PathBuf::from("<env:DUGOUT_IDENTITY>"),
+                });
+            }
+            debug!("DUGOUT_IDENTITY value is not a valid age key");
+        }
+
+        // Key file path
+        if let Ok(path_str) = std::env::var("DUGOUT_IDENTITY_FILE") {
+            debug!(path = %path_str, "found DUGOUT_IDENTITY_FILE env var");
+            let path = PathBuf::from(&path_str);
+            if !path.exists() {
+                debug!("DUGOUT_IDENTITY_FILE path does not exist");
+                return None;
+            }
+
+            #[cfg(unix)]
+            if Self::validate_file_permissions(&path, 0o600).is_err() {
+                debug!("DUGOUT_IDENTITY_FILE has insecure permissions");
+                return None;
+            }
+
+            if let Ok(contents) = fs::read_to_string(&path) {
+                if let Ok(inner) = contents.trim().parse::<x25519::Identity>() {
+                    return Some(Self { inner, path });
+                }
+            }
+            debug!("DUGOUT_IDENTITY_FILE contents are not a valid age key");
+        }
+
+        None
+    }
+
     /// Load the global public key without loading the full identity
     pub fn load_global_pubkey() -> Result<PublicKey> {
         let pubkey_path = Self::global_pubkey_path()?;
