@@ -1,8 +1,9 @@
 //! Cipher backend selection and dispatch.
 //!
-//! Two modes:
+//! Three backends:
 //! - **Age** (default): secrets encrypted with age only
 //! - **Hybrid**: secrets encrypted with age + cloud KMS
+//! - **Gpg**: secrets encrypted with GPG (feature-gated)
 
 use crate::core::config::Config;
 use crate::error::{CipherError, Result};
