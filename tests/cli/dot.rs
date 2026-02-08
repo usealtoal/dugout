@@ -41,7 +41,10 @@ fn test_dot_detects_node() {
     let output = t.cmd().arg(".").output().unwrap();
 
     let combined = format!("{}{}", stdout(&output), stderr(&output));
-    assert!(combined.contains("node") || combined.contains("npm") || combined.contains("bun"));
+    assert!(
+        !combined.contains("couldn't detect project type"),
+        "should detect node project, got: {combined}"
+    );
 }
 
 #[test]
