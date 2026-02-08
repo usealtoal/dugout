@@ -100,7 +100,6 @@ fn test_aws_kms_empty_value() {
     // AWS KMS requires at least 1 byte — empty string should error
     let result = cipher.encrypt("", &[]);
     assert!(result.is_err(), "KMS should reject empty plaintext");
-    assert!(decrypted.is_empty());
 }
 
 #[test]
