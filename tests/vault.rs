@@ -159,8 +159,12 @@ fn test_vault_decrypt_all() {
     assert_eq!(decrypted.len(), 2);
 
     // Check that all values are present
-    let has_dec1 = decrypted.iter().any(|(k, v)| k == "DEC1" && v.as_str() == "value1");
-    let has_dec2 = decrypted.iter().any(|(k, v)| k == "DEC2" && v.as_str() == "value2");
+    let has_dec1 = decrypted
+        .iter()
+        .any(|(k, v)| k == "DEC1" && v.as_str() == "value1");
+    let has_dec2 = decrypted
+        .iter()
+        .any(|(k, v)| k == "DEC2" && v.as_str() == "value2");
     assert!(has_dec1);
     assert!(has_dec2);
 }
