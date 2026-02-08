@@ -18,6 +18,12 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Set version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "0,/^version = .*/s//version = \"$VERSION\"/" Cargo.toml
+          echo "Publishing version $VERSION"
+
       - name: Publish
         run: cargo publish || echo "Already published, skipping"
         env:
