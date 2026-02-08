@@ -1,111 +1,93 @@
 use age::x25519;
-use burrow::core::cipher::{Age, Cipher};
-use burrow::core::config::Config;
+use burrow::bench::{Age, Cipher};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use tempfile::TempDir;
+use std::time::Duration;
 
 /// Generate a payload of given size.
 fn generate_payload(size: usize) -> String {
     "x".repeat(size)
 }
 
-/// Generate age recipients.
-fn generate_recipients(count: usize) -> Vec<x25519::Recipient> {
-    (0..count)
-        .map(|_| {
-            let identity = x25519::Identity::generate();
-            identity.to_public()
-        })
-        .collect()
-}
-
 /// Benchmark encrypt/decrypt roundtrip with varying payload sizes.
-fn bench_encrypt_decrypt_roundtrip(c: &mut Criterion) {
-    let mut group = c.benchmark_group("encrypt_decrypt_roundtrip");
-    let cipher = Age;
+fn bench_encrypt_decrypt(c: &mut Criterion) {
+    let mut group = c.benchmark_group("encrypt_decrypt");
+    group.sample_size(50);
+    group.warm_up_time(Duration::from_secs(1));
+    group.measurement_time(Duration::from_secs(3));
 
-    let sizes = [32, 256, 1024, 4096];
-    let recipient_counts = [1, 3];
+    let cipher = Age;
+    let sizes = [32, 256, 1024, 4096, 16384];
 
     for size in sizes {
-        for &recipient_count in &recipient_counts {
-            let payload = generate_payload(size);
-            let recipients = generate_recipients(recipient_count);
-            let identity = x25519::Identity::generate();
-            let recipients_with_identity = {
-                let mut r = recipients.clone();
-                r.push(identity.to_public());
-                r
-            };
+        let payload = generate_payload(size);
+        let identity = x25519::Identity::generate();
+        let recipients = vec![identity.to_public()];
 
-            group.throughput(Throughput::Bytes(size as u64));
+        group.throughput(Throughput::Bytes(size as u64));
 
-            group.bench_with_input(
-                BenchmarkId::new(
-                    format!("{}_recipients", recipient_count),
-                    format!("{}B", size),
-                ),
-                &payload,
-                |b, payload| {
-                    b.iter(|| {
-                        let encrypted = cipher
-                            .encrypt(black_box(payload), black_box(&recipients_with_identity))
-                            .unwrap();
-                        let decrypted = cipher
-                            .decrypt(black_box(&encrypted), black_box(&identity))
-                            .unwrap();
-                        black_box(decrypted);
-                    });
-                },
-            );
-        }
+        group.bench_with_input(
+            BenchmarkId::new("roundtrip", format!("{}B", size)),
+            &payload,
+            |b, payload| {
+                b.iter(|| {
+                    let encrypted = cipher
+                        .encrypt(black_box(payload), black_box(&recipients))
+                        .unwrap();
+                    let decrypted = cipher
+                        .decrypt(black_box(&encrypted), black_box(&identity))
+                        .unwrap();
+                    black_box(decrypted);
+                });
+            },
+        );
     }
 
     group.finish();
 }
 
 /// Benchmark encryption only.
-fn bench_encrypt_only(c: &mut Criterion) {
-    let mut group = c.benchmark_group("encrypt_only");
-    let cipher = Age;
+fn bench_encrypt(c: &mut Criterion) {
+    let mut group = c.benchmark_group("encrypt");
+    group.sample_size(50);
+    group.warm_up_time(Duration::from_secs(1));
+    group.measurement_time(Duration::from_secs(3));
 
-    let sizes = [32, 256, 1024, 4096];
-    let recipient_counts = [1, 3];
+    let cipher = Age;
+    let sizes = [32, 256, 1024, 4096, 16384];
 
     for size in sizes {
-        for &recipient_count in &recipient_counts {
-            let payload = generate_payload(size);
-            let recipients = generate_recipients(recipient_count);
+        let payload = generate_payload(size);
+        let identity = x25519::Identity::generate();
+        let recipients = vec![identity.to_public()];
 
-            group.throughput(Throughput::Bytes(size as u64));
+        group.throughput(Throughput::Bytes(size as u64));
 
-            group.bench_with_input(
-                BenchmarkId::new(
-                    format!("{}_recipients", recipient_count),
-                    format!("{}B", size),
-                ),
-                &payload,
-                |b, payload| {
-                    b.iter(|| {
-                        let encrypted = cipher
-                            .encrypt(black_box(payload), black_box(&recipients))
-                            .unwrap();
-                        black_box(encrypted);
-                    });
-                },
-            );
-        }
+        group.bench_with_input(
+            BenchmarkId::new("age", format!("{}B", size)),
+            &payload,
+            |b, payload| {
+                b.iter(|| {
+                    let encrypted = cipher
+                        .encrypt(black_box(payload), black_box(&recipients))
+                        .unwrap();
+                    black_box(encrypted);
+                });
+            },
+        );
     }
 
     group.finish();
 }
 
 /// Benchmark decryption only with pre-encrypted data.
-fn bench_decrypt_only(c: &mut Criterion) {
-    let mut group = c.benchmark_group("decrypt_only");
-    let cipher = Age;
+fn bench_decrypt(c: &mut Criterion) {
+    let mut group = c.benchmark_group("decrypt");
+    group.sample_size(50);
+    group.warm_up_time(Duration::from_secs(1));
+    group.measurement_time(Duration::from_secs(3));
 
-    let sizes = [32, 256, 1024, 4096];
+    let cipher = Age;
+    let sizes = [32, 256, 1024, 4096, 16384];
     let identity = x25519::Identity::generate();
     let recipients = vec![identity.to_public()];
 
@@ -116,7 +98,7 @@ fn bench_decrypt_only(c: &mut Criterion) {
         group.throughput(Throughput::Bytes(size as u64));
 
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}B", size)),
+            BenchmarkId::new("age", format!("{}B", size)),
             &encrypted,
             |b, encrypted| {
                 b.iter(|| {
@@ -132,89 +114,32 @@ fn bench_decrypt_only(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark config save/load operations.
-fn bench_config_save_load(c: &mut Criterion) {
-    let mut group = c.benchmark_group("config_save_load");
+/// Benchmark multi-recipient encryption scaling.
+fn bench_recipient_scaling(c: &mut Criterion) {
+    let mut group = c.benchmark_group("recipient_scaling");
+    group.sample_size(30);
+    group.warm_up_time(Duration::from_secs(1));
+    group.measurement_time(Duration::from_secs(3));
 
-    let secret_counts = [5, 20, 50];
+    let cipher = Age;
+    let payload = generate_payload(256);
+    let recipient_counts = [1, 3, 5, 10];
 
-    for &count in &secret_counts {
+    for count in recipient_counts {
+        let recipients: Vec<_> = (0..count)
+            .map(|_| x25519::Identity::generate().to_public())
+            .collect();
+
         group.bench_with_input(
-            BenchmarkId::new("save_load", format!("{}_secrets", count)),
-            &count,
-            |b, &count| {
-                b.iter_batched(
-                    || {
-                        let temp_dir = TempDir::new().unwrap();
-                        std::env::set_current_dir(temp_dir.path()).unwrap();
-
-                        let mut config = Config::new();
-                        config.recipients.insert(
-                            "test".to_string(),
-                            "age1test1234567890abcdefghijklmnopqrstuvwxyz1234567890abc".to_string(),
-                        );
-
-                        for i in 0..count {
-                            config.secrets.insert(
-                                format!("SECRET_KEY_{}", i),
-                                format!("age-encrypted-value-{}", i),
-                            );
-                        }
-
-                        (temp_dir, config)
-                    },
-                    |(temp_dir, config): (TempDir, Config)| {
-                        config.save().unwrap();
-                        let loaded = Config::load().unwrap();
-                        black_box(loaded);
-                        drop(temp_dir);
-                    },
-                    criterion::BatchSize::SmallInput,
-                );
-            },
-        );
-    }
-
-    group.finish();
-}
-
-/// Benchmark config save only.
-fn bench_config_save(c: &mut Criterion) {
-    let mut group = c.benchmark_group("config_save");
-
-    let secret_counts = [5, 20, 50];
-
-    for &count in &secret_counts {
-        group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}_secrets", count)),
-            &count,
-            |b, &count| {
-                b.iter_batched(
-                    || {
-                        let temp_dir = TempDir::new().unwrap();
-                        std::env::set_current_dir(temp_dir.path()).unwrap();
-
-                        let mut config = Config::new();
-                        config.recipients.insert(
-                            "test".to_string(),
-                            "age1test1234567890abcdefghijklmnopqrstuvwxyz1234567890abc".to_string(),
-                        );
-
-                        for i in 0..count {
-                            config.secrets.insert(
-                                format!("SECRET_KEY_{}", i),
-                                format!("age-encrypted-value-{}", i),
-                            );
-                        }
-
-                        (temp_dir, config)
-                    },
-                    |(temp_dir, config): (TempDir, Config)| {
-                        config.save().unwrap();
-                        drop(temp_dir);
-                    },
-                    criterion::BatchSize::SmallInput,
-                );
+            BenchmarkId::new("encrypt_256B", format!("{}_recipients", count)),
+            &payload,
+            |b, payload| {
+                b.iter(|| {
+                    let encrypted = cipher
+                        .encrypt(black_box(payload), black_box(&recipients))
+                        .unwrap();
+                    black_box(encrypted);
+                });
             },
         );
     }
@@ -224,10 +149,9 @@ fn bench_config_save(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    bench_encrypt_decrypt_roundtrip,
-    bench_encrypt_only,
-    bench_decrypt_only,
-    bench_config_save_load,
-    bench_config_save
+    bench_encrypt_decrypt,
+    bench_encrypt,
+    bench_decrypt,
+    bench_recipient_scaling,
 );
 criterion_main!(benches);

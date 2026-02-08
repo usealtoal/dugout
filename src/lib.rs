@@ -71,3 +71,10 @@ pub mod error;
 pub use core::domain::*;
 pub use core::types::*;
 pub use core::vault::Vault;
+
+/// Benchmark support: re-export cipher and config internals.
+#[doc(hidden)]
+pub mod bench {
+    pub use crate::core::cipher::{Age, Cipher};
+    pub use crate::core::config::Config;
+}
