@@ -3,6 +3,8 @@
 //! Represents a parsed .env file with typed access.
 
 use crate::error::Result;
+#[cfg(unix)]
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 /// A parsed .env file
@@ -36,11 +38,7 @@ impl Env {
 
             if let Some((key, value)) = line.split_once('=') {
                 let key = key.trim().to_string();
-                let value = value
-                    .trim()
-                    .trim_matches('"')
-                    .trim_matches('\'')
-                    .to_string();
+                let value = parse_env_value(value.trim());
                 entries.push((key, value));
             }
         }
@@ -69,7 +67,29 @@ impl Env {
     /// Returns error if the file cannot be written.
     pub fn save(&self) -> Result<()> {
         let content = self.to_env_string();
-        std::fs::write(&self.path, content)?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+            let mut file = std::fs::OpenOptions::new()
+                .create(true)
+                .truncate(true)
+                .write(true)
+                .mode(0o600)
+                .open(&self.path)?;
+            file.write_all(content.as_bytes())?;
+            file.flush()?;
+
+            // Ensure secure permissions even when overwriting an existing file.
+            std::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o600))?;
+        }
+
+        #[cfg(not(unix))]
+        {
+            std::fs::write(&self.path, content)?;
+        }
+
         Ok(())
     }
 
@@ -108,9 +128,9 @@ impl Env {
         let mut output = String::new();
 
         for (key, value) in &self.entries {
-            // Quote values that contain spaces or special chars
-            if value.contains(' ') || value.contains('#') || value.contains('=') {
-                output.push_str(&format!("{}=\"{}\"\n", key, value));
+            // Quote and escape values that contain whitespace or .env-special chars.
+            if needs_quotes(value) {
+                output.push_str(&format!("{}=\"{}\"\n", key, escape_env_value(value)));
             } else {
                 output.push_str(&format!("{}={}\n", key, value));
             }
@@ -118,6 +138,70 @@ impl Env {
 
         output
     }
+}
+
+fn parse_env_value(raw: &str) -> String {
+    if raw.len() >= 2 && raw.starts_with('"') && raw.ends_with('"') {
+        return unescape_double_quoted(&raw[1..raw.len() - 1]);
+    }
+
+    if raw.len() >= 2 && raw.starts_with('\'') && raw.ends_with('\'') {
+        return raw[1..raw.len() - 1].to_string();
+    }
+
+    raw.to_string()
+}
+
+fn unescape_double_quoted(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut chars = value.chars();
+
+    while let Some(ch) = chars.next() {
+        if ch != '\\' {
+            out.push(ch);
+            continue;
+        }
+
+        match chars.next() {
+            Some('n') => out.push('\n'),
+            Some('r') => out.push('\r'),
+            Some('"') => out.push('"'),
+            Some('\\') => out.push('\\'),
+            Some(other) => {
+                out.push('\\');
+                out.push(other);
+            }
+            None => out.push('\\'),
+        }
+    }
+
+    out
+}
+
+fn needs_quotes(value: &str) -> bool {
+    value.is_empty()
+        || value.chars().any(|ch| ch.is_whitespace())
+        || value.contains('#')
+        || value.contains('=')
+        || value.contains('"')
+        || value.contains('\'')
+        || value.contains('\\')
+}
+
+fn escape_env_value(value: &str) -> String {
+    let mut escaped = String::with_capacity(value.len());
+
+    for ch in value.chars() {
+        match ch {
+            '\\' => escaped.push_str("\\\\"),
+            '"' => escaped.push_str("\\\""),
+            '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            _ => escaped.push(ch),
+        }
+    }
+
+    escaped
 }
 
 impl std::fmt::Display for Env {
@@ -223,6 +307,19 @@ mod tests {
     }
 
     #[test]
+    fn test_env_unescapes_double_quoted_values() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join(".env");
+
+        let content = "ESCAPED=\"line1\\nline2\\\"quoted\\\"\\\\tail\"\n";
+        fs::write(&path, content).unwrap();
+
+        let env = Env::load(&path).unwrap();
+
+        assert_eq!(env.get("ESCAPED"), Some("line1\nline2\"quoted\"\\tail"));
+    }
+
+    #[test]
     fn test_env_save_roundtrip() {
         let tmp = TempDir::new().unwrap();
         let path = tmp.path().join(".env");
@@ -239,6 +336,33 @@ mod tests {
         assert_eq!(loaded.len(), 2);
         assert_eq!(loaded.get("KEY1"), Some("value1"));
         assert_eq!(loaded.get("KEY2"), Some("value with space"));
+    }
+
+    #[test]
+    fn test_env_display_escapes_special_chars() {
+        let pairs = vec![(
+            "SPECIAL".to_string(),
+            "line1\nline2 \"quoted\" \\ tail".to_string(),
+        )];
+        let env = Env::from_pairs(pairs, PathBuf::from(".env"));
+
+        let output = format!("{}", env);
+        assert!(output.contains("SPECIAL=\"line1\\nline2 \\\"quoted\\\" \\\\ tail\""));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_env_save_sets_secure_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join(".env");
+
+        let env = Env::from_pairs(vec![("KEY".to_string(), "value".to_string())], path.clone());
+        env.save().unwrap();
+
+        let mode = fs::metadata(path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
     }
 
     #[test]

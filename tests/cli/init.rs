@@ -78,3 +78,16 @@ fn test_init_shows_correct_output() {
     // Should show some indication of success
     assert!(out.contains("initialized") || out.contains("created"));
 }
+
+#[test]
+fn test_init_rejects_invalid_member_name() {
+    let t = Test::new();
+
+    let output = t
+        .cmd()
+        .args(["init", "--name", "../alice"])
+        .output()
+        .unwrap();
+    assert_failure(&output);
+    assert_stderr_contains(&output, "invalid member name");
+}

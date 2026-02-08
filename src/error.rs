@@ -19,6 +19,9 @@ pub enum ConfigError {
     #[error("recipient not found: {0}")]
     RecipientNotFound(String),
 
+    #[error("identity does not have access to this vault")]
+    AccessDenied,
+
     #[error("missing required field: {field}")]
     MissingField { field: &'static str },
 
@@ -126,6 +129,9 @@ pub enum ValidationError {
 
     #[error("empty value is not allowed for key '{0}'")]
     EmptyValue(String),
+
+    #[error("invalid member name '{name}': {reason}")]
+    InvalidMemberName { name: String, reason: String },
 
     #[error("invalid file permissions on '{path}': expected {expected}, got {actual}")]
     InvalidPermissions {

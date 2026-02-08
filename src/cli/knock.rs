@@ -6,6 +6,7 @@ use std::io::{self, IsTerminal};
 use crate::cli::output;
 use crate::core::config::Config;
 use crate::core::domain::Identity;
+use crate::core::vault::validate_member_name;
 use crate::error::Result;
 
 /// Request access to a vault.
@@ -41,6 +42,8 @@ pub fn execute(name: Option<String>) -> Result<()> {
         output::error("name required in non-interactive mode");
         return Err(crate::error::ValidationError::EmptyKey.into());
     };
+
+    validate_member_name(&name)?;
 
     let pubkey = Identity::load_global_pubkey()?;
 

@@ -6,14 +6,18 @@ Dugout is designed to protect secrets in the following scenarios:
 
 ✅ **Protection Against:**
 - Accidental exposure of secrets in version control
-- Plaintext secrets stored on disk
-- Unauthorized access by users who lack the private key
+- Public repository read access to encrypted `.dugout.toml` values
+- Plaintext secrets stored in the vault file
+- Unauthorized access by users who lack a valid team identity key
 - Memory dumps revealing secrets after use (via zeroization)
 - Shoulder-surfing attacks (secrets not visible in command history)
 
 ❌ **NOT Protected Against:**
-- Compromised private keys (`~/.config/dugout/identity`)
+- Compromised developer endpoints or CI runners where secrets are decrypted
+- Compromised private keys (`~/.dugout/identity`, `~/.dugout/keys/<project>/identity.key`)
 - Malicious code running with your user privileges
+- Malicious insiders who already have valid decrypt keys
+- Cloud IAM/KMS misconfiguration (for `aws-kms` / `gcp-kms` backends)
 - Physical access to an unlocked machine
 - Keyloggers or memory forensics on a running system
 - Side-channel attacks on encryption implementation
@@ -23,7 +27,11 @@ Dugout is designed to protect secrets in the following scenarios:
 
 ### Algorithm
 
-Dugout uses **age** (Actually Good Encryption) with X25519 key pairs for encrypting secrets.
+Dugout uses modern authenticated encryption, with **age** (Actually Good Encryption) as the default backend.
+
+- **Default backend (`age`):** X25519 recipients + ChaCha20-Poly1305
+- **Optional backends:** `aws-kms`, `gcp-kms`, `gpg` (feature-gated builds)
+- **KMS backends:** plaintext is encrypted by cloud KMS, then wrapped for team recipients before storage
 
 - **Cipher:** ChaCha20-Poly1305 (authenticated encryption)
 - **Key Exchange:** X25519 (elliptic curve Diffie-Hellman)
@@ -33,6 +41,7 @@ Dugout uses **age** (Actually Good Encryption) with X25519 key pairs for encrypt
 ### What's Encrypted
 
 - All secret values stored in `.dugout.toml`
+- Secret values are never stored in plaintext inside the vault file
 - Secrets are encrypted to one or more recipients (team members)
 - Each secret can be decrypted by any team member with a valid private key
 
@@ -54,14 +63,15 @@ If secret names are sensitive, use generic names like `API_KEY_1`, `DATABASE_URL
 
 ### Private Keys
 
-Your private identity key is stored at:
+Your private identity key is stored at one of:
 ```
-~/.config/dugout/identity
+~/.dugout/identity
+~/.dugout/keys/<project>/identity.key
 ```
 
-- **Permissions:** Only readable by your user (0600)
+- **Permissions:** Only readable by your user (0600, enforced on Unix)
 - **Format:** ASCII-armored age private key
-- **Reuse:** Same key can be used across multiple dugout projects
+- **Reuse:** Global identity can be reused across multiple dugout projects
 
 **Security responsibilities:**
 - Keep this file backed up securely (encrypted backup recommended)
@@ -114,7 +124,7 @@ Dugout uses the [`zeroize`](https://crates.io/crates/zeroize) crate to securely 
 
 ### Scenario 2: Private Key Theft
 
-**Attack:** Attacker copies `~/.config/dugout/identity` from your machine.
+**Attack:** Attacker copies `~/.dugout/identity` (or project key files) from your machine.
 
 **Risk:** All secrets encrypted to your public key can be decrypted.
 
@@ -147,6 +157,20 @@ Dugout uses the [`zeroize`](https://crates.io/crates/zeroize) crate to securely 
 - Use `git-secrets` or similar tools to prevent commits
 - Prefer `dugout run` over `dugout unlock` to avoid creating `.env` files
 - Regularly audit repository for sensitive files
+
+## Public Repo Safety
+
+Committing `.dugout.toml` to Git (including public repos) is an intended workflow.
+
+✅ **Reasonably safe if you do all of the following:**
+- Keep identity keys off the repo and out of CI logs/artifacts
+- Never commit plaintext `.env` files
+- Rotate secrets quickly after personnel or key changes
+- Keep endpoint security and cloud IAM/KMS policies tight
+
+❌ **Not enough for high-assurance / motivated-attacker environments by itself:**
+- Dugout is not a full zero-trust brokered secret system
+- Decrypt-capable endpoints remain the highest-risk layer
 
 ## Best Practices
 

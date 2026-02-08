@@ -7,8 +7,6 @@ use std::path::{Path, PathBuf};
 
 use age::x25519;
 use tracing::debug;
-#[cfg(unix)]
-use tracing::warn;
 
 use crate::core::constants;
 use crate::core::types::PublicKey;
@@ -35,21 +33,7 @@ impl Identity {
         // Verify permissions on Unix
         #[cfg(unix)]
         {
-            if Self::validate_file_permissions(&key_path, 0o600).is_err() {
-                let metadata = fs::metadata(&key_path).ok();
-                let mode = metadata
-                    .map(|m| {
-                        use std::os::unix::fs::PermissionsExt;
-                        format!("{:o}", m.permissions().mode() & 0o777)
-                    })
-                    .unwrap_or_else(|| "unknown".to_string());
-
-                warn!(
-                    path = %key_path.display(),
-                    mode = %mode,
-                    "insecure key file permissions"
-                );
-            }
+            Self::validate_file_permissions(&key_path, 0o600)?;
         }
 
         let contents = fs::read_to_string(&key_path).map_err(StoreError::ReadFailed)?;
@@ -172,21 +156,7 @@ impl Identity {
         // Verify permissions on Unix
         #[cfg(unix)]
         {
-            if Self::validate_file_permissions(&key_path, 0o600).is_err() {
-                let metadata = fs::metadata(&key_path).ok();
-                let mode = metadata
-                    .map(|m| {
-                        use std::os::unix::fs::PermissionsExt;
-                        format!("{:o}", m.permissions().mode() & 0o777)
-                    })
-                    .unwrap_or_else(|| "unknown".to_string());
-
-                warn!(
-                    path = %key_path.display(),
-                    mode = %mode,
-                    "insecure key file permissions"
-                );
-            }
+            Self::validate_file_permissions(&key_path, 0o600)?;
         }
 
         let contents = fs::read_to_string(&key_path).map_err(StoreError::ReadFailed)?;

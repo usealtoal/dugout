@@ -129,7 +129,7 @@ fn test_identity_roundtrip() {
 
 #[cfg(unix)]
 #[test]
-fn test_identity_insecure_permissions_warns() {
+fn test_identity_insecure_permissions_fail_closed() {
     use dugout::Vault;
     use std::env;
     use std::os::unix::fs::PermissionsExt;
@@ -166,12 +166,11 @@ fn test_identity_insecure_permissions_warns() {
     perms.set_mode(0o644);
     fs::set_permissions(&key_path, perms).unwrap();
 
-    // Try to use the vault - should work but could warn
-    // dugout is forgiving, we're mainly verifying it doesn't crash
+    // Try to use the vault - insecure permissions should be rejected.
     let result = Vault::open();
     assert!(
-        result.is_ok(),
-        "Vault should still open with insecure permissions"
+        result.is_err(),
+        "Vault should reject insecure key permissions"
     );
 
     let _ = env::set_current_dir(&original_dir);

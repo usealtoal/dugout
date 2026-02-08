@@ -229,6 +229,21 @@ fn test_unlock_creates_env_file() {
     assert!(env_content.contains("TEST_VAR=test_value"));
 }
 
+#[cfg(unix)]
+#[test]
+fn test_unlock_sets_secure_env_permissions() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let t = Test::with_secrets("test-user", &[("TEST_VAR", "test_value")]);
+
+    let output = t.secrets_unlock();
+    assert_success(&output);
+
+    let env_path = t.dir.path().join(".env");
+    let mode = fs::metadata(env_path).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600);
+}
+
 #[test]
 fn test_lock_verifies_encryption() {
     let t = Test::with_secrets("test-user", &[("LOCK_KEY", "lock_value")]);
