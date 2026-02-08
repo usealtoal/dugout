@@ -177,7 +177,7 @@ dugout works in CI/CD and production. Set `DUGOUT_IDENTITY` and go:
 docker run -e DUGOUT_IDENTITY="$KEY" myapp
 ```
 
-See the full [Deployment Guide](docs/deploy.md) for GitLab, Kubernetes, and more.
+See the full [Deployment Guide](DEPLOY.md) for GitLab, Kubernetes, and more.
 
 ## Benchmarks
 
