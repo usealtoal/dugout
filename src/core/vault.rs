@@ -82,15 +82,39 @@ impl Vault {
 
         let project_id = config.project_id();
 
-        let public_key = store::generate_keypair(&project_id)?;
+        // If a global identity exists, use it instead of generating a new one.
+        // This ensures `dugout .` works immediately after `dugout init`.
+        let (public_key, identity) = if Identity::has_global()? {
+            let global_pubkey = Identity::load_global_pubkey()?;
+            let global_identity = Identity::load_global()?;
+            // Copy global key into project key dir so open() can find it
+            let key_dir = Identity::project_dir(&project_id)?;
+            std::fs::create_dir_all(&key_dir)?;
+            let project_key_path = key_dir.join("identity.key");
+            if !project_key_path.exists() {
+                std::fs::copy(Identity::global_path()?, &project_key_path)?;
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    std::fs::set_permissions(
+                        &project_key_path,
+                        std::fs::Permissions::from_mode(0o600),
+                    )?;
+                }
+            }
+            (global_pubkey, global_identity)
+        } else {
+            let pk = store::generate_keypair(&project_id)?;
+            let id = store::load_identity(&project_id)?;
+            (pk, id)
+        };
+
         config
             .recipients
             .insert(name.to_string(), public_key.clone());
         config.save()?;
 
         config::ensure_gitignore()?;
-
-        let identity = store::load_identity(&project_id)?;
         let backend = cipher::CipherBackend::from_config(&config)?;
 
         Ok(Self {
