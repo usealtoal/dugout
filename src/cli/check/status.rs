@@ -12,10 +12,10 @@ pub fn execute() -> Result<()> {
     output::kv("vault", ".dugout.toml");
 
     // Cipher backend
-    let backend_name = match vault.config().cipher() {
-        Some("gpg") => "gpg",
-        _ if vault.config().has_kms() => "hybrid (age + kms)",
-        _ => "age",
+    let backend_name = if vault.config().has_kms() {
+        "hybrid (age + kms)"
+    } else {
+        "age"
     };
     output::kv("cipher", backend_name);
 

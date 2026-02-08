@@ -17,7 +17,7 @@
 - **Git-native** — secrets live in your repo as encrypted values, access control is git commits
 - **No server required** — no SaaS, no cloud dependency, no infrastructure to manage
 - **Team-friendly** — `knock` / `admit` workflow for access requests, all through git
-- **Encrypted at rest** — age encryption by default, optional AWS KMS, GCP KMS, GPG
+- **Encrypted at rest** — age encryption by default, optional AWS KMS, GCP KMS
 - **Zero config** — `dugout init` and start adding secrets
 - **Auto-detect** — `dugout .` detects your stack and runs with secrets injected
 - **Fast** — encrypts in ~100µs, single binary, no runtime dependencies
@@ -151,7 +151,6 @@ No Slack DMs. No shared password vaults. No `.env` files in git history. Access 
 | **age** (default) | — | Local development, small teams |
 | AWS KMS | `--features aws` | AWS infrastructure, compliance requirements |
 | GCP KMS | `--features gcp` | Google Cloud infrastructure |
-| GPG | `--features gpg` | Legacy systems, existing GPG workflows |
 
 ```bash
 # Initialize with hybrid encryption (age + KMS)

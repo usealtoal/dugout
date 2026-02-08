@@ -21,7 +21,7 @@ fn test_identity_generate_creates_file() {
     env::set_current_dir(&temp_dir).unwrap();
 
     // Init vault
-    let _vault = Vault::init("test-user", None, None).unwrap();
+    let _vault = Vault::init("test-user", None).unwrap();
 
     // Verify identity file was created somewhere in ~/.dugout/keys/
     let keys_dir = PathBuf::from(home_dir.path()).join(".dugout").join("keys");
@@ -110,7 +110,7 @@ fn test_identity_roundtrip() {
     env::set_current_dir(&temp_dir).unwrap();
 
     // Generate identity via init
-    let vault = Vault::init("alice", None, None).unwrap();
+    let vault = Vault::init("alice", None).unwrap();
     let public_key_1 = vault.identity().public_key();
 
     // Drop and reload
@@ -143,7 +143,7 @@ fn test_identity_insecure_permissions_fail_closed() {
     env::set_current_dir(&temp_dir).unwrap();
 
     // Init vault
-    let _vault = Vault::init("test-user", None, None).unwrap();
+    let _vault = Vault::init("test-user", None).unwrap();
 
     // Find the identity file
     let keys_dir = PathBuf::from(home_dir.path()).join(".dugout").join("keys");

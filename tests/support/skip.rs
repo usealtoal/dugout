@@ -1,18 +1,3 @@
-/// Skip a test if GPG is not available.
-#[macro_export]
-macro_rules! skip_without_gpg {
-    () => {
-        if std::process::Command::new("gpg")
-            .arg("--version")
-            .output()
-            .is_err()
-        {
-            eprintln!("SKIPPED: gpg not installed");
-            return;
-        }
-    };
-}
-
 /// Skip a test if AWS credentials are not configured.
 #[macro_export]
 macro_rules! skip_without_aws {

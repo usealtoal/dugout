@@ -24,9 +24,7 @@ exclude = [
 default = []
 aws = ["dep:aws-sdk-kms", "dep:aws-config", "dep:tokio", "dep:base64"]
 gcp = ["dep:base64"]
-gpg = []
 test-kms = []   # mock KMS for hybrid integration tests
-test-gpg = []   # real GPG encrypt/decrypt with temp keyring
 test-aws = []   # real AWS KMS (needs AWS_ACCESS_KEY_ID + DUGOUT_TEST_KMS_KEY)
 test-gcp = []   # real GCP KMS (needs gcloud auth + DUGOUT_TEST_GCP_KEY)
 

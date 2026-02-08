@@ -1,8 +1,8 @@
 //! A local secrets manager for development teams
 //!
-//! Dugout encrypts secrets at rest using pluggable cipher backends
-//! (age, AWS KMS, GCP KMS, GPG) and provides a simple CLI for
-//! managing secrets across teams.
+//! Dugout encrypts secrets at rest using age encryption with optional
+//! cloud KMS hybrid mode (AWS KMS, GCP KMS) and provides a simple CLI
+//! for managing secrets across teams.
 //!
 //! # Quick start
 //!
@@ -26,14 +26,14 @@
 //!
 //! - [`Vault`]: Main API for all secret operations
 //! - Domain types: [`Secret`], [`Recipient`], [`Identity`], [`Env`], [`Diff`]
-//! - Pluggable cipher backends (age, AWS KMS, GCP KMS, GPG)
+//! - Cipher backends: age (default) + hybrid age+KMS
 //! - Configuration in `.dugout.toml`
 //!
 //! # Features
 //!
 //! - **Fast**: Age encryption with x25519 keys
 //! - **Team-ready**: Multiple recipients, key rotation
-//! - **Flexible**: Pluggable cipher backends (age, KMS, GPG)
+//! - **Flexible**: Two cipher backends: age (default) and hybrid age+KMS
 //! - **Developer-friendly**: `.env` file integration, shell completion
 //! - **Secure**: No secrets in git history, encrypted at rest
 //!
@@ -44,7 +44,7 @@
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! // Initialize a new vault with default age cipher
-//! let mut vault = Vault::init("alice", None, None)?;
+//! let mut vault = Vault::init("alice", None)?;
 //!
 //! // Set a secret
 //! vault.set("DATABASE_URL", "postgres://localhost/db", false)?;
