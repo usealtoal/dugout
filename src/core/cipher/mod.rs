@@ -5,13 +5,13 @@
 //! - **hybrid**: age + cloud KMS (AWS or GCP)
 //! - **gpg**: GPG encryption via CLI (feature-gated)
 //!
-//! Cloud KMS providers live in `provider/`.
+//! Cloud KMS implementations live in `kms/`.
 
 use crate::error::Result;
 
 mod age;
 mod backend;
-pub mod provider;
+pub mod kms;
 
 #[cfg(feature = "gpg")]
 pub mod gpg;
@@ -19,7 +19,7 @@ pub mod gpg;
 pub use age::{parse_recipient, Age};
 pub use backend::CipherBackend;
 #[allow(unused_imports)]
-pub use provider::{Envelope, KmsProvider};
+pub use kms::{Envelope, KmsProvider};
 
 /// Cryptographic backend trait.
 pub trait Cipher {
