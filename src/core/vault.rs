@@ -4,10 +4,11 @@
 
 use crate::core::cipher;
 use crate::core::config::{self, Config};
-use crate::core::domain::{Diff, Env, Identity, Recipient, Secret};
+use crate::core::domain::{Diff, Env, Identity, Recipient, Secret, SyncResult};
 use crate::core::store;
 use crate::core::types::{MemberName, PublicKey, SecretKey};
 use crate::error::{ConfigError, Result, SecretError, ValidationError};
+use sha2::{Digest, Sha256};
 use tracing::{debug, info, instrument};
 use zeroize::Zeroizing;
 
@@ -186,6 +187,7 @@ impl Vault {
         self.config
             .secrets
             .insert(key.to_string(), encrypted.clone());
+        self.update_recipients_hash();
         self.config.save()?;
 
         debug!(key = %key, "secret set, saving config");
@@ -284,6 +286,7 @@ impl Vault {
         }
 
         self.config.secrets = updated;
+        self.update_recipients_hash();
         self.config.save()?;
 
         Ok(())
@@ -452,6 +455,7 @@ impl Vault {
             imported.push(key.clone());
         }
 
+        self.update_recipients_hash();
         self.config.save()?;
         debug!(count = imported.len(), "import complete");
         Ok(imported)
@@ -527,6 +531,79 @@ impl Vault {
         };
 
         Ok(Diff::compute(&vault_pairs, &env_pairs))
+    }
+
+    // --- Sync ---
+
+    /// Compute SHA-256 fingerprint of the current recipient set.
+    ///
+    /// Deterministic: sorts keys before hashing so order doesn't matter.
+    pub fn recipients_fingerprint(&self) -> String {
+        recipients_fingerprint(&self.config)
+    }
+
+    /// Check if secrets need to be re-encrypted for the current recipient set.
+    ///
+    /// Compares stored `recipients_hash` against the current fingerprint.
+    /// Returns `true` if hash is missing (backward compat) or mismatched.
+    /// Returns `false` if there are no secrets (nothing to sync).
+    pub fn needs_sync(&self) -> bool {
+        if self.config.secrets.is_empty() {
+            return false;
+        }
+        match &self.config.dugout.recipients_hash {
+            Some(stored) => stored != &self.recipients_fingerprint(),
+            None => true, // no hash stored → assume out of sync
+        }
+    }
+
+    /// Sync all secrets for the current recipient set.
+    ///
+    /// Re-encrypts if the recipient fingerprint has changed (or if `force` is true).
+    /// Updates the stored fingerprint after re-encryption.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if decryption or re-encryption fails.
+    #[instrument(skip(self))]
+    pub fn sync(&mut self, force: bool) -> Result<SyncResult> {
+        let secrets = self.config.secrets.len();
+        let recipients = self.config.recipients.len();
+        let needed = force || self.needs_sync();
+
+        if !needed {
+            debug!("already in sync, skipping re-encryption");
+            return Ok(SyncResult {
+                secrets,
+                recipients,
+                was_needed: false,
+            });
+        }
+
+        if secrets > 0 {
+            info!(
+                secrets,
+                recipients, "syncing secrets for current recipients"
+            );
+            self.reencrypt_all()?;
+        }
+
+        // Update fingerprint (reencrypt_all already saved, but we need the hash)
+        self.config.dugout.recipients_hash = Some(self.recipients_fingerprint());
+        self.config.save()?;
+
+        Ok(SyncResult {
+            secrets,
+            recipients,
+            was_needed: true,
+        })
+    }
+
+    /// Update the recipients hash in config.
+    ///
+    /// Call this after any operation that writes secrets.
+    fn update_recipients_hash(&mut self) {
+        self.config.dugout.recipients_hash = Some(self.recipients_fingerprint());
     }
 }
 
@@ -627,6 +704,15 @@ fn validate_value(key: &str, value: &str) -> Result<()> {
 /// Get all recipient public keys as strings
 fn get_recipients_as_strings(config: &Config) -> Vec<String> {
     config.recipients.values().cloned().collect()
+}
+
+/// Compute SHA-256 fingerprint of sorted recipient public keys.
+fn recipients_fingerprint(config: &Config) -> String {
+    let mut keys: Vec<&str> = config.recipients.values().map(|k| k.as_str()).collect();
+    keys.sort();
+    let joined = keys.join("\n");
+    let hash = Sha256::digest(joined.as_bytes());
+    format!("{:x}", hash)
 }
 
 /// List all team members as (name, public_key) pairs
