@@ -17,6 +17,9 @@ use crate::error::{ConfigError, Result};
 pub struct Config {
     /// Metadata about the vault configuration
     pub dugout: Meta,
+    /// Optional KMS configuration for hybrid encryption
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kms: Option<KmsConfig>,
     /// Map of recipient names to backend-compatible recipient identifiers.
     ///
     /// For `age`, `aws-kms`, and `gcp-kms`, values are age public keys.
@@ -26,6 +29,19 @@ pub struct Config {
     /// Map of secret keys to their encrypted values
     #[serde(default)]
     pub secrets: BTreeMap<SecretKey, EncryptedValue>,
+}
+
+/// KMS configuration for hybrid encryption.
+///
+/// When present, secrets are encrypted for both age recipients (developers)
+/// and a cloud KMS key (production). Provider is auto-detected from key format.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct KmsConfig {
+    /// KMS key identifier.
+    ///
+    /// - AWS: `arn:aws:kms:us-east-1:123456789012:key/abc-123`
+    /// - GCP: `projects/my-project/locations/global/keyRings/my-ring/cryptoKeys/my-key`
+    pub key: String,
 }
 
 /// Metadata section of the configuration
@@ -54,6 +70,7 @@ impl Config {
                 kms_key_id: None,
                 gcp_resource: None,
             },
+            kms: None,
             recipients: BTreeMap::new(),
             secrets: BTreeMap::new(),
         }
@@ -117,6 +134,16 @@ impl Config {
             .ok()
             .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
             .unwrap_or_else(|| "default".to_string())
+    }
+
+    /// Check if KMS hybrid mode is configured.
+    pub fn has_kms(&self) -> bool {
+        self.kms.is_some()
+    }
+
+    /// Get the KMS key if configured.
+    pub fn kms_key(&self) -> Option<&str> {
+        self.kms.as_ref().map(|k| k.key.as_str())
     }
 
     /// Validate the configuration structure and contents
