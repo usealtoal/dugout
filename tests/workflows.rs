@@ -160,3 +160,139 @@ fn test_standard_secrets_roundtrip() {
         assert!(exported.contains(key), "Missing key: {}", key);
     }
 }
+
+#[test]
+fn test_disaster_recovery_workflow() {
+    let t = Test::with_secrets(
+        "test-user",
+        &[
+            ("DATABASE_URL", "postgres://localhost/db"),
+            ("API_KEY", "secret-key-123"),
+            ("REDIS_URL", "redis://localhost:6379"),
+        ],
+    );
+
+    // Unlock to create .env
+    let output = t.secrets_unlock();
+    assert_success(&output);
+
+    // Verify .env exists
+    assert!(
+        t.dir.path().join(".env").exists(),
+        ".env should exist after unlock"
+    );
+
+    // Simulate disaster: delete .env
+    std::fs::remove_file(t.dir.path().join(".env")).unwrap();
+    assert!(
+        !t.dir.path().join(".env").exists(),
+        ".env should be deleted"
+    );
+
+    // Recover: unlock again
+    let output = t.secrets_unlock();
+    assert_success(&output);
+
+    // Verify .env is restored
+    assert!(
+        t.dir.path().join(".env").exists(),
+        ".env should be restored"
+    );
+
+    let env_content = std::fs::read_to_string(t.dir.path().join(".env")).unwrap();
+    assert!(env_content.contains("DATABASE_URL=postgres://localhost/db"));
+    assert!(env_content.contains("API_KEY=secret-key-123"));
+    assert!(env_content.contains("REDIS_URL=redis://localhost:6379"));
+}
+
+#[test]
+fn test_migration_workflow() {
+    let t = Test::with_secrets(
+        "alice",
+        &[
+            ("MIGRATE_KEY_1", "migrate_value_1"),
+            ("MIGRATE_KEY_2", "migrate_value_2"),
+            ("MIGRATE_KEY_3", "migrate_value_3"),
+        ],
+    );
+
+    // Export from current project
+    let output = t.secrets_export();
+    assert_success(&output);
+    let exported_content = stdout(&output);
+
+    // Save export to a file
+    std::fs::write(t.dir.path().join("exported.env"), &exported_content).unwrap();
+
+    // Remove all secrets
+    let output = t.rm("MIGRATE_KEY_1");
+    assert_success(&output);
+    let output = t.rm("MIGRATE_KEY_2");
+    assert_success(&output);
+    let output = t.rm("MIGRATE_KEY_3");
+    assert_success(&output);
+
+    // Verify secrets are gone
+    let output = t.get("MIGRATE_KEY_1");
+    assert_failure(&output);
+
+    // Import them back (simulating migration to new project)
+    let output = t.secrets_import("exported.env");
+    assert_success(&output);
+
+    // Verify secrets were imported
+    let output = t.get("MIGRATE_KEY_1");
+    assert_success(&output);
+    assert_stdout_contains(&output, "migrate_value_1");
+
+    let output = t.get("MIGRATE_KEY_2");
+    assert_success(&output);
+    assert_stdout_contains(&output, "migrate_value_2");
+
+    let output = t.get("MIGRATE_KEY_3");
+    assert_success(&output);
+    assert_stdout_contains(&output, "migrate_value_3");
+}
+
+#[test]
+fn test_team_offboarding_workflow() {
+    let t = Test::with_secrets(
+        "alice",
+        &[
+            ("TEAM_SECRET_1", "value1"),
+            ("TEAM_SECRET_2", "value2"),
+            ("TEAM_SECRET_3", "value3"),
+        ],
+    );
+
+    // Add bob to the team
+    let output = t.team_add("bob", BOB_PUBLIC_KEY);
+    assert_success(&output);
+
+    // Verify bob is in the team
+    let output = t.team_list();
+    assert_success(&output);
+    assert_stdout_contains(&output, "bob");
+
+    // Remove bob from the team
+    let output = t.team_rm("bob");
+    assert_success(&output);
+
+    // Verify bob is no longer in the team
+    let output = t.team_list();
+    assert_success(&output);
+    assert_stdout_excludes(&output, "bob");
+
+    // Verify alice (owner) can still access secrets
+    let output = t.get("TEAM_SECRET_1");
+    assert_success(&output);
+    assert_stdout_contains(&output, "value1");
+
+    let output = t.get("TEAM_SECRET_2");
+    assert_success(&output);
+    assert_stdout_contains(&output, "value2");
+
+    let output = t.get("TEAM_SECRET_3");
+    assert_success(&output);
+    assert_stdout_contains(&output, "value3");
+}

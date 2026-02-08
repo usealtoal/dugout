@@ -52,3 +52,49 @@ fn test_completions_bash_outputs_script() {
     let out = stdout(&output);
     assert!(out.contains("_burrow") || out.contains("complete"));
 }
+
+#[test]
+fn test_completions_zsh() {
+    let t = Test::new();
+
+    let output = t.cmd().args(["completions", "zsh"]).output().unwrap();
+    assert_success(&output);
+    let out = stdout(&output);
+    // Verify output contains zsh-specific syntax
+    assert!(
+        out.contains("#compdef") || out.contains("_burrow"),
+        "zsh completion should contain zsh-specific syntax"
+    );
+}
+
+#[test]
+fn test_completions_fish() {
+    let t = Test::new();
+
+    let output = t.cmd().args(["completions", "fish"]).output().unwrap();
+    assert_success(&output);
+    let out = stdout(&output);
+    // Verify output contains fish-specific syntax
+    assert!(
+        out.contains("complete") && out.contains("burrow"),
+        "fish completion should contain fish-specific syntax"
+    );
+}
+
+#[test]
+fn test_completions_powershell() {
+    let t = Test::new();
+
+    let output = t
+        .cmd()
+        .args(["completions", "power-shell"])
+        .output()
+        .unwrap();
+    assert_success(&output);
+    let out = stdout(&output);
+    // Verify output contains PowerShell-specific syntax
+    assert!(
+        out.contains("Register-ArgumentCompleter") || out.contains("param"),
+        "powershell completion should contain PowerShell-specific syntax"
+    );
+}

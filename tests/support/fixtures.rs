@@ -1,5 +1,8 @@
 //! Test fixtures and constants.
 
+use age::secrecy::ExposeSecret;
+use age::x25519;
+
 /// A valid age public key for testing team operations.
 pub const BOB_PUBLIC_KEY: &str = "age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p";
 
@@ -29,3 +32,13 @@ SPACES_IN_VALUE=hello world
 # Another comment
 SPECIAL_CHARS=p@ssw0rd!#$%
 "#;
+
+/// Generate a fresh age keypair for testing.
+///
+/// Returns (public_key, private_key) as strings.
+pub fn generate_age_keypair() -> (String, String) {
+    let secret_key = x25519::Identity::generate();
+    let public_key = secret_key.to_public();
+    let private_key = secret_key.to_string().expose_secret().to_string();
+    (public_key.to_string(), private_key)
+}

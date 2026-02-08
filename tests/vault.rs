@@ -168,3 +168,123 @@ fn test_vault_decrypt_all() {
     assert!(has_dec1);
     assert!(has_dec2);
 }
+
+#[test]
+fn test_vault_decrypt_all_with_five_secrets() {
+    let mut env = setup();
+
+    env.vault.set("SECRET_1", "value1", false).unwrap();
+    env.vault.set("SECRET_2", "value2", false).unwrap();
+    env.vault.set("SECRET_3", "value3", false).unwrap();
+    env.vault.set("SECRET_4", "value4", false).unwrap();
+    env.vault.set("SECRET_5", "value5", false).unwrap();
+
+    let decrypted = env.vault.decrypt_all().unwrap();
+    assert_eq!(decrypted.len(), 5);
+
+    // Verify all five secrets are present and correct
+    for i in 1..=5 {
+        let key = format!("SECRET_{}", i);
+        let expected_value = format!("value{}", i);
+        let found = decrypted
+            .iter()
+            .any(|(k, v)| k == &key && v.as_str() == expected_value);
+        assert!(found, "Missing or incorrect: {}", key);
+    }
+}
+
+#[test]
+fn test_vault_reencrypt_all_preserves_secrets() {
+    let mut env = setup();
+
+    env.vault.set("KEY1", "value1", false).unwrap();
+    env.vault.set("KEY2", "value2", false).unwrap();
+    env.vault.set("KEY3", "value3", false).unwrap();
+
+    env.vault.reencrypt_all().unwrap();
+
+    // All secrets should still be accessible
+    assert_eq!(env.vault.get("KEY1").unwrap().as_str(), "value1");
+    assert_eq!(env.vault.get("KEY2").unwrap().as_str(), "value2");
+    assert_eq!(env.vault.get("KEY3").unwrap().as_str(), "value3");
+}
+
+#[test]
+fn test_vault_open_existing() {
+    let original_dir = env::current_dir().unwrap();
+    let temp_dir = TempDir::new().unwrap();
+    let home_dir = TempDir::new().unwrap();
+
+    env::set_var("HOME", home_dir.path());
+    env::set_current_dir(&temp_dir).unwrap();
+
+    // Init vault
+    let mut vault = Vault::init("test-user").unwrap();
+    vault
+        .set("PERSISTED_KEY", "persisted_value", false)
+        .unwrap();
+
+    // Drop the vault
+    drop(vault);
+
+    // Open the existing vault
+    let opened_vault = Vault::open().unwrap();
+
+    // Verify the secret is still accessible
+    assert_eq!(
+        opened_vault.get("PERSISTED_KEY").unwrap().as_str(),
+        "persisted_value"
+    );
+
+    let _ = env::set_current_dir(&original_dir);
+}
+
+#[test]
+fn test_vault_diff() {
+    let mut env = setup();
+
+    env.vault.set("SAME_KEY", "same_value", false).unwrap();
+    env.vault.set("CHANGED_KEY", "old_value", false).unwrap();
+    env.vault.set("VAULT_ONLY", "vault_value", false).unwrap();
+
+    // Create .env file with different content
+    let env_content = "SAME_KEY=same_value\nCHANGED_KEY=new_value\nENV_ONLY=env_value\n";
+    fs::write(".env", env_content).unwrap();
+
+    let diff = env.vault.diff(".env").unwrap();
+    let entries = diff.entries();
+
+    // Verify we have the expected diff entries
+    assert!(entries.iter().any(|e| e.key() == "SAME_KEY"));
+    assert!(entries.iter().any(|e| e.key() == "CHANGED_KEY"));
+    assert!(entries.iter().any(|e| e.key() == "VAULT_ONLY"));
+    assert!(entries.iter().any(|e| e.key() == "ENV_ONLY"));
+}
+
+#[test]
+fn test_vault_list_returns_secrets() {
+    let mut env = setup();
+
+    env.vault.set("LIST_KEY_1", "value1", false).unwrap();
+    env.vault.set("LIST_KEY_2", "value2", false).unwrap();
+    env.vault.set("LIST_KEY_3", "value3", false).unwrap();
+
+    let secrets = env.vault.list();
+    assert_eq!(secrets.len(), 3);
+
+    // Verify we got Secret structs with correct keys
+    let keys: Vec<String> = secrets.iter().map(|s| s.key().to_string()).collect();
+    assert!(keys.contains(&"LIST_KEY_1".to_string()));
+    assert!(keys.contains(&"LIST_KEY_2".to_string()));
+    assert!(keys.contains(&"LIST_KEY_3".to_string()));
+}
+
+#[test]
+fn test_vault_set_returns_secret() {
+    let mut env = setup();
+
+    let secret = env.vault.set("RETURN_KEY", "return_value", false).unwrap();
+
+    // Verify set() returns the Secret object with correct key
+    assert_eq!(secret.key(), "RETURN_KEY");
+}
