@@ -15,11 +15,13 @@
 ## Highlights
 
 - **Encrypted at rest** — age encryption by default, optional support for AWS KMS, GCP KMS, and GPG
+- **Vendor-agnostic** — no cloud lock-in, works with any git host and any infrastructure
 - **Team-friendly** — add members, share secrets, rotate keys, all through git
 - **Fast** — encrypts in ~100µs, single binary, no runtime dependencies
 - **Zero config** — `burrow init` and start adding secrets
-- **Auto-detect** — `burrow .` injects secrets and runs your project
+- **Auto-detect** — `burrow .` detects your stack and runs with secrets injected
 - **No server required** — secrets live in your repo, encrypted
+- **Language-agnostic** — works with Python, Node, Rust, Go, Docker, and anything else
 
 ## Installation
 
