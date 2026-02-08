@@ -1,13 +1,15 @@
-# burrow
-
-[![CI](https://github.com/usealtoal/burrow/actions/workflows/ci.yml/badge.svg)](https://github.com/usealtoal/burrow/actions)
-[![Crates.io](https://img.shields.io/crates/v/burrow.svg)](https://crates.io/crates/burrow)
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE-MIT)
-
-A local secrets manager for development teams, written in Rust.
-
 <p align="center">
   <img alt="burrow" src="assets/banner.jpg" width="600">
+</p>
+
+<p align="center">
+  <a href="https://github.com/usealtoal/burrow/actions"><img src="https://github.com/usealtoal/burrow/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://crates.io/crates/burrow"><img src="https://img.shields.io/crates/v/burrow.svg" alt="Crates.io"></a>
+  <a href="LICENSE-MIT"><img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg" alt="License"></a>
+</p>
+
+<p align="center">
+  A local secrets manager for development teams, written in Rust.
 </p>
 
 ## Highlights
