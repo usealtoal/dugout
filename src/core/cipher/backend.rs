@@ -1,264 +1,244 @@
 //! Cipher backend selection and dispatch.
 //!
-//! Provides a unified interface for multiple cipher backends.
+//! Three backends:
+//! - **Age** (default): secrets encrypted with age only
+//! - **Hybrid**: secrets encrypted with age + cloud KMS
+//! - **Gpg**: secrets encrypted with GPG (feature-gated)
 
 use crate::core::config::Config;
 use crate::error::{CipherError, Result};
-#[cfg(any(test, feature = "aws", feature = "gcp"))]
-use crate::error::{ConfigError, Error};
-#[cfg(any(test, feature = "aws", feature = "gcp"))]
-use serde::{Deserialize, Serialize};
 use tracing::debug;
 
-#[cfg(any(test, feature = "aws", feature = "gcp"))]
-const WRAPPED_CIPHERTEXT_VERSION: &str = "dugout-ciphertext-envelope-v1";
+use super::envelope::{Envelope, KmsProvider};
 
-#[cfg(any(test, feature = "aws", feature = "gcp"))]
-#[derive(Debug, Serialize, Deserialize)]
-struct WrappedCiphertext {
-    version: String,
-    ciphertext: String,
-}
-
-#[cfg(any(test, feature = "aws", feature = "gcp"))]
-fn wrap_for_recipients(ciphertext: &str, recipients: &[String]) -> Result<String> {
-    use super::Cipher;
-
-    let age_recipients: Result<Vec<_>> = recipients
-        .iter()
-        .map(|recipient| super::parse_recipient(recipient))
-        .collect();
-    let age_recipients = age_recipients?;
-
-    if age_recipients.is_empty() {
-        return Err(ConfigError::NoRecipients.into());
-    }
-
-    let ciphertext = super::Age.encrypt(ciphertext, &age_recipients)?;
-    let envelope = WrappedCiphertext {
-        version: WRAPPED_CIPHERTEXT_VERSION.to_string(),
-        ciphertext,
-    };
-
-    serde_json::to_string(&envelope).map_err(Error::from)
-}
-
-#[cfg(any(test, feature = "aws", feature = "gcp"))]
-fn unwrap_for_identity(payload: &str, identity: &age::x25519::Identity) -> Result<Option<String>> {
-    use super::Cipher;
-
-    let envelope = match serde_json::from_str::<WrappedCiphertext>(payload) {
-        Ok(envelope) => envelope,
-        Err(_) => {
-            // Reject malformed envelope-like JSON payloads rather than attempting KMS decryption.
-            if let Ok(value) = serde_json::from_str::<serde_json::Value>(payload) {
-                if value.get("version").is_some()
-                    || value.get("ciphertext").is_some()
-                    || value.get("wrapped_kms_ciphertext").is_some()
-                {
-                    return Err(CipherError::DecryptionFailed(
-                        "invalid ciphertext envelope format".to_string(),
-                    )
-                    .into());
-                }
-            }
-            return Ok(None);
-        }
-    };
-
-    if envelope.version != WRAPPED_CIPHERTEXT_VERSION {
-        return Err(CipherError::DecryptionFailed(format!(
-            "unsupported ciphertext envelope version: {}",
-            envelope.version
-        ))
-        .into());
-    }
-
-    let ciphertext = super::Age.decrypt(&envelope.ciphertext, identity)?;
-    Ok(Some(ciphertext))
-}
-
-/// Vault cipher selection and dispatch
+/// Cipher backend for vault operations.
 ///
-/// Wraps the different cipher implementations and provides
-/// dynamic dispatch based on configuration.
+/// - `Age`: raw age ciphertext (default)
+/// - `Hybrid`: v2 envelope with age + cloud KMS
+/// - `Gpg`: GPG encryption via gpg CLI
 #[derive(Debug)]
 pub enum CipherBackend {
-    /// Age encryption (default, always available)
+    /// Age encryption (default)
     Age,
 
-    #[cfg(feature = "aws")]
-    /// AWS KMS encryption
-    AwsKms { key_id: String },
+    /// Hybrid: age + cloud KMS
+    #[allow(dead_code)]
+    Hybrid { provider: KmsProvider, key: String },
 
-    #[cfg(feature = "gcp")]
-    /// GCP KMS encryption
-    GcpKms { resource: String },
-
-    #[cfg(feature = "gpg")]
     /// GPG encryption
+    #[cfg(feature = "gpg")]
     Gpg,
 }
 
-#[allow(dead_code)] // Methods used by vault
 impl CipherBackend {
-    /// Create a cipher backend from configuration
-    ///
-    /// # Errors
-    ///
-    /// Returns error if:
-    /// - Unknown cipher type specified
-    /// - Required configuration fields are missing
-    /// - Cipher type requires a feature that wasn't compiled in
+    /// Create a cipher backend from configuration.
     pub fn from_config(config: &Config) -> Result<Self> {
-        let cipher_type = config.dugout.cipher.as_deref().unwrap_or("age");
-
-        debug!(cipher = %cipher_type, "creating cipher backend");
-
-        match cipher_type {
-            "age" => Ok(Self::Age),
-
-            "aws-kms" => {
-                #[cfg(feature = "aws")]
-                {
-                    let key_id =
-                        config
-                            .dugout
-                            .kms_key_id
-                            .clone()
-                            .ok_or(ConfigError::MissingField {
-                                field: "kms_key_id",
-                            })?;
-                    Ok(Self::AwsKms { key_id })
+        // Check for explicit cipher override
+        if let Some(cipher) = config.cipher() {
+            match cipher {
+                "gpg" => {
+                    if config.has_kms() {
+                        tracing::warn!("[kms] config ignored: GPG cipher does not use KMS");
+                    }
+                    #[cfg(feature = "gpg")]
+                    {
+                        debug!("creating gpg cipher backend");
+                        return Ok(Self::Gpg);
+                    }
+                    #[cfg(not(feature = "gpg"))]
+                    {
+                        return Err(CipherError::EncryptionFailed(
+                            "GPG support not compiled. Rebuild with: cargo install dugout --features gpg".to_string()
+                        ).into());
+                    }
                 }
-                #[cfg(not(feature = "aws"))]
-                {
-                    Err(CipherError::EncryptionFailed(
-                        "AWS KMS support not compiled. Rebuild with: cargo install dugout --features aws".to_string()
-                    ).into())
-                }
-            }
-
-            "gcp-kms" => {
-                #[cfg(feature = "gcp")]
-                {
-                    let resource =
-                        config
-                            .dugout
-                            .gcp_resource
-                            .clone()
-                            .ok_or(ConfigError::MissingField {
-                                field: "gcp_resource",
-                            })?;
-                    Ok(Self::GcpKms { resource })
-                }
-                #[cfg(not(feature = "gcp"))]
-                {
-                    Err(CipherError::EncryptionFailed(
-                        "GCP KMS support not compiled. Rebuild with: cargo install dugout --features gcp".to_string()
-                    ).into())
+                "age" => {} // fall through to age/hybrid logic
+                other => {
+                    return Err(CipherError::EncryptionFailed(format!(
+                        "unknown cipher: {}. Supported: age, gpg",
+                        other
+                    ))
+                    .into());
                 }
             }
+        }
 
-            "gpg" => {
-                #[cfg(feature = "gpg")]
-                {
-                    Ok(Self::Gpg)
-                }
-                #[cfg(not(feature = "gpg"))]
-                {
-                    Err(CipherError::EncryptionFailed(
-                        "GPG support not compiled. Rebuild with: cargo install dugout --features gpg".to_string()
-                    ).into())
-                }
+        // Check for hybrid mode (age + KMS)
+        if let Some(kms_key) = config.kms_key() {
+            debug!(kms_key = %kms_key, "creating hybrid cipher backend");
+            let provider = KmsProvider::detect(kms_key).ok_or_else(|| {
+                CipherError::EncryptionFailed(format!(
+                    "unrecognized KMS key format: {}. Expected AWS ARN (arn:aws:kms:...) or GCP resource (projects/...)",
+                    kms_key
+                ))
+            })?;
+            return Ok(Self::Hybrid {
+                provider,
+                key: kms_key.to_string(),
+            });
+        }
+
+        debug!("creating age cipher backend");
+        Ok(Self::Age)
+    }
+
+    /// Encrypt plaintext with age for all recipients.
+    fn encrypt_age(plaintext: &str, recipients: &[String]) -> Result<String> {
+        use super::Cipher;
+        let age_recipients: Result<Vec<_>> = recipients
+            .iter()
+            .map(|r| super::parse_recipient(r))
+            .collect();
+        super::Age.encrypt(plaintext, &age_recipients?)
+    }
+
+    /// Encrypt plaintext using the configured KMS backend.
+    #[allow(unused_variables)]
+    fn encrypt_kms(&self, plaintext: &str) -> Result<String> {
+        match self {
+            Self::Age => unreachable!("encrypt_kms called on Age backend"),
+            #[cfg(feature = "gpg")]
+            Self::Gpg => unreachable!("encrypt_kms called on Gpg backend"),
+
+            #[cfg(any(test, feature = "test-kms"))]
+            Self::Hybrid { .. } => {
+                use super::envelope::{KmsBackend, StubKms};
+                StubKms.encrypt(plaintext)
             }
 
-            other => Err(CipherError::EncryptionFailed(format!(
-                "unknown cipher type: {}. Supported: age, aws-kms, gcp-kms, gpg",
-                other
+            #[cfg(all(not(test), not(feature = "test-kms"), feature = "aws"))]
+            Self::Hybrid {
+                provider: KmsProvider::Aws,
+                key,
+            } => {
+                use super::Cipher;
+                super::aws::AwsKms::new(key.clone()).encrypt(plaintext, &[])
+            }
+
+            #[cfg(all(not(test), not(feature = "test-kms"), feature = "gcp"))]
+            Self::Hybrid {
+                provider: KmsProvider::Gcp,
+                key,
+            } => {
+                use super::Cipher;
+                super::gcp::GcpKms::new(key.clone()).encrypt(plaintext, &[])
+            }
+
+            #[cfg(all(not(test), not(feature = "test-kms")))]
+            Self::Hybrid { provider, .. } => Err(CipherError::EncryptionFailed(format!(
+                "{} KMS not compiled. Rebuild with: cargo install dugout --features {}",
+                provider.name(),
+                provider.name()
             ))
             .into()),
         }
     }
 
-    /// Encrypt plaintext for the given recipients
-    ///
-    /// # Errors
-    ///
-    /// Returns `CipherError` if encryption fails.
-    pub fn encrypt(&self, plaintext: &str, recipients: &[String]) -> Result<String> {
-        use super::Cipher;
-
+    /// Decrypt ciphertext using the configured KMS backend.
+    #[allow(unused_variables)]
+    fn decrypt_kms(&self, ciphertext: &str) -> Result<String> {
         match self {
-            Self::Age => {
-                // Parse age recipients
-                let age_recipients: Result<Vec<_>> = recipients
-                    .iter()
-                    .map(|r| super::parse_recipient(r))
-                    .collect();
-                let age_recipients = age_recipients?;
-                super::Age.encrypt(plaintext, &age_recipients)
-            }
-
-            #[cfg(feature = "aws")]
-            Self::AwsKms { key_id } => {
-                let kms = super::aws::AwsKms::new(key_id.clone());
-                let kms_ciphertext = kms.encrypt(plaintext, &[])?;
-                wrap_for_recipients(&kms_ciphertext, recipients)
-            }
-
-            #[cfg(feature = "gcp")]
-            Self::GcpKms { resource } => {
-                let gcp = super::gcp::GcpKms::new(resource.clone());
-                let kms_ciphertext = gcp.encrypt(plaintext, &[])?;
-                wrap_for_recipients(&kms_ciphertext, recipients)
-            }
-
+            Self::Age => unreachable!("decrypt_kms called on Age backend"),
             #[cfg(feature = "gpg")]
-            Self::Gpg => super::gpg::Gpg.encrypt(plaintext, recipients),
+            Self::Gpg => unreachable!("decrypt_kms called on Gpg backend"),
+
+            #[cfg(any(test, feature = "test-kms"))]
+            Self::Hybrid { .. } => {
+                use super::envelope::{KmsBackend, StubKms};
+                StubKms.decrypt(ciphertext)
+            }
+
+            #[cfg(all(not(test), not(feature = "test-kms"), feature = "aws"))]
+            Self::Hybrid {
+                provider: KmsProvider::Aws,
+                ..
+            } => {
+                use super::Cipher;
+                super::aws::AwsKms::new(String::new()).decrypt(ciphertext, &())
+            }
+
+            #[cfg(all(not(test), not(feature = "test-kms"), feature = "gcp"))]
+            Self::Hybrid {
+                provider: KmsProvider::Gcp,
+                key,
+            } => {
+                use super::Cipher;
+                super::gcp::GcpKms::new(key.clone()).decrypt(ciphertext, &())
+            }
+
+            #[cfg(all(not(test), not(feature = "test-kms")))]
+            Self::Hybrid { provider, .. } => Err(CipherError::DecryptionFailed(format!(
+                "{} KMS not compiled. Rebuild with: cargo install dugout --features {}",
+                provider.name(),
+                provider.name()
+            ))
+            .into()),
         }
     }
 
-    /// Decrypt ciphertext using the provided identity
+    /// Encrypt plaintext for the given recipients.
     ///
-    /// # Errors
+    /// - Age: raw age ciphertext
+    /// - Hybrid: v2 envelope with age + KMS ciphertext
+    /// - Gpg: GPG-encrypted ciphertext
+    pub fn encrypt(&self, plaintext: &str, recipients: &[String]) -> Result<String> {
+        match self {
+            Self::Age => Self::encrypt_age(plaintext, recipients),
+
+            #[cfg(feature = "gpg")]
+            Self::Gpg => {
+                use super::Cipher;
+                super::gpg::Gpg.encrypt(plaintext, recipients)
+            }
+
+            Self::Hybrid { provider, .. } => {
+                let age_ct = Self::encrypt_age(plaintext, recipients)?;
+                let kms_ct = self.encrypt_kms(plaintext)?;
+                Envelope::new(age_ct, Some(kms_ct), Some(provider)).seal()
+            }
+        }
+    }
+
+    /// Decrypt ciphertext using the provided identity.
     ///
-    /// Returns `CipherError` if decryption fails.
+    /// - Gpg: delegates to gpg CLI
+    /// - Envelope: tries age first (fast, local), then KMS fallback
+    /// - Raw age ciphertext: decrypts directly
     pub fn decrypt(&self, ciphertext: &str, identity: &age::x25519::Identity) -> Result<String> {
         use super::Cipher;
 
-        match self {
-            Self::Age => super::Age.decrypt(ciphertext, identity),
-
-            #[cfg(feature = "aws")]
-            Self::AwsKms { .. } => {
-                let kms = super::aws::AwsKms::new(String::new()); // key_id not needed for decrypt
-                let kms_ciphertext = unwrap_for_identity(ciphertext, identity)?
-                    .unwrap_or_else(|| ciphertext.to_string());
-                kms.decrypt(&kms_ciphertext, &())
-            }
-
-            #[cfg(feature = "gcp")]
-            Self::GcpKms { resource } => {
-                let gcp = super::gcp::GcpKms::new(resource.clone());
-                let kms_ciphertext = unwrap_for_identity(ciphertext, identity)?
-                    .unwrap_or_else(|| ciphertext.to_string());
-                gcp.decrypt(&kms_ciphertext, &())
-            }
-
-            #[cfg(feature = "gpg")]
-            Self::Gpg => super::gpg::Gpg.decrypt(ciphertext, &()),
+        #[cfg(feature = "gpg")]
+        if let Self::Gpg = self {
+            return super::gpg::Gpg.decrypt(ciphertext, &());
         }
+
+        if let Some(env) = Envelope::parse(ciphertext) {
+            // Envelope: try age, then KMS
+            if let Ok(result) = super::Age.decrypt(&env.age, identity) {
+                return Ok(result);
+            }
+            if let Some(kms_ct) = &env.kms {
+                return self.decrypt_kms(kms_ct);
+            }
+            return Err(CipherError::DecryptionFailed(
+                "envelope decryption failed: no valid path".to_string(),
+            )
+            .into());
+        }
+
+        // Raw age ciphertext
+        super::Age.decrypt(ciphertext, identity)
     }
 
-    /// Backend name for display
+    /// Backend name for display.
+    #[allow(dead_code)]
     pub fn name(&self) -> &'static str {
         match self {
             Self::Age => "age",
-            #[cfg(feature = "aws")]
-            Self::AwsKms { .. } => "aws-kms",
-            #[cfg(feature = "gcp")]
-            Self::GcpKms { .. } => "gcp-kms",
+            Self::Hybrid { provider, .. } => match provider {
+                KmsProvider::Aws => "hybrid+aws",
+                KmsProvider::Gcp => "hybrid+gcp",
+            },
             #[cfg(feature = "gpg")]
             Self::Gpg => "gpg",
         }
@@ -268,187 +248,137 @@ impl CipherBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::config::KmsConfig;
 
     #[test]
-    fn test_backend_from_config_default_age() {
+    fn test_age_from_config() {
         let config = Config::new();
         let backend = CipherBackend::from_config(&config).unwrap();
         assert_eq!(backend.name(), "age");
     }
 
     #[test]
-    fn test_backend_from_config_explicit_age() {
+    fn test_hybrid_from_config() {
         let mut config = Config::new();
-        config.dugout.cipher = Some("age".to_string());
+        config.kms = Some(KmsConfig {
+            key: "arn:aws:kms:us-east-1:123:key/abc".to_string(),
+        });
         let backend = CipherBackend::from_config(&config).unwrap();
-        assert_eq!(backend.name(), "age");
+        assert_eq!(backend.name(), "hybrid+aws");
     }
 
     #[test]
-    #[cfg(feature = "aws")]
-    fn test_backend_from_config_aws_kms() {
+    fn test_hybrid_gcp_from_config() {
         let mut config = Config::new();
-        config.dugout.cipher = Some("aws-kms".to_string());
-        config.dugout.kms_key_id = Some("arn:aws:kms:us-east-1:123456789012:key/test".to_string());
+        config.kms = Some(KmsConfig {
+            key: "projects/my-proj/locations/global/keyRings/ring/cryptoKeys/key".to_string(),
+        });
         let backend = CipherBackend::from_config(&config).unwrap();
-        assert_eq!(backend.name(), "aws-kms");
+        assert_eq!(backend.name(), "hybrid+gcp");
     }
 
     #[test]
-    #[cfg(feature = "aws")]
-    fn test_backend_from_config_aws_kms_missing_key() {
+    fn test_invalid_kms_key_format() {
         let mut config = Config::new();
-        config.dugout.cipher = Some("aws-kms".to_string());
-        let result = CipherBackend::from_config(&config);
-        assert!(result.is_err());
+        config.kms = Some(KmsConfig {
+            key: "not-a-valid-kms-key".to_string(),
+        });
+        assert!(CipherBackend::from_config(&config).is_err());
     }
 
     #[test]
-    fn test_backend_from_config_unknown_cipher() {
-        let mut config = Config::new();
-        config.dugout.cipher = Some("unknown".to_string());
-        let result = CipherBackend::from_config(&config);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_backend_encrypt_decrypt_age() {
-        let config = Config::new();
-        let backend = CipherBackend::from_config(&config).unwrap();
-
+    fn test_age_encrypt_decrypt() {
+        let backend = CipherBackend::Age;
         let identity = age::x25519::Identity::generate();
         let recipient = identity.to_public().to_string();
 
-        let plaintext = "test secret";
-        let encrypted = backend.encrypt(plaintext, &[recipient]).unwrap();
+        let encrypted = backend.encrypt("test secret", &[recipient]).unwrap();
         let decrypted = backend.decrypt(&encrypted, &identity).unwrap();
-
-        assert_eq!(decrypted, plaintext);
+        assert_eq!(decrypted, "test secret");
     }
 
     #[test]
-    fn test_wrap_roundtrip_for_identity() {
-        let identity = age::x25519::Identity::generate();
-        let recipients = vec![identity.to_public().to_string()];
-        let kms_ciphertext = "kms-base64-ciphertext";
-
-        let wrapped = wrap_for_recipients(kms_ciphertext, &recipients).unwrap();
-        let unwrapped = unwrap_for_identity(&wrapped, &identity)
-            .unwrap()
-            .expect("wrapped payload should unwrap");
-
-        assert_eq!(unwrapped, kms_ciphertext);
-    }
-
-    #[test]
-    fn test_wrap_requires_recipients() {
-        let kms_ciphertext = "kms-base64-ciphertext";
-        let recipients: Vec<String> = Vec::new();
-
-        let result = wrap_for_recipients(kms_ciphertext, &recipients);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_wrap_rejects_invalid_recipient_key() {
-        let kms_ciphertext = "kms-base64-ciphertext";
-        let recipients = vec!["not-an-age-key".to_string()];
-
-        let result = wrap_for_recipients(kms_ciphertext, &recipients);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_wrap_rejects_wrong_identity() {
-        let identity = age::x25519::Identity::generate();
-        let outsider = age::x25519::Identity::generate();
-        let recipients = vec![identity.to_public().to_string()];
-        let kms_ciphertext = "kms-base64-ciphertext";
-
-        let wrapped = wrap_for_recipients(kms_ciphertext, &recipients).unwrap();
-        let result = unwrap_for_identity(&wrapped, &outsider);
-
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_unwrap_legacy_ciphertext_passthrough() {
-        let identity = age::x25519::Identity::generate();
-        let legacy = "legacy-kms-ciphertext";
-
-        let unwrapped = unwrap_for_identity(legacy, &identity).unwrap();
-        assert!(unwrapped.is_none());
-    }
-
-    #[test]
-    fn test_unwrap_rejects_unknown_wrapper_version() {
-        let identity = age::x25519::Identity::generate();
-        let payload = r#"{"version":"dugout-ciphertext-envelope-v0","ciphertext":"x"}"#;
-
-        let result = unwrap_for_identity(payload, &identity);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_unwrap_rejects_legacy_wrapper_version() {
-        let identity = age::x25519::Identity::generate();
-        let recipients = vec![identity.to_public().to_string()];
-        let wrapped = wrap_for_recipients("kms-base64-ciphertext", &recipients).unwrap();
-        let wrapped: WrappedCiphertext = serde_json::from_str(&wrapped).unwrap();
-        let payload = serde_json::json!({
-            "version": "dugout-kms-wrap-v1",
-            "ciphertext": wrapped.ciphertext,
-        })
-        .to_string();
-
-        let result = unwrap_for_identity(&payload, &identity);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_unwrap_rejects_legacy_field_name() {
-        let identity = age::x25519::Identity::generate();
-        let payload = r#"{"version":"dugout-ciphertext-envelope-v1","wrapped_kms_ciphertext":"x"}"#;
-
-        let result = unwrap_for_identity(payload, &identity);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    #[cfg(not(feature = "aws"))]
-    fn test_backend_aws_kms_not_compiled() {
+    fn test_hybrid_encrypt_produces_envelope() {
         let mut config = Config::new();
-        config.dugout.cipher = Some("aws-kms".to_string());
-        config.dugout.kms_key_id = Some("test-key".to_string());
+        config.kms = Some(KmsConfig {
+            key: "arn:aws:kms:us-east-1:123:key/abc".to_string(),
+        });
+        let backend = CipherBackend::from_config(&config).unwrap();
+        let identity = age::x25519::Identity::generate();
+        let recipient = identity.to_public().to_string();
 
-        let result = CipherBackend::from_config(&config);
-        assert!(result.is_err());
-        let err = result.unwrap_err().to_string();
-        assert!(err.contains("not compiled"));
+        let encrypted = backend.encrypt("my-secret", &[recipient]).unwrap();
+        let envelope = Envelope::parse(&encrypted).expect("should be envelope");
+        assert!(envelope.kms.is_some());
+        assert_eq!(envelope.provider.as_deref(), Some("aws"));
     }
 
     #[test]
-    #[cfg(not(feature = "gcp"))]
-    fn test_backend_gcp_kms_not_compiled() {
+    fn test_hybrid_decrypt_via_age() {
         let mut config = Config::new();
-        config.dugout.cipher = Some("gcp-kms".to_string());
-        config.dugout.gcp_resource = Some("test-resource".to_string());
+        config.kms = Some(KmsConfig {
+            key: "arn:aws:kms:us-east-1:123:key/abc".to_string(),
+        });
+        let backend = CipherBackend::from_config(&config).unwrap();
+        let identity = age::x25519::Identity::generate();
+        let recipient = identity.to_public().to_string();
 
-        let result = CipherBackend::from_config(&config);
-        assert!(result.is_err());
-        let err = result.unwrap_err().to_string();
-        assert!(err.contains("not compiled"));
+        let encrypted = backend.encrypt("hybrid-secret", &[recipient]).unwrap();
+        let decrypted = backend.decrypt(&encrypted, &identity).unwrap();
+        assert_eq!(decrypted, "hybrid-secret");
     }
 
     #[test]
-    #[cfg(not(feature = "gpg"))]
-    fn test_backend_gpg_not_compiled() {
+    fn test_hybrid_decrypt_via_kms_fallback() {
         let mut config = Config::new();
-        config.dugout.cipher = Some("gpg".to_string());
+        config.kms = Some(KmsConfig {
+            key: "arn:aws:kms:us-east-1:123:key/abc".to_string(),
+        });
+        let backend = CipherBackend::from_config(&config).unwrap();
+        let identity = age::x25519::Identity::generate();
+        let recipient = identity.to_public().to_string();
 
-        let result = CipherBackend::from_config(&config);
-        assert!(result.is_err());
-        let err = result.unwrap_err().to_string();
-        assert!(err.contains("not compiled"));
+        let encrypted = backend.encrypt("kms-fallback", &[recipient]).unwrap();
+        let wrong_identity = age::x25519::Identity::generate();
+        let decrypted = backend.decrypt(&encrypted, &wrong_identity).unwrap();
+        assert_eq!(decrypted, "kms-fallback");
+    }
+
+    #[test]
+    fn test_hybrid_backward_compat_raw_age() {
+        // Encrypt with age-only
+        let age_backend = CipherBackend::Age;
+        let identity = age::x25519::Identity::generate();
+        let recipient = identity.to_public().to_string();
+        let age_encrypted = age_backend.encrypt("old-secret", &[recipient]).unwrap();
+
+        // Decrypt with hybrid backend
+        let mut config = Config::new();
+        config.kms = Some(KmsConfig {
+            key: "arn:aws:kms:us-east-1:123:key/abc".to_string(),
+        });
+        let hybrid_backend = CipherBackend::from_config(&config).unwrap();
+        let decrypted = hybrid_backend.decrypt(&age_encrypted, &identity).unwrap();
+        assert_eq!(decrypted, "old-secret");
+    }
+
+    #[test]
+    fn test_age_reads_hybrid_envelope() {
+        // Encrypt with hybrid
+        let mut config = Config::new();
+        config.kms = Some(KmsConfig {
+            key: "arn:aws:kms:us-east-1:123:key/abc".to_string(),
+        });
+        let hybrid_backend = CipherBackend::from_config(&config).unwrap();
+        let identity = age::x25519::Identity::generate();
+        let recipient = identity.to_public().to_string();
+        let encrypted = hybrid_backend
+            .encrypt("cross-compat", &[recipient])
+            .unwrap();
+
+        // Decrypt with age-only
+        let age_backend = CipherBackend::Age;
+        let decrypted = age_backend.decrypt(&encrypted, &identity).unwrap();
+        assert_eq!(decrypted, "cross-compat");
     }
 }

@@ -1,25 +1,27 @@
 //! AWS KMS cipher backend.
 //!
-//! Encrypts secrets using AWS Key Management Service.
+//! Encrypts secrets using AWS Key Management Service in hybrid mode.
 //! Enable with `--features aws`.
 //!
 //! ## Usage
 //!
-//! Configure your vault with:
-//! ```toml
-//! [meta]
-//! cipher = "aws-kms"
-//!
-//! [meta.kms]
-//! key_id = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+//! Initialize with KMS key:
+//! ```bash
+//! dugout init --kms arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012
 //! ```
 //!
-//! The AWS KMS cipher uses AWS credentials from the environment (AWS_ACCESS_KEY_ID, etc.)
+//! This creates a vault configuration with:
+//! ```toml
+//! [kms]
+//! key = "arn:aws:kms:us-east-1:123456789012:key/..."
+//! ```
+//!
+//! The AWS KMS backend uses AWS credentials from the environment (AWS_ACCESS_KEY_ID, etc.)
 //! or from the default credential provider chain.
 
 use tracing::trace;
 
-use super::Cipher;
+use crate::core::cipher::Cipher;
 use crate::error::{CipherError, Result};
 
 /// AWS KMS cipher backend

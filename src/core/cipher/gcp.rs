@@ -1,6 +1,6 @@
 //! Google Cloud KMS cipher backend.
 //!
-//! Encrypts secrets using Google Cloud Key Management Service via the gcloud CLI.
+//! Encrypts secrets using Google Cloud Key Management Service via the gcloud CLI in hybrid mode.
 //! Enable with `--features gcp`.
 //!
 //! ## Requirements
@@ -10,20 +10,22 @@
 //!
 //! ## Usage
 //!
-//! Configure your vault with:
-//! ```toml
-//! [meta]
-//! cipher = "gcp-kms"
+//! Initialize with KMS key:
+//! ```bash
+//! dugout init --kms projects/my-project/locations/global/keyRings/my-ring/cryptoKeys/my-key
+//! ```
 //!
-//! [meta.gcp]
-//! resource_name = "projects/my-project/locations/global/keyRings/my-ring/cryptoKeys/my-key"
+//! This creates a vault configuration with:
+//! ```toml
+//! [kms]
+//! key = "projects/my-project/locations/global/keyRings/my-ring/cryptoKeys/my-key"
 //! ```
 
 use std::io::Write;
 use std::process::{Command, Stdio};
 use tracing::trace;
 
-use super::Cipher;
+use crate::core::cipher::Cipher;
 use crate::error::{CipherError, Result};
 
 /// Google Cloud KMS cipher backend using gcloud CLI

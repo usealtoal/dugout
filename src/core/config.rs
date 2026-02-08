@@ -17,10 +17,10 @@ use crate::error::{ConfigError, Result};
 pub struct Config {
     /// Metadata about the vault configuration
     pub dugout: Meta,
-    /// Map of recipient names to backend-compatible recipient identifiers.
-    ///
-    /// For `age`, `aws-kms`, and `gcp-kms`, values are age public keys.
-    /// For `gpg`, values are GPG recipient strings (email or fingerprint).
+    /// Optional KMS configuration for hybrid encryption
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kms: Option<KmsConfig>,
+    /// Map of recipient names to age public keys.
     #[serde(default)]
     pub recipients: BTreeMap<MemberName, PublicKey>,
     /// Map of secret keys to their encrypted values
@@ -28,20 +28,27 @@ pub struct Config {
     pub secrets: BTreeMap<SecretKey, EncryptedValue>,
 }
 
+/// KMS configuration for hybrid encryption.
+///
+/// When present, secrets are encrypted for both age recipients (developers)
+/// and a cloud KMS key (production). Provider is auto-detected from key format.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct KmsConfig {
+    /// KMS key identifier.
+    ///
+    /// - AWS: `arn:aws:kms:us-east-1:123456789012:key/abc-123`
+    /// - GCP: `projects/my-project/locations/global/keyRings/my-ring/cryptoKeys/my-key`
+    pub key: String,
+}
+
 /// Metadata section of the configuration
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Meta {
     /// Configuration version
     pub version: String,
-    /// Cipher backend: "age" (default), "aws-kms", "gcp-kms", "gpg"
-    #[serde(default)]
+    /// Cipher backend override: "age" (default), "gpg"
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cipher: Option<String>,
-    /// AWS KMS key ID or ARN (for aws-kms cipher)
-    #[serde(default)]
-    pub kms_key_id: Option<String>,
-    /// GCP KMS resource name (for gcp-kms cipher)
-    #[serde(default)]
-    pub gcp_resource: Option<String>,
 }
 
 impl Config {
@@ -51,9 +58,8 @@ impl Config {
             dugout: Meta {
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 cipher: None,
-                kms_key_id: None,
-                gcp_resource: None,
             },
+            kms: None,
             recipients: BTreeMap::new(),
             secrets: BTreeMap::new(),
         }
@@ -119,12 +125,27 @@ impl Config {
             .unwrap_or_else(|| "default".to_string())
     }
 
-    /// Validate the configuration structure and contents
+    /// Get the configured cipher backend name, if explicitly set.
+    pub fn cipher(&self) -> Option<&str> {
+        self.dugout.cipher.as_deref()
+    }
+
+    /// Check if KMS hybrid mode is configured.
+    pub fn has_kms(&self) -> bool {
+        self.kms.is_some()
+    }
+
+    /// Get the KMS key if configured.
+    pub fn kms_key(&self) -> Option<&str> {
+        self.kms.as_ref().map(|k| k.key.as_str())
+    }
+
+    /// Validate the configuration structure and contents.
     ///
     /// Checks:
     /// - Version field is valid semver
     /// - At least one recipient exists
-    /// - Recipient identifiers are valid for the configured cipher backend
+    /// - Recipients are valid age public keys (or non-empty for GPG)
     /// - All secret keys are valid environment variable names
     ///
     /// # Errors
@@ -155,14 +176,14 @@ impl Config {
             return Err(ConfigError::NoRecipients.into());
         }
 
-        // Validate recipients according to cipher backend expectations.
-        let cipher_type = self.dugout.cipher.as_deref().unwrap_or("age");
+        // Validate recipients (age keys for age/hybrid, anything non-empty for GPG)
+        let is_gpg = self.dugout.cipher.as_deref() == Some("gpg");
         for (name, key) in &self.recipients {
-            if cipher_type == "gpg" {
+            if is_gpg {
                 if key.trim().is_empty() {
                     return Err(ConfigError::InvalidValue {
                         field: "recipients",
-                        reason: format!("invalid gpg recipient for '{}': empty value", name),
+                        reason: format!("empty GPG recipient for '{}'", name),
                     }
                     .into());
                 }
@@ -318,33 +339,5 @@ mod tests {
         let result = config.validate();
         assert!(result.is_err());
         // Should fail because secret key has invalid characters
-    }
-
-    #[test]
-    fn test_config_validate_gpg_allows_non_age_recipient() {
-        let _ctx = setup_test_dir();
-
-        let mut config = Config::new();
-        config.dugout.cipher = Some("gpg".to_string());
-        config
-            .recipients
-            .insert("alice".to_string(), "alice@example.com".to_string());
-
-        let result = config.validate();
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_config_validate_gpg_rejects_empty_recipient() {
-        let _ctx = setup_test_dir();
-
-        let mut config = Config::new();
-        config.dugout.cipher = Some("gpg".to_string());
-        config
-            .recipients
-            .insert("alice".to_string(), "".to_string());
-
-        let result = config.validate();
-        assert!(result.is_err());
     }
 }

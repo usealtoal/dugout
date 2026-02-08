@@ -17,7 +17,7 @@ Dugout is designed to protect secrets in the following scenarios:
 - Compromised private keys (`~/.dugout/identity`, `~/.dugout/keys/<project>/identity.key`)
 - Malicious code running with your user privileges
 - Malicious insiders who already have valid decrypt keys
-- Cloud IAM/KMS misconfiguration (for `aws-kms` / `gcp-kms` backends)
+- Cloud IAM/KMS misconfiguration (for hybrid mode with AWS/GCP KMS)
 - Physical access to an unlocked machine
 - Keyloggers or memory forensics on a running system
 - Side-channel attacks on encryption implementation
@@ -29,9 +29,9 @@ Dugout is designed to protect secrets in the following scenarios:
 
 Dugout uses modern authenticated encryption, with **age** (Actually Good Encryption) as the default backend.
 
-- **Default backend (`age`):** X25519 recipients + ChaCha20-Poly1305
-- **Optional backends:** `aws-kms`, `gcp-kms`, `gpg` (feature-gated builds)
-- **KMS backends:** plaintext is encrypted by cloud KMS, then wrapped for team recipients before storage
+- **Age (default):** X25519 recipients + ChaCha20-Poly1305
+- **Hybrid:** age + cloud KMS (AWS or GCP) — secrets encrypted for both age keys and KMS in an envelope format
+- **GPG:** GPG encryption via CLI (feature-gated, `--features gpg`)
 
 - **Cipher:** ChaCha20-Poly1305 (authenticated encryption)
 - **Key Exchange:** X25519 (elliptic curve Diffie-Hellman)

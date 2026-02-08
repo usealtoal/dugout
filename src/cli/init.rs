@@ -9,39 +9,21 @@ use crate::error::Result;
 /// Initialize dugout in the current directory.
 pub fn execute(
     name: Option<String>,
-    _no_banner: bool, // Kept for backwards compatibility but ignored
+    _no_banner: bool,
     cipher: Option<String>,
     kms_key: Option<String>,
-    gcp_key: Option<String>,
 ) -> Result<()> {
-    // Use provided name or fall back to username
     let name = name.unwrap_or_else(whoami::username);
 
     info!("Initializing for user: {}", name);
 
-    // Validate cipher-specific requirements
-    if let Some(ref c) = cipher {
-        match c.as_str() {
-            "aws-kms" if kms_key.is_none() => {
-                return Err(crate::error::ConfigError::MissingField {
-                    field: "kms_key_id",
-                }
-                .into());
-            }
-            "gcp-kms" if gcp_key.is_none() => {
-                return Err(crate::error::ConfigError::MissingField {
-                    field: "gcp_resource",
-                }
-                .into());
-            }
-            _ => {}
-        }
+    let _vault = Vault::init(&name, cipher.clone(), kms_key.clone())?;
+
+    match (cipher.as_deref(), kms_key.is_some()) {
+        (Some("gpg"), _) => output::success("initialized vault (gpg)"),
+        (_, true) => output::success("initialized vault (hybrid: age + kms)"),
+        _ => output::success("initialized vault"),
     }
-
-    // Generate keypair
-    let _vault = Vault::init(&name, cipher.clone(), kms_key.clone(), gcp_key.clone())?;
-
-    output::success("initialized vault");
 
     info!("Initialized successfully");
     Ok(())
