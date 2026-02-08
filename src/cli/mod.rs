@@ -42,6 +42,15 @@ pub enum Command {
         /// Skip ASCII art banner
         #[arg(long)]
         no_banner: bool,
+        /// Cipher backend: age (default), aws-kms, gcp-kms, gpg
+        #[arg(long, value_name = "TYPE")]
+        cipher: Option<String>,
+        /// AWS KMS key ID or ARN (required for --cipher aws-kms)
+        #[arg(long, value_name = "ARN")]
+        kms_key: Option<String>,
+        /// GCP KMS resource name (required for --cipher gcp-kms)
+        #[arg(long, value_name = "RESOURCE")]
+        gcp_key: Option<String>,
     },
 
     /// Set a secret value
@@ -178,7 +187,13 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
     use Command::*;
 
     match command {
-        Init { name, no_banner } => init::execute(name, no_banner),
+        Init {
+            name,
+            no_banner,
+            cipher,
+            kms_key,
+            gcp_key,
+        } => init::execute(name, no_banner, cipher, kms_key, gcp_key),
         Set { key, value, force } => secrets::set(&key, &value, force),
         Get { key } => secrets::get(&key),
         Rm { key } => secrets::rm(&key),

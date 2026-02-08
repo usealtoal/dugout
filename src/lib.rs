@@ -51,8 +51,8 @@
 //! use burrow::Vault;
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // Initialize a new vault
-//! let mut vault = Vault::init("alice")?;
+//! // Initialize a new vault with default age cipher
+//! let mut vault = Vault::init("alice", None, None, None)?;
 //!
 //! // Set a secret
 //! vault.set("DATABASE_URL", "postgres://localhost/db", false)?;

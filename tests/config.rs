@@ -117,7 +117,7 @@ fn test_config_with_invalid_secret_key() {
     let _env = setup();
 
     // Init a valid vault first
-    let mut vault = Vault::init("test-user").unwrap();
+    let mut vault = Vault::init("test-user", None, None, None).unwrap();
     drop(vault);
 
     // Manually craft config with invalid secret key

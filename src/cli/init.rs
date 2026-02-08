@@ -10,7 +10,13 @@ use crate::core::vault::Vault;
 use crate::error::Result;
 
 /// Initialize burrow in the current directory.
-pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
+pub fn execute(
+    name: Option<String>,
+    no_banner: bool,
+    cipher: Option<String>,
+    kms_key: Option<String>,
+    gcp_key: Option<String>,
+) -> Result<()> {
     if !no_banner {
         crate::cli::banner::print_banner();
     }
@@ -19,9 +25,28 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
 
     info!("Initializing for user: {}", name);
 
+    // Validate cipher-specific requirements
+    if let Some(ref c) = cipher {
+        match c.as_str() {
+            "aws-kms" if kms_key.is_none() => {
+                return Err(crate::error::ConfigError::MissingField {
+                    field: "kms_key_id",
+                }
+                .into());
+            }
+            "gcp-kms" if gcp_key.is_none() => {
+                return Err(crate::error::ConfigError::MissingField {
+                    field: "gcp_resource",
+                }
+                .into());
+            }
+            _ => {}
+        }
+    }
+
     // Generate keypair with spinner
     let sp = output::spinner("generating keypair...");
-    let vault = Vault::init(&name)?;
+    let vault = Vault::init(&name, cipher.clone(), kms_key.clone(), gcp_key.clone())?;
     output::spinner_success(&sp, "initialized");
 
     info!("Initialized successfully");
@@ -34,6 +59,14 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
         .unwrap_or("unknown");
 
     output::blank();
+
+    // Show cipher backend if not age
+    if let Some(ref c) = cipher {
+        if c != "age" {
+            output::kv("cipher", c);
+        }
+    }
+
     output::kv("recipient", format!("{} ({})", name, &public_key[..20]));
     output::kv(
         "config",

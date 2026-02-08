@@ -19,6 +19,7 @@ pub struct Vault {
     config: Config,
     project_id: String,
     identity: Identity,
+    backend: cipher::CipherBackend,
 }
 
 impl std::fmt::Debug for Vault {
@@ -27,6 +28,7 @@ impl std::fmt::Debug for Vault {
             .field("config", &self.config)
             .field("project_id", &self.project_id)
             .field("identity", &self.identity)
+            .field("backend", &self.backend)
             .finish()
     }
 }
@@ -43,11 +45,13 @@ impl Vault {
         let config = Config::load()?;
         let project_id = config.project_id();
         let identity = store::load_identity(&project_id)?;
+        let backend = cipher::CipherBackend::from_config(&config)?;
 
         Ok(Self {
             config,
             project_id,
             identity,
+            backend,
         })
     }
 
@@ -59,17 +63,31 @@ impl Vault {
     /// # Arguments
     ///
     /// * `name` - Display name for the initial team member
+    /// * `cipher_type` - Optional cipher backend type ("age", "aws-kms", "gcp-kms", "gpg")
+    /// * `kms_key_id` - Optional AWS KMS key ID (required for aws-kms)
+    /// * `gcp_resource` - Optional GCP KMS resource name (required for gcp-kms)
     ///
     /// # Errors
     ///
     /// Returns `ConfigError::AlreadyInitialized` if vault already exists.
     /// Returns error if keypair generation or file operations fail.
-    pub fn init(name: &str) -> Result<Self> {
+    pub fn init(
+        name: &str,
+        cipher_type: Option<String>,
+        kms_key_id: Option<String>,
+        gcp_resource: Option<String>,
+    ) -> Result<Self> {
         if Config::exists() {
             return Err(crate::error::ConfigError::AlreadyInitialized.into());
         }
 
         let mut config = Config::new();
+
+        // Set cipher configuration
+        config.burrow.cipher = cipher_type;
+        config.burrow.kms_key_id = kms_key_id;
+        config.burrow.gcp_resource = gcp_resource;
+
         let project_id = config.project_id();
 
         let public_key = store::generate_keypair(&project_id)?;
@@ -81,11 +99,13 @@ impl Vault {
         config::ensure_gitignore()?;
 
         let identity = store::load_identity(&project_id)?;
+        let backend = cipher::CipherBackend::from_config(&config)?;
 
         Ok(Self {
             config,
             project_id,
             identity,
+            backend,
         })
     }
 
@@ -139,12 +159,12 @@ impl Vault {
             return Err(SecretError::AlreadyExists(key.to_string()).into());
         }
 
-        let recipients = get_recipients(&self.config)?;
+        let recipients = get_recipients_as_strings(&self.config);
         if recipients.is_empty() {
             return Err(ConfigError::NoRecipients.into());
         }
 
-        let encrypted = cipher::encrypt(value, &recipients)?;
+        let encrypted = self.backend.encrypt(value, &recipients)?;
 
         self.config
             .secrets
@@ -364,11 +384,21 @@ impl Vault {
         let mut imported = Vec::new();
 
         for (key, value) in env.entries() {
-            // Use internal set_secret helper
-            set_secret(&mut self.config, key, value, true)?;
+            // Validate input
+            validate_key(key)?;
+            validate_value(key, value)?;
+
+            let recipients = get_recipients_as_strings(&self.config);
+            if recipients.is_empty() {
+                return Err(ConfigError::NoRecipients.into());
+            }
+
+            let encrypted = self.backend.encrypt(value, &recipients)?;
+            self.config.secrets.insert(key.clone(), encrypted);
             imported.push(key.clone());
         }
 
+        self.config.save()?;
         debug!(count = imported.len(), "import complete");
         Ok(imported)
     }
@@ -515,28 +545,11 @@ fn get_recipients(config: &Config) -> Result<Vec<age::x25519::Recipient>> {
         .collect()
 }
 
-/// Internal helper: Set (encrypt) a secret value.
+/// Get all recipient public keys as strings.
 ///
-/// Used by import() to avoid code duplication.
-fn set_secret(config: &mut Config, key: &str, value: &str, force: bool) -> Result<()> {
-    // Validate input
-    validate_key(key)?;
-    validate_value(key, value)?;
-
-    if config.secrets.contains_key(key) && !force {
-        return Err(SecretError::AlreadyExists(key.to_string()).into());
-    }
-
-    let recipients = get_recipients(config)?;
-    if recipients.is_empty() {
-        return Err(ConfigError::NoRecipients.into());
-    }
-
-    let encrypted = cipher::encrypt(value, &recipients)?;
-    config.secrets.insert(key.to_string(), encrypted);
-    config.save()?;
-
-    Ok(())
+/// Used by the CipherBackend which handles its own parsing.
+fn get_recipients_as_strings(config: &Config) -> Vec<String> {
+    config.recipients.values().cloned().collect()
 }
 
 /// Internal helper: List all team members.
@@ -574,7 +587,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(tmp.path()).unwrap();
-        let vault = Vault::init("alice").unwrap();
+        let vault = Vault::init("alice", None, None, None).unwrap();
         let ctx = TestContext {
             _tmp: tmp,
             _original_dir: original_dir,

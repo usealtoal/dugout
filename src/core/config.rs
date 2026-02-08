@@ -30,6 +30,15 @@ pub struct Config {
 pub struct Meta {
     /// Configuration version.
     pub version: String,
+    /// Cipher backend: "age" (default), "aws-kms", "gcp-kms", "gpg"
+    #[serde(default)]
+    pub cipher: Option<String>,
+    /// AWS KMS key ID or ARN (for aws-kms cipher)
+    #[serde(default)]
+    pub kms_key_id: Option<String>,
+    /// GCP KMS resource name (for gcp-kms cipher)
+    #[serde(default)]
+    pub gcp_resource: Option<String>,
 }
 
 impl Config {
@@ -38,6 +47,9 @@ impl Config {
         Self {
             burrow: Meta {
                 version: env!("CARGO_PKG_VERSION").to_string(),
+                cipher: None,
+                kms_key_id: None,
+                gcp_resource: None,
             },
             recipients: BTreeMap::new(),
             secrets: BTreeMap::new(),

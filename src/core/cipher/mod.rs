@@ -21,6 +21,7 @@ use crate::error::Result;
 use ::age::x25519;
 
 mod age;
+mod backend;
 
 #[cfg(feature = "aws")]
 pub mod kms;
@@ -32,6 +33,7 @@ pub mod gcp;
 pub mod gpg;
 
 pub use age::{parse_recipient, Age};
+pub use backend::CipherBackend;
 
 /// Cryptographic backend trait.
 ///

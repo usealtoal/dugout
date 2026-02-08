@@ -30,7 +30,7 @@ fn setup() -> TestEnv {
     env::set_var("HOME", home_dir.path());
     env::set_current_dir(&temp_dir).unwrap();
 
-    let vault = Vault::init("test-user").unwrap();
+    let vault = Vault::init("test-user", None, None, None).unwrap();
 
     TestEnv {
         _dir: temp_dir,
@@ -219,7 +219,7 @@ fn test_vault_open_existing() {
     env::set_current_dir(&temp_dir).unwrap();
 
     // Init vault
-    let mut vault = Vault::init("test-user").unwrap();
+    let mut vault = Vault::init("test-user", None, None, None).unwrap();
     vault
         .set("PERSISTED_KEY", "persisted_value", false)
         .unwrap();
