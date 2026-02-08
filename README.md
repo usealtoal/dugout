@@ -23,6 +23,22 @@
 - **Fast** — encrypts in ~100µs, single binary, no runtime dependencies
 - **Vendor-agnostic** — works with any git host, any infrastructure, any language
 
+## Comparison
+
+| | dugout | sops | dotenvx | Vault | Doppler | Infisical |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Secrets in repo** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **No server** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **No config file** | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ |
+| **Team access via git** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Auto-detect & run** | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ |
+| **Single binary** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Encrypt speed** | ~100µs | ~1ms | N/A | N/A | N/A | N/A |
+| **Free & open source** | ✅ | ✅ | ✅ | ✅* | ❌ | ✅ |
+| **Written in** | Rust | Go | JS | Go | — | TS |
+
+<sup>*Vault BSL license</sup>
+
 ## Installation
 
 Install dugout with our standalone installers:
