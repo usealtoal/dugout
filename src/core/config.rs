@@ -140,12 +140,12 @@ impl Config {
         self.kms.as_ref().map(|k| k.key.as_str())
     }
 
-    /// Validate the configuration structure and contents
+    /// Validate the configuration structure and contents.
     ///
     /// Checks:
     /// - Version field is valid semver
     /// - At least one recipient exists
-    /// - Recipient identifiers are valid for the configured cipher backend
+    /// - Recipients are valid age public keys (or non-empty for GPG)
     /// - All secret keys are valid environment variable names
     ///
     /// # Errors
@@ -176,9 +176,18 @@ impl Config {
             return Err(ConfigError::NoRecipients.into());
         }
 
-        // Validate recipients are valid age public keys
+        // Validate recipients (age keys for age/hybrid, anything non-empty for GPG)
+        let is_gpg = self.dugout.cipher.as_deref() == Some("gpg");
         for (name, key) in &self.recipients {
-            if cipher::parse_recipient(key).is_err() {
+            if is_gpg {
+                if key.trim().is_empty() {
+                    return Err(ConfigError::InvalidValue {
+                        field: "recipients",
+                        reason: format!("empty GPG recipient for '{}'", name),
+                    }
+                    .into());
+                }
+            } else if cipher::parse_recipient(key).is_err() {
                 return Err(ConfigError::InvalidValue {
                     field: "recipients",
                     reason: format!("invalid age public key for recipient '{}': {}", name, key),

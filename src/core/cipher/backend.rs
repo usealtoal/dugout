@@ -175,8 +175,9 @@ impl CipherBackend {
 
     /// Encrypt plaintext for the given recipients.
     ///
-    /// - Age mode: raw age ciphertext
-    /// - Hybrid mode: v2 envelope with age + KMS ciphertext
+    /// - Age: raw age ciphertext
+    /// - Hybrid: v2 envelope with age + KMS ciphertext
+    /// - Gpg: GPG-encrypted ciphertext
     pub fn encrypt(&self, plaintext: &str, recipients: &[String]) -> Result<String> {
         match self {
             Self::Age => Self::encrypt_age(plaintext, recipients),
@@ -197,14 +198,14 @@ impl CipherBackend {
 
     /// Decrypt ciphertext using the provided identity.
     ///
-    /// For envelopes, tries age first (fast, local), then KMS.
-    /// For raw age ciphertext, decrypts directly.
+    /// - Gpg: delegates to gpg CLI
+    /// - Envelope: tries age first (fast, local), then KMS fallback
+    /// - Raw age ciphertext: decrypts directly
     pub fn decrypt(&self, ciphertext: &str, identity: &age::x25519::Identity) -> Result<String> {
         use super::Cipher;
 
         #[cfg(feature = "gpg")]
         if let Self::Gpg = self {
-            use super::Cipher;
             return super::gpg::Gpg.decrypt(ciphertext, &());
         }
 

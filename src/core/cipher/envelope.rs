@@ -101,7 +101,7 @@ impl Envelope {
 
 /// Trait for KMS encrypt/decrypt operations.
 ///
-/// Implemented by real providers (AWS, GCP) and mock for testing.
+/// Implemented by real providers (AWS, GCP) and [`StubKms`] for testing.
 #[allow(dead_code)]
 pub trait KmsBackend: std::fmt::Debug {
     fn encrypt(&self, plaintext: &str) -> Result<String>;
@@ -109,7 +109,7 @@ pub trait KmsBackend: std::fmt::Debug {
     fn provider(&self) -> &KmsProvider;
 }
 
-/// Mock KMS backend for testing.
+/// Stub KMS backend for testing.
 ///
 /// Uses simple hex encoding with prefix — NOT cryptographically secure,
 /// just validates the plumbing without external crate deps.
@@ -121,12 +121,12 @@ pub struct StubKms;
 impl KmsBackend for StubKms {
     fn encrypt(&self, plaintext: &str) -> Result<String> {
         let hex: String = plaintext.bytes().map(|b| format!("{:02x}", b)).collect();
-        Ok(format!("mock-kms:{}", hex))
+        Ok(format!("stub-kms:{}", hex))
     }
 
     fn decrypt(&self, ciphertext: &str) -> Result<String> {
-        let hex = ciphertext.strip_prefix("mock-kms:").ok_or_else(|| {
-            CipherError::DecryptionFailed("not a mock-kms ciphertext".to_string())
+        let hex = ciphertext.strip_prefix("stub-kms:").ok_or_else(|| {
+            CipherError::DecryptionFailed("not a stub-kms ciphertext".to_string())
         })?;
         let bytes: std::result::Result<Vec<u8>, _> = (0..hex.len())
             .step_by(2)
@@ -213,16 +213,16 @@ mod tests {
     }
 
     #[test]
-    fn test_mock_kms_roundtrip() {
-        let mock = StubKms;
-        let encrypted = mock.encrypt("secret-value").unwrap();
-        let decrypted = mock.decrypt(&encrypted).unwrap();
+    fn test_stub_kms_roundtrip() {
+        let stub = StubKms;
+        let encrypted = stub.encrypt("secret-value").unwrap();
+        let decrypted = stub.decrypt(&encrypted).unwrap();
         assert_eq!(decrypted, "secret-value");
     }
 
     #[test]
-    fn test_mock_kms_invalid_ciphertext() {
-        let mock = StubKms;
-        assert!(mock.decrypt("not-valid-base64!!!").is_err());
+    fn test_stub_kms_invalid_ciphertext() {
+        let stub = StubKms;
+        assert!(stub.decrypt("not-valid-base64!!!").is_err());
     }
 }
