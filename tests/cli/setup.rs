@@ -102,6 +102,76 @@ fn test_whoami_without_setup_fails() {
 }
 
 #[test]
+fn test_setup_then_init_uses_global_identity() {
+    let t = Test::new();
+
+    // 1. Setup global identity
+    let output = t.cmd().arg("setup").output().unwrap();
+    assert_success(&output);
+
+    // Get the global public key
+    let pubkey_path = t.home.path().join(".dugout/identity.pub");
+    let global_pubkey = fs::read_to_string(&pubkey_path).unwrap();
+
+    // 2. Init vault — should use global identity as recipient
+    let output = t.cmd().arg("init").output().unwrap();
+    assert_success(&output);
+
+    // 3. Set a secret
+    let output = t
+        .cmd()
+        .args(["set", "DB_PASSWORD", "s3cret"])
+        .output()
+        .unwrap();
+    assert_success(&output);
+
+    // 4. Get the secret back — proves we have decrypt access
+    let output = t.cmd().args(["get", "DB_PASSWORD"]).output().unwrap();
+    assert_success(&output);
+    assert_eq!(stdout(&output).trim(), "s3cret");
+
+    // 5. Verify the vault recipient matches global identity
+    let output = t.cmd().args(["team", "list", "--json"]).output().unwrap();
+    assert_success(&output);
+    assert!(
+        stdout(&output).contains(global_pubkey.trim()),
+        "vault recipient should be the global identity key"
+    );
+}
+
+#[test]
+fn test_setup_then_init_dot_works() {
+    let t = Test::new();
+
+    // 1. Setup global identity
+    let output = t.cmd().arg("setup").output().unwrap();
+    assert_success(&output);
+
+    // 2. Init vault
+    let output = t.cmd().arg("init").output().unwrap();
+    assert_success(&output);
+
+    // 3. Set a secret
+    let output = t.cmd().args(["set", "MY_KEY", "12345"]).output().unwrap();
+    assert_success(&output);
+
+    // 4. Create a Makefile so dot can detect the project
+    fs::write(t.dir.path().join("Makefile"), "dev:\n\techo test\n").unwrap();
+
+    // 5. dugout . should work without knocking
+    let output = t.cmd().arg(".").output().unwrap();
+    let combined = format!("{}{}", stdout(&output), stderr(&output));
+    assert!(
+        !combined.contains("no access"),
+        "should have access after setup+init, got: {combined}"
+    );
+    assert!(
+        !combined.contains("knock"),
+        "should not suggest knock after setup+init, got: {combined}"
+    );
+}
+
+#[test]
 fn test_setup_output_includes_paths() {
     let t = Test::new();
 
