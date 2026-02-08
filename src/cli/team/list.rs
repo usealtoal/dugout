@@ -31,7 +31,7 @@ pub fn execute(json: bool) -> Result<()> {
         output::dimmed("no team members");
     } else {
         output::blank();
-        output::header(&format!("{} team members", members.len()));
+        output::header(&format!("{} team members", output::count(members.len())));
         output::rule();
         for recipient in members {
             output::kv(

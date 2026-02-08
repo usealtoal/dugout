@@ -14,14 +14,14 @@ pub fn execute(name: &str, key: &str) -> Result<()> {
     let mut vault = Vault::open()?;
     let secret_count = vault.list().len();
 
-    let sp = output::spinner(&format!("Adding member {}...", output::key(name)));
+    let sp = output::spinner(&format!("adding {}...", output::key(name)));
     vault.add_recipient(name, key)?;
-    output::spinner_success(&sp, &format!("Added team member {}", output::key(name)));
+    output::spinner_success(&sp, &format!("added {}", output::key(name)));
 
     if secret_count > 0 {
         output::dimmed(&format!(
-            "  re-encrypted {} secrets for new recipient",
-            secret_count
+            "  re-encrypted {} secrets",
+            output::count(secret_count)
         ));
     }
     Ok(())

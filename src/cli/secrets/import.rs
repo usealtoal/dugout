@@ -11,13 +11,13 @@ pub fn execute(path: &str) -> Result<()> {
     let start = Instant::now();
     let mut vault = crate::core::vault::Vault::open()?;
 
-    let sp = output::spinner(&format!("Importing from {}...", output::path(path)));
+    let sp = output::spinner(&format!("importing from {}...", output::path(path)));
     let imported = vault.import(path)?;
     sp.finish_and_clear();
 
     output::timed(
         &format!(
-            "Imported {} secrets from {}",
+            "imported {} secrets from {}",
             output::count(imported.len()),
             output::path(path)
         ),

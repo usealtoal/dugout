@@ -32,7 +32,7 @@ pub fn execute() -> Result<()> {
         }
         output::blank();
         output::hint(&format!(
-            "Run {} to update .env with vault values",
+            "run {} to update .env with vault values",
             output::cmd("burrow secrets unlock")
         ));
     }
@@ -40,13 +40,13 @@ pub fn execute() -> Result<()> {
     // Vault-only entries
     let vault_only = diff.vault_only();
     if !vault_only.is_empty() {
-        output::warn("in vault but not in .env:");
+        output::warn("vault only:");
         for entry in &vault_only {
             output::list_item(&output::key(entry.key()));
         }
         output::blank();
         output::hint(&format!(
-            "Run {} to sync these secrets",
+            "run {} to sync these secrets",
             output::cmd("burrow secrets unlock")
         ));
     }
@@ -54,13 +54,13 @@ pub fn execute() -> Result<()> {
     // Env-only entries
     let env_only = diff.env_only();
     if !env_only.is_empty() {
-        output::warn("in .env but not tracked:");
+        output::warn("env only:");
         for entry in &env_only {
             output::list_item(&output::key(entry.key()));
         }
         output::blank();
         output::hint(&format!(
-            "Use {} to encrypt untracked secrets",
+            "run {} to encrypt untracked secrets",
             output::cmd("burrow secrets import .env")
         ));
     }
@@ -74,11 +74,11 @@ pub fn execute() -> Result<()> {
         }
         output::blank();
         output::hint(&format!(
-            "Run {} to create .env file",
+            "run {} to create .env file",
             output::cmd("burrow secrets unlock")
         ));
     } else if diff.is_synced() {
-        output::success("All secrets in sync");
+        output::success("all synced");
     }
 
     Ok(())

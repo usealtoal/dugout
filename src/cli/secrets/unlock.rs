@@ -10,13 +10,13 @@ use std::time::Instant;
 pub fn execute() -> Result<()> {
     let start = Instant::now();
     let vault = crate::core::vault::Vault::open()?;
-    let sp = output::spinner("Decrypting secrets...");
+    let sp = output::spinner("decrypting...");
     let env = vault.unlock()?;
     sp.finish_and_clear();
 
     output::timed(
         &format!(
-            "Decrypted {} secrets → {}",
+            "decrypted {} secrets to {}",
             output::count(env.len()),
             output::path(".env")
         ),

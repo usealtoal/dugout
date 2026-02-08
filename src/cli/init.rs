@@ -20,9 +20,9 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
     info!("Initializing for user: {}", name);
 
     // Generate keypair with spinner
-    let sp = output::spinner("Generating keypair...");
+    let sp = output::spinner("generating keypair...");
     let vault = Vault::init(&name)?;
-    output::spinner_success(&sp, "Generated keypair");
+    output::spinner_success(&sp, "initialized");
 
     info!("Initialized successfully");
 
@@ -34,7 +34,6 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
         .unwrap_or("unknown");
 
     output::blank();
-    output::success("initialized");
     output::kv("recipient", format!("{} ({})", name, &public_key[..20]));
     output::kv(
         "config",
@@ -43,7 +42,7 @@ pub fn execute(name: Option<String>, no_banner: bool) -> Result<()> {
     output::kv("key", format!("~/.burrow/keys/{}/", vault.project_id()));
     output::blank();
     output::hint(&format!(
-        "Next: {} to add secrets",
+        "run {} to add your first secret",
         output::cmd("burrow set KEY VALUE")
     ));
 

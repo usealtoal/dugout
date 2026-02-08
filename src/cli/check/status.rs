@@ -100,17 +100,17 @@ pub fn execute() -> Result<()> {
     output::blank();
     if secret_count == 0 {
         output::hint(&format!(
-            "Add your first secret with {}",
+            "run {} to add your first secret",
             output::cmd("burrow set KEY value")
         ));
     } else if !env_path.exists() {
         output::hint(&format!(
-            "Create .env file with {}",
+            "run {} to create .env file",
             output::cmd("burrow secrets unlock")
         ));
     } else {
         output::dimmed(&format!(
-            "Use {} for detailed comparison",
+            "use {} for detailed comparison",
             output::cmd("burrow secrets diff")
         ));
     }

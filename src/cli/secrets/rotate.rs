@@ -67,8 +67,6 @@ pub fn execute() -> Result<()> {
     use std::time::Instant;
 
     info!("Starting key rotation");
-    output::section("Key Rotation");
-
     let start = Instant::now();
 
     // Load config
@@ -81,7 +79,10 @@ pub fn execute() -> Result<()> {
     }
 
     // Step 1: Decrypt all secrets
-    let sp = output::spinner("Decrypting secrets...");
+    let sp = output::spinner(&format!(
+        "decrypting {} secrets...",
+        output::count(cfg.secrets.len())
+    ));
     let identity = store::load_identity(&project_id)?;
 
     let mut decrypted_secrets = Vec::new();
@@ -89,24 +90,17 @@ pub fn execute() -> Result<()> {
         let plaintext = cipher::decrypt(ciphertext, identity.as_age())?;
         decrypted_secrets.push((key.clone(), plaintext));
     }
-    output::spinner_success(
-        &sp,
-        &format!(
-            "Decrypted {} secrets",
-            output::count(decrypted_secrets.len())
-        ),
-    );
+    sp.finish_and_clear();
 
     // Step 2: Archive old key
-    let sp = output::spinner("Archiving old key...");
+    let sp = output::spinner("archiving old key...");
     archive_old_key(&project_id)?;
-    output::spinner_success(&sp, "Archived old key");
+    sp.finish_and_clear();
 
     // Step 3: Generate new keypair
-    let sp = output::spinner("Generating new keypair...");
+    let sp = output::spinner("generating new keypair...");
     let new_public_key = store::generate_keypair(&project_id)?;
-    output::spinner_success(&sp, "Generated new keypair");
-    output::dimmed(&format!("  new public key: {}", &new_public_key[..40]));
+    sp.finish_and_clear();
 
     // Step 4: Get all recipient public keys (including new one)
     let mut recipients = Vec::new();
@@ -123,7 +117,8 @@ pub fn execute() -> Result<()> {
     }
 
     // Step 5: Re-encrypt all secrets
-    let pb = output::progress_bar(decrypted_secrets.len() as u64, "Re-encrypting secrets");
+    let secret_count = decrypted_secrets.len();
+    let pb = output::progress_bar(secret_count as u64, "re-encrypting secrets");
     cfg.secrets.clear();
     for (key, plaintext) in decrypted_secrets {
         let ciphertext = cipher::encrypt(&plaintext, &recipients)?;
@@ -131,10 +126,6 @@ pub fn execute() -> Result<()> {
         pb.inc(1);
     }
     pb.finish_and_clear();
-    output::success(&format!(
-        "Re-encrypted {} secrets",
-        output::count(cfg.secrets.len())
-    ));
 
     // Step 6: Update config with new public key for the project owner
     // Find the project owner recipient (the one with the old key) and update it
@@ -152,9 +143,13 @@ pub fn execute() -> Result<()> {
     // Save updated config
     cfg.save()?;
 
-    output::blank();
-    output::timed("Key rotation complete", start.elapsed());
-    output::hint("all secrets have been re-encrypted with the new key");
+    output::timed(
+        &format!(
+            "rotated key, re-encrypted {} secrets",
+            output::count(secret_count)
+        ),
+        start.elapsed(),
+    );
 
     Ok(())
 }

@@ -26,10 +26,10 @@ pub use unlock::execute as unlock;
 /// Set a secret value.
 pub fn set(key: &str, value: &str, force: bool) -> Result<()> {
     info!("Setting secret: {} (force: {})", key, force);
-    let sp = output::spinner("Encrypting...");
+    let sp = output::spinner("encrypting...");
     let mut vault = Vault::open()?;
     vault.set(key, value, force)?;
-    output::spinner_success(&sp, &format!("Set {}", output::key(key)));
+    output::spinner_success(&sp, &format!("set {}", output::key(key)));
     Ok(())
 }
 
@@ -47,7 +47,7 @@ pub fn rm(key: &str) -> Result<()> {
     info!("Removing secret: {}", key);
     let mut vault = Vault::open()?;
     vault.remove(key)?;
-    output::success(&format!("removed: {}", output::key(key)));
+    output::success(&format!("removed {}", output::key(key)));
     Ok(())
 }
 
@@ -64,10 +64,10 @@ pub fn list(json: bool) -> Result<()> {
         });
         output::data(&serde_json::to_string_pretty(&result)?);
     } else if secrets.is_empty() {
-        output::dimmed("no secrets stored");
+        output::dimmed("no secrets");
     } else {
         output::blank();
-        output::header(&format!("{} secrets", secrets.len()));
+        output::header(&format!("{} secrets", output::count(secrets.len())));
         output::rule();
         for secret in secrets {
             output::list_item(secret.key());

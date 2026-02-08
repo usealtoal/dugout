@@ -21,16 +21,16 @@ fn main() {
         let error_msg = e.to_string();
         let suggestion = match &e {
             burrow::error::Error::Config(burrow::error::ConfigError::NotInitialized) => {
-                Some("Run 'burrow init' to initialize burrow in this directory")
+                Some("run 'burrow init' to get started")
             }
             burrow::error::Error::Store(burrow::error::StoreError::NoPrivateKey(_)) => {
-                Some("Make sure you've run 'burrow init' first")
+                Some("run 'burrow init' or check your key directory")
             }
             _ => None,
         };
 
         if suggestion.is_some() {
-            output::error_box("Error", &error_msg, suggestion);
+            output::error_box("error", &error_msg, suggestion);
         } else {
             output::error(&error_msg);
         }

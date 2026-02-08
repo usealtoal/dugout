@@ -22,20 +22,20 @@ fn is_git_repo() -> bool {
 pub fn execute() -> Result<()> {
     // Check if we're in a git repository
     if !is_git_repo() {
-        output::warn("Not a git repository");
-        output::hint("Run 'git init' to start tracking this project");
+        output::warn("not a git repository");
+        output::hint("run 'git init' to start tracking this project");
         return Ok(());
     }
 
-    output::section("Security Audit");
+    output::section("Audit");
 
-    let sp = output::spinner("Scanning git history...");
+    let sp = output::spinner("scanning git history...");
     let findings = audit::scan_git_history()?;
     sp.finish_and_clear();
 
     if findings.is_empty() {
-        output::success("No obvious secrets found in git history");
-        output::dimmed("(This is a basic scan. Always review commits manually)");
+        output::success("no obvious secrets found in git history");
+        output::dimmed("(basic scan only, always review commits manually)");
     } else {
         output::warn(&format!(
             "{} potential issue{} found",
@@ -85,8 +85,8 @@ pub fn execute() -> Result<()> {
             output::blank();
         }
 
-        output::hint("Use 'git filter-repo' or 'BFG Repo-Cleaner' to remove sensitive data");
-        output::hint("Rotate any exposed credentials immediately");
+        output::hint("use 'git filter-repo' or 'BFG Repo-Cleaner' to remove sensitive data");
+        output::hint("rotate any exposed credentials immediately");
     }
 
     Ok(())
