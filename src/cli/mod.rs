@@ -19,14 +19,25 @@ pub mod whoami;
 // Subcommand groups
 pub mod check;
 
+use clap::builder::styling::{AnsiColor, Effects, Styles};
 use clap::{Parser, Subcommand};
 
-/// Dugout - An extremely fast secrets manager for developers.
+const STYLES: Styles = Styles::styled()
+    .header(AnsiColor::Green.on_default().effects(Effects::BOLD))
+    .usage(AnsiColor::Green.on_default().effects(Effects::BOLD))
+    .literal(AnsiColor::Cyan.on_default().effects(Effects::BOLD))
+    .placeholder(AnsiColor::Cyan.on_default())
+    .valid(AnsiColor::Green.on_default().effects(Effects::BOLD))
+    .invalid(AnsiColor::Red.on_default().effects(Effects::BOLD))
+    .error(AnsiColor::Red.on_default().effects(Effects::BOLD));
+
+/// Dugout - Git-native secrets manager for development teams.
 #[derive(Parser)]
 #[command(
     name = "dugout",
-    about = "A local secrets manager for development teams",
-    version
+    about = "Git-native secrets manager for development teams",
+    version,
+    styles = STYLES
 )]
 pub struct Cli {
     /// Enable verbose logging output

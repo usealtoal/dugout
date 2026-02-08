@@ -29,7 +29,7 @@ gpg = []
 [dependencies]
 age = { version = "0.11", features = ["armor"] }
 chrono = "0.4"
-clap = { version = "4", features = ["derive", "env"] }
+clap = { version = "4", features = ["derive", "env", "color"] }
 clap_complete = "4"
 console = "0.15"
 dialoguer = "0.11"
