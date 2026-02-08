@@ -115,10 +115,10 @@ pub trait KmsBackend: std::fmt::Debug {
 /// just validates the plumbing without external crate deps.
 #[cfg(any(test, feature = "test-kms"))]
 #[derive(Debug)]
-pub struct MockKms;
+pub struct StubKms;
 
 #[cfg(any(test, feature = "test-kms"))]
-impl KmsBackend for MockKms {
+impl KmsBackend for StubKms {
     fn encrypt(&self, plaintext: &str) -> Result<String> {
         let hex: String = plaintext.bytes().map(|b| format!("{:02x}", b)).collect();
         Ok(format!("mock-kms:{}", hex))
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_mock_kms_roundtrip() {
-        let mock = MockKms;
+        let mock = StubKms;
         let encrypted = mock.encrypt("secret-value").unwrap();
         let decrypted = mock.decrypt(&encrypted).unwrap();
         assert_eq!(decrypted, "secret-value");
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_mock_kms_invalid_ciphertext() {
-        let mock = MockKms;
+        let mock = StubKms;
         assert!(mock.decrypt("not-valid-base64!!!").is_err());
     }
 }
