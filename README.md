@@ -53,6 +53,12 @@ curl -LsSf https://raw.githubusercontent.com/usealtoal/dugout/main/scripts/insta
 powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/usealtoal/dugout/main/scripts/install.ps1 | iex"
 ```
 
+Or, with [Homebrew](https://brew.sh):
+
+```bash
+brew install usealtoal/tap/dugout
+```
+
 Or, from [crates.io](https://crates.io/crates/dugout):
 
 ```bash
