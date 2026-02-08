@@ -145,7 +145,8 @@ impl KmsBackend for StubKms {
 
 #[cfg(any(test, feature = "test-kms"))]
 mod tests {
-    use super::*;
+    #[allow(unused_imports)]
+    use super::{Envelope, KmsProvider};
 
     #[test]
     fn test_detect_aws_arn() {

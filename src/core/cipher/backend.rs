@@ -93,6 +93,8 @@ impl CipherBackend {
     fn encrypt_kms(&self, plaintext: &str) -> Result<String> {
         match self {
             Self::Age => unreachable!("encrypt_kms called on Age backend"),
+            #[cfg(feature = "gpg")]
+            Self::Gpg => unreachable!("encrypt_kms called on Gpg backend"),
 
             #[cfg(any(test, feature = "test-kms"))]
             Self::Hybrid { .. } => {
@@ -133,6 +135,8 @@ impl CipherBackend {
     fn decrypt_kms(&self, ciphertext: &str) -> Result<String> {
         match self {
             Self::Age => unreachable!("decrypt_kms called on Age backend"),
+            #[cfg(feature = "gpg")]
+            Self::Gpg => unreachable!("decrypt_kms called on Gpg backend"),
 
             #[cfg(any(test, feature = "test-kms"))]
             Self::Hybrid { .. } => {
