@@ -25,18 +25,27 @@
 
 ## Installation
 
+Install dugout with our standalone installers:
+
 ```bash
-# macOS / Linux
+# On macOS and Linux.
 curl -LsSf https://raw.githubusercontent.com/usealtoal/dugout/main/scripts/install.sh | sh
 ```
 
 ```bash
-# Cargo
+# On Windows.
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/usealtoal/dugout/main/scripts/install.ps1 | iex"
+```
+
+Or, from [crates.io](https://crates.io/crates/dugout):
+
+```bash
 cargo install dugout
 ```
 
+Or, from source:
+
 ```bash
-# From source
 git clone https://github.com/usealtoal/dugout && cd dugout
 cargo install --path .
 ```
