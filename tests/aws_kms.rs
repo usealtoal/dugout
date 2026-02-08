@@ -76,8 +76,8 @@ fn test_aws_kms_large_value() {
     let key = get_aws_kms_key();
     let cipher = AwsKms::new(key);
 
-    // Create a 10KB payload (10 * 1024 bytes)
-    let large_value = "A".repeat(10 * 1024);
+    // KMS symmetric encrypt max is 4096 bytes — use 4000 to stay under
+    let large_value = "A".repeat(4000);
 
     let ciphertext = cipher
         .encrypt(&large_value, &[])
@@ -87,7 +87,7 @@ fn test_aws_kms_large_value() {
         .expect("failed to decrypt large value");
 
     assert_eq!(decrypted, large_value);
-    assert_eq!(decrypted.len(), 10 * 1024);
+    assert_eq!(decrypted.len(), 4000);
 }
 
 #[test]
@@ -97,11 +97,9 @@ fn test_aws_kms_empty_value() {
     let key = get_aws_kms_key();
     let cipher = AwsKms::new(key);
 
-    let empty = "";
-    let ciphertext = cipher.encrypt(empty, &[]).expect("failed to encrypt");
-    let decrypted = cipher.decrypt(&ciphertext, &()).expect("failed to decrypt");
-
-    assert_eq!(decrypted, empty);
+    // AWS KMS requires at least 1 byte — empty string should error
+    let result = cipher.encrypt("", &[]);
+    assert!(result.is_err(), "KMS should reject empty plaintext");
     assert!(decrypted.is_empty());
 }
 
