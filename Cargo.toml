@@ -51,6 +51,7 @@ aws-sdk-kms = { version = "1", optional = true }
 aws-config = { version = "1", optional = true }
 tokio = { version = "1", features = ["rt"], optional = true }
 base64 = { version = "0.22", optional = true }
+sha2 = "0.10.9"
 
 [dev-dependencies]
 tempfile = "3"

@@ -9,6 +9,7 @@ pub mod commands;
 pub mod fixtures;
 pub mod skip;
 
+#[allow(unused_imports)]
 pub use assertions::*;
 #[allow(unused_imports)]
 pub use fixtures::*;

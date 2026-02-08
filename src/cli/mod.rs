@@ -13,6 +13,7 @@ pub mod run;
 pub mod secrets;
 pub mod setup;
 pub mod shell;
+pub mod sync;
 pub mod team;
 pub mod whoami;
 
@@ -129,6 +130,16 @@ pub enum Command {
     Admit {
         /// Name of the person to admit
         name: String,
+    },
+
+    /// Re-encrypt secrets for the current recipient set
+    Sync {
+        /// Show what would change without doing it
+        #[arg(long)]
+        dry_run: bool,
+        /// Force re-encryption even if already in sync
+        #[arg(long)]
+        force: bool,
     },
 
     /// Auto-detect project and run with secrets
@@ -258,6 +269,7 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
         Knock { name } => knock::execute(name),
         Pending => pending::execute(),
         Admit { name } => admit::execute(&name),
+        Sync { dry_run, force } => sync::execute(dry_run, force),
         Dot => dot::execute(),
         Run { command } => run::execute(&command),
         Env => shell::execute(),
