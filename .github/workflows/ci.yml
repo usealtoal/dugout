@@ -97,6 +97,17 @@ jobs:
           DUGOUT_TEST_KMS_KEY: ${{ secrets.DUGOUT_TEST_KMS_KEY }}
         run: cargo test --features aws,test-aws,test-kms --test aws_kms -- --test-threads=1
 
+      - name: Run GCP KMS tests
+        if: env.DUGOUT_TEST_GCP_KEY != ''
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-sa-key.json
+          DUGOUT_TEST_GCP_KEY: ${{ secrets.DUGOUT_TEST_GCP_KEY }}
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          echo "$GCP_SA_KEY" > /tmp/gcp-sa-key.json
+          cargo test --features gcp,test-gcp,test-kms --test gcp_kms -- --test-threads=1
+          rm -f /tmp/gcp-sa-key.json
+
   lint:
     name: Lints
     runs-on: ubuntu-latest
