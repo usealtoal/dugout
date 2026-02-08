@@ -4,20 +4,20 @@
 
 use std::collections::{HashMap, HashSet};
 
-/// The sync state of a single secret.
+/// The sync state of a single secret
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EntryStatus {
-    /// Secret exists in both vault and .env with matching values.
+    /// Secret exists in both vault and .env with matching values
     Synced,
-    /// Secret exists in both but values differ.
+    /// Secret exists in both but values differ
     Modified,
-    /// Secret exists in vault but not in .env.
+    /// Secret exists in vault but not in .env
     VaultOnly,
-    /// Secret exists in .env but not in vault.
+    /// Secret exists in .env but not in vault
     EnvOnly,
 }
 
-/// A single entry in a diff comparison.
+/// A single entry in a diff comparison
 #[derive(Debug, Clone)]
 pub struct DiffEntry {
     key: String,
@@ -25,44 +25,35 @@ pub struct DiffEntry {
 }
 
 impl DiffEntry {
-    /// Create a new diff entry.
+    /// Create a new diff entry
     pub fn new(key: String, status: EntryStatus) -> Self {
         Self { key, status }
     }
 
-    /// The secret key name.
+    /// Secret key name
     pub fn key(&self) -> &str {
         &self.key
     }
 
-    /// The sync status.
+    /// Sync status
     pub fn status(&self) -> &EntryStatus {
         &self.status
     }
 
-    /// Whether this entry is synced.
+    /// Whether this entry is synced
     pub fn is_synced(&self) -> bool {
         matches!(self.status, EntryStatus::Synced)
     }
 }
 
-/// The full diff between vault and .env file.
+/// Comparison between vault secrets and .env file
 #[derive(Debug)]
 pub struct Diff {
     entries: Vec<DiffEntry>,
 }
 
 impl Diff {
-    /// Compute the diff between vault secrets and an env file.
-    ///
-    /// # Arguments
-    ///
-    /// * `vault_secrets` - Key-value pairs from the vault
-    /// * `env_secrets` - Key-value pairs from the .env file
-    ///
-    /// # Returns
-    ///
-    /// A `Diff` containing all entries sorted by key name.
+    /// Compute the diff between vault secrets and an env file
     pub fn compute(vault_secrets: &[(String, String)], env_secrets: &[(String, String)]) -> Self {
         let vault_map: HashMap<_, _> = vault_secrets.iter().cloned().collect();
         let env_map: HashMap<_, _> = env_secrets.iter().cloned().collect();
@@ -96,12 +87,12 @@ impl Diff {
         Self { entries }
     }
 
-    /// All entries.
+    /// All entries
     pub fn entries(&self) -> &[DiffEntry] {
         &self.entries
     }
 
-    /// Only synced entries.
+    /// Only synced entries
     pub fn synced(&self) -> Vec<&DiffEntry> {
         self.entries
             .iter()
@@ -109,7 +100,7 @@ impl Diff {
             .collect()
     }
 
-    /// Only modified entries.
+    /// Only modified entries
     pub fn modified(&self) -> Vec<&DiffEntry> {
         self.entries
             .iter()
@@ -117,7 +108,7 @@ impl Diff {
             .collect()
     }
 
-    /// Only vault-only entries.
+    /// Only vault-only entries
     pub fn vault_only(&self) -> Vec<&DiffEntry> {
         self.entries
             .iter()
@@ -125,7 +116,7 @@ impl Diff {
             .collect()
     }
 
-    /// Only env-only entries.
+    /// Only env-only entries
     pub fn env_only(&self) -> Vec<&DiffEntry> {
         self.entries
             .iter()
@@ -133,17 +124,17 @@ impl Diff {
             .collect()
     }
 
-    /// Whether everything is in sync.
+    /// Whether everything is in sync
     pub fn is_synced(&self) -> bool {
         self.entries.iter().all(|e| e.is_synced())
     }
 
-    /// Total number of entries.
+    /// Total number of entries
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
-    /// Whether there are no entries.
+    /// Whether there are no entries
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }

@@ -8,7 +8,7 @@ use crate::error::ConfigError;
 use crate::error::{CipherError, Result};
 use tracing::debug;
 
-/// Cipher backend selection.
+/// Vault cipher selection and dispatch
 ///
 /// Wraps the different cipher implementations and provides
 /// dynamic dispatch based on configuration.
@@ -32,15 +32,7 @@ pub enum CipherBackend {
 
 #[allow(dead_code)] // Methods used by vault
 impl CipherBackend {
-    /// Create a cipher backend from configuration.
-    ///
-    /// # Arguments
-    ///
-    /// * `config` - The burrow configuration
-    ///
-    /// # Returns
-    ///
-    /// The appropriate cipher backend based on config.
+    /// Create a cipher backend from configuration
     ///
     /// # Errors
     ///
@@ -113,16 +105,7 @@ impl CipherBackend {
         }
     }
 
-    /// Encrypt plaintext.
-    ///
-    /// # Arguments
-    ///
-    /// * `plaintext` - The string to encrypt
-    /// * `recipients` - List of recipient identifiers (format depends on backend)
-    ///
-    /// # Returns
-    ///
-    /// Encrypted string.
+    /// Encrypt plaintext for the given recipients
     ///
     /// # Errors
     ///
@@ -160,16 +143,7 @@ impl CipherBackend {
         }
     }
 
-    /// Decrypt ciphertext.
-    ///
-    /// # Arguments
-    ///
-    /// * `ciphertext` - The encrypted string
-    /// * `identity` - The age identity (used only for age backend)
-    ///
-    /// # Returns
-    ///
-    /// Decrypted plaintext.
+    /// Decrypt ciphertext using the provided identity
     ///
     /// # Errors
     ///
@@ -197,7 +171,7 @@ impl CipherBackend {
         }
     }
 
-    /// Get the backend name for display.
+    /// Backend name for display
     pub fn name(&self) -> &'static str {
         match self {
             Self::Age => "age",

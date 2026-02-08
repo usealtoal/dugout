@@ -1,10 +1,10 @@
-//! Error types for Burrow.
+//! Error types for Burrow
 //!
 //! Domain-specific error types following best practices.
 
 use thiserror::Error;
 
-/// Configuration-related errors.
+/// Configuration-related errors
 #[derive(Error, Debug)]
 pub enum ConfigError {
     #[error("not initialized\n  → Run `burrow init` to get started")]
@@ -38,7 +38,7 @@ pub enum ConfigError {
     Other(String),
 }
 
-/// Cryptographic operation errors.
+/// Cryptographic operation errors
 #[derive(Error, Debug)]
 pub enum CipherError {
     #[error("encryption failed: {0}")]
@@ -60,7 +60,7 @@ pub enum CipherError {
     Io(#[source] std::io::Error),
 }
 
-/// Key storage and management errors.
+/// Key storage and management errors
 #[derive(Error, Debug)]
 pub enum StoreError {
     #[error("no private key found for project '{0}'\n  → Ask a team member to share the project key, or run `burrow init` to start fresh")]
@@ -79,7 +79,7 @@ pub enum StoreError {
     InvalidFormat(String),
 }
 
-/// Secret operation errors.
+/// Secret operation errors
 #[derive(Error, Debug)]
 pub enum SecretError {
     #[error("secret not found: {key}{suggestion}")]
@@ -99,7 +99,7 @@ pub enum SecretError {
 }
 
 impl SecretError {
-    /// Create a NotFound error with suggestions based on available keys.
+    /// Create a NotFound error with suggestions based on available keys
     pub fn not_found_with_suggestions(key: String, available_keys: &[String]) -> Self {
         let suggestion = if available_keys.is_empty() {
             "\n  → No secrets stored yet. Use `burrow set KEY VALUE` to add one".to_string()
@@ -115,7 +115,7 @@ impl SecretError {
     }
 }
 
-/// Input validation errors.
+/// Input validation errors
 #[derive(Error, Debug)]
 pub enum ValidationError {
     #[error("invalid secret key '{key}': {reason}")]
@@ -135,7 +135,7 @@ pub enum ValidationError {
     },
 }
 
-/// Top-level Burrow error type.
+/// Top-level error type for all burrow operations
 #[derive(Error, Debug)]
 pub enum Error {
     #[error(transparent)]
@@ -163,5 +163,5 @@ pub enum Error {
     Other(String),
 }
 
-/// Result type alias for Burrow operations.
+/// Result type alias for all burrow operations
 pub type Result<T> = std::result::Result<T, Error>;

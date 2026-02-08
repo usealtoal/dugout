@@ -1,4 +1,4 @@
-//! Vault.
+//! Vault
 //!
 //! The primary interface for all burrow operations.
 
@@ -11,10 +11,9 @@ use crate::error::{ConfigError, Result, SecretError, ValidationError};
 use tracing::{debug, info, instrument};
 use zeroize::Zeroizing;
 
-/// The primary interface for burrow operations.
+/// The primary interface for all burrow operations
 ///
 /// Owns the config, manages keys, and provides all secret operations.
-/// This is the main entry point for all vault interactions.
 pub struct Vault {
     config: Config,
     project_id: String,
@@ -35,7 +34,7 @@ impl std::fmt::Debug for Vault {
 
 impl Vault {
     // --- Construction ---
-    /// Open an existing vault in the current directory.
+    /// Open an existing vault in the current directory
     ///
     /// # Errors
     ///
@@ -55,17 +54,10 @@ impl Vault {
         })
     }
 
-    /// Initialize a new vault.
+    /// Initialize a new vault
     ///
     /// Creates a new `.burrow.toml` configuration file, generates a keypair,
     /// and adds the specified user as the first recipient.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - Display name for the initial team member
-    /// * `cipher_type` - Optional cipher backend type ("age", "aws-kms", "gcp-kms", "gpg")
-    /// * `kms_key_id` - Optional AWS KMS key ID (required for aws-kms)
-    /// * `gcp_resource` - Optional GCP KMS resource name (required for gcp-kms)
     ///
     /// # Errors
     ///
@@ -109,39 +101,23 @@ impl Vault {
         })
     }
 
-    /// Get config reference.
-    ///
-    /// Provides read-only access to the underlying configuration.
+    /// Config reference
     pub fn config(&self) -> &Config {
         &self.config
     }
 
-    /// Get the vault's identity.
+    /// Vault's identity
     pub fn identity(&self) -> &Identity {
         &self.identity
     }
 
-    /// Project ID.
-    ///
-    /// Returns the unique identifier for this vault, derived from the directory name.
+    /// Project ID derived from directory name
     pub fn project_id(&self) -> &str {
         &self.project_id
     }
 
     // --- Secrets ---
-    /// Set a secret.
-    ///
-    /// Encrypts the value for all configured recipients and saves to config.
-    ///
-    /// # Arguments
-    ///
-    /// * `key` - Secret key name (must be valid env var name)
-    /// * `value` - Plaintext secret value
-    /// * `force` - Overwrite if the key already exists
-    ///
-    /// # Returns
-    ///
-    /// The created Secret.
+    /// Set a secret, encrypting for all configured recipients
     ///
     /// # Errors
     ///
@@ -175,15 +151,9 @@ impl Vault {
         Ok(Secret::new(key.to_string(), encrypted))
     }
 
-    /// Get a decrypted secret.
+    /// Get a decrypted secret
     ///
-    /// # Arguments
-    ///
-    /// * `key` - Secret key name
-    ///
-    /// # Returns
-    ///
-    /// The decrypted plaintext value wrapped in `Zeroizing` for secure memory cleanup.
+    /// Returns the decrypted plaintext value wrapped in `Zeroizing` for secure memory cleanup.
     ///
     /// # Errors
     ///
@@ -233,13 +203,9 @@ impl Vault {
             .collect()
     }
 
-    /// Decrypt all secrets.
+    /// Decrypt all secrets
     ///
-    /// Used for unlock/run/export operations.
-    ///
-    /// # Returns
-    ///
-    /// Vector of (key, plaintext_value) pairs with values in `Zeroizing` for secure cleanup.
+    /// Returns vector of (key, plaintext_value) pairs with values in `Zeroizing` for secure cleanup.
     ///
     /// # Errors
     ///
@@ -257,9 +223,8 @@ impl Vault {
         Ok(pairs)
     }
 
-    /// Re-encrypt all secrets (after team changes).
+    /// Re-encrypt all secrets for the current recipient set
     ///
-    /// Decrypts all secrets and re-encrypts them for the current recipient set.
     /// Call this after adding or removing team members.
     ///
     /// # Errors
@@ -284,15 +249,7 @@ impl Vault {
     }
 
     // --- Team ---
-    /// Add a team member.
-    ///
-    /// Validates the public key, adds the recipient to config, and re-encrypts
-    /// all secrets so the new member can decrypt them.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - Display name for the team member
-    /// * `key` - age public key string
+    /// Add a team member and re-encrypt all secrets for them
     ///
     /// # Errors
     ///
@@ -318,14 +275,7 @@ impl Vault {
         Ok(())
     }
 
-    /// Remove a team member.
-    ///
-    /// Removes the recipient from config and re-encrypts all secrets so the
-    /// removed member can no longer decrypt them.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - Name of the team member to remove
+    /// Remove a team member and re-encrypt all secrets without them
     ///
     /// # Errors
     ///
@@ -348,11 +298,7 @@ impl Vault {
         Ok(())
     }
 
-    /// List team members.
-    ///
-    /// # Returns
-    ///
-    /// Vector of validated `Recipient` instances.
+    /// List all team members
     pub fn recipients(&self) -> Vec<Recipient> {
         list_recipients(&self.config)
             .into_iter()
@@ -361,17 +307,10 @@ impl Vault {
     }
 
     // --- Lifecycle ---
-    /// Import secrets from .env file.
+    /// Import secrets from .env file
     ///
     /// Reads key=value pairs from the file and encrypts them.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the .env file
-    ///
-    /// # Returns
-    ///
-    /// Vector of imported secret keys.
+    /// Returns vector of imported secret keys.
     ///
     /// # Errors
     ///
@@ -404,13 +343,7 @@ impl Vault {
         Ok(imported)
     }
 
-    /// Export as .env format.
-    ///
-    /// Decrypts all secrets and returns them as an Env instance.
-    ///
-    /// # Returns
-    ///
-    /// An `Env` containing all decrypted secrets.
+    /// Export all decrypted secrets as .env format
     ///
     /// # Errors
     ///
@@ -485,7 +418,7 @@ impl Vault {
 
 // --- Private helpers ---
 
-/// Validate a secret key name.
+/// Validate a secret key name
 ///
 /// Secret keys must be valid environment variable names:
 /// - Only A-Z, 0-9, and underscore
@@ -522,9 +455,7 @@ pub(crate) fn validate_key(key: &str) -> Result<()> {
     Ok(())
 }
 
-/// Validate a secret value.
-///
-/// Secret values cannot be empty.
+/// Validate a secret value (cannot be empty)
 fn validate_value(key: &str, value: &str) -> Result<()> {
     if value.is_empty() {
         return Err(ValidationError::EmptyValue(key.to_string()).into());
@@ -533,16 +464,12 @@ fn validate_value(key: &str, value: &str) -> Result<()> {
     Ok(())
 }
 
-/// Get all recipient public keys as strings.
-///
-/// Used by the CipherBackend which handles its own parsing.
+/// Get all recipient public keys as strings
 fn get_recipients_as_strings(config: &Config) -> Vec<String> {
     config.recipients.values().cloned().collect()
 }
 
-/// Internal helper: List all team members.
-///
-/// Returns vector of (name, public_key) pairs.
+/// List all team members as (name, public_key) pairs
 fn list_recipients(config: &Config) -> Vec<(MemberName, PublicKey)> {
     config
         .recipients

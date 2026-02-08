@@ -12,23 +12,23 @@ use crate::core::types::{EncryptedValue, MemberName, PublicKey, SecretKey};
 use crate::core::vault;
 use crate::error::{ConfigError, Result};
 
-/// Root configuration structure.
+/// Project configuration stored in `.burrow.toml`
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
-    /// Metadata about the burrow configuration.
+    /// Metadata about the vault configuration
     pub burrow: Meta,
-    /// Map of recipient names to their age public keys.
+    /// Map of recipient names to their age public keys
     #[serde(default)]
     pub recipients: BTreeMap<MemberName, PublicKey>,
-    /// Map of secret keys to their encrypted values.
+    /// Map of secret keys to their encrypted values
     #[serde(default)]
     pub secrets: BTreeMap<SecretKey, EncryptedValue>,
 }
 
-/// Burrow metadata section.
+/// Metadata section of the configuration
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Meta {
-    /// Configuration version.
+    /// Configuration version
     pub version: String,
     /// Cipher backend: "age" (default), "aws-kms", "gcp-kms", "gpg"
     #[serde(default)]
@@ -42,7 +42,7 @@ pub struct Meta {
 }
 
 impl Config {
-    /// Create a new empty configuration.
+    /// Create a new empty configuration with current version
     pub fn new() -> Self {
         Self {
             burrow: Meta {
@@ -56,17 +56,17 @@ impl Config {
         }
     }
 
-    /// Get the path to the configuration file.
+    /// Path to the configuration file in the current directory
     pub fn config_path() -> PathBuf {
         PathBuf::from(constants::CONFIG_FILE)
     }
 
-    /// Check if a configuration file exists in the current directory.
+    /// Check if a configuration file exists in the current directory
     pub fn exists() -> bool {
         Self::config_path().exists()
     }
 
-    /// Load configuration from `.burrow.toml`.
+    /// Load configuration from `.burrow.toml`
     ///
     /// # Errors
     ///
@@ -94,7 +94,7 @@ impl Config {
         Ok(config)
     }
 
-    /// Save configuration to `.burrow.toml`.
+    /// Save configuration to `.burrow.toml`
     ///
     /// # Errors
     ///
@@ -108,7 +108,7 @@ impl Config {
         Ok(())
     }
 
-    /// Get a unique project identifier based on the current directory name.
+    /// Unique project identifier based on the current directory name
     pub fn project_id(&self) -> String {
         std::env::current_dir()
             .ok()
@@ -116,7 +116,7 @@ impl Config {
             .unwrap_or_else(|| "default".to_string())
     }
 
-    /// Validate the configuration structure and contents.
+    /// Validate the configuration structure and contents
     ///
     /// Checks:
     /// - Version field is valid semver
@@ -178,7 +178,7 @@ impl Default for Config {
     }
 }
 
-/// Ensure `.gitignore` contains entries to ignore `.env` files.
+/// Ensure `.gitignore` contains entries to ignore `.env` files
 ///
 /// Adds `.env`, `.env.*`, and `!.env.example` if not already present.
 ///

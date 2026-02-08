@@ -5,29 +5,29 @@
 use crate::error::Result;
 use std::process::Command;
 
-/// Severity level for audit findings.
+/// Severity level for audit findings
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
-    /// Low confidence match (common variable name).
+    /// Low confidence match (common variable name)
     Low,
-    /// Medium confidence (looks like a key pattern).
+    /// Medium confidence (looks like a key pattern)
     Medium,
-    /// High confidence (matches known secret formats).
+    /// High confidence (matches known secret formats)
     High,
 }
 
-/// A single finding from a git history audit.
+/// A single finding from a git history audit
 #[derive(Debug, Clone)]
 pub struct Finding {
-    /// Git commit hash.
+    /// Git commit hash
     pub commit: String,
-    /// File path where the finding was detected.
+    /// File path where the finding was detected
     pub file: String,
-    /// Line number (if available).
+    /// Line number (if available)
     pub line: Option<usize>,
-    /// The pattern that matched.
+    /// The pattern that matched
     pub pattern: String,
-    /// How confident we are this is a real leak.
+    /// How confident we are this is a real leak
     pub severity: Severity,
 }
 
@@ -46,11 +46,9 @@ impl std::fmt::Display for Finding {
     }
 }
 
-/// Scan git history for potential secret leaks.
+/// Scan git history for potential secret leaks
 ///
-/// # Returns
-///
-/// Vector of findings sorted by severity (highest first).
+/// Returns findings sorted by severity (highest first).
 ///
 /// # Errors
 ///
@@ -70,7 +68,7 @@ pub fn scan_git_history() -> Result<Vec<Finding>> {
     Ok(findings)
 }
 
-/// Scan for .env files in git history.
+/// Scan for .env files in git history
 fn scan_env_files() -> Result<Vec<Finding>> {
     let output = Command::new("git")
         .args([
@@ -115,7 +113,7 @@ fn scan_env_files() -> Result<Vec<Finding>> {
     Ok(findings)
 }
 
-/// Scan for secret-like patterns in git history.
+/// Scan for secret-like patterns in git history
 fn scan_secret_patterns() -> Result<Vec<Finding>> {
     let patterns = [
         ("API_KEY=", Severity::Medium),

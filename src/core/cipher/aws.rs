@@ -22,7 +22,7 @@ use tracing::trace;
 use super::Cipher;
 use crate::error::{CipherError, Result};
 
-/// AWS KMS cipher backend.
+/// AWS KMS cipher backend
 ///
 /// Uses AWS Key Management Service for encryption/decryption.
 /// KMS stores the key information in the ciphertext, so decryption
@@ -35,11 +35,7 @@ pub struct AwsKms {
 
 #[cfg(feature = "aws")]
 impl AwsKms {
-    /// Create a new AWS KMS cipher with the specified key ID.
-    ///
-    /// # Arguments
-    ///
-    /// * `key_id` - AWS KMS key ID or ARN
+    /// Create a new AWS KMS cipher with the specified key ID or ARN
     #[allow(dead_code)]
     pub fn new(key_id: String) -> Self {
         Self { key_id }

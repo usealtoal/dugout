@@ -11,9 +11,7 @@ use tracing::trace;
 use super::Cipher;
 use crate::error::{CipherError, Result};
 
-/// Age-based cryptographic backend.
-///
-/// Uses the age encryption format with x25519 keys.
+/// Age-based cryptographic backend using x25519 keys
 pub struct Age;
 
 impl Cipher for Age {
@@ -78,15 +76,7 @@ impl Cipher for Age {
     }
 }
 
-/// Parse a public key string into an age recipient.
-///
-/// # Arguments
-///
-/// * `key` - age public key string (starts with "age1...")
-///
-/// # Returns
-///
-/// Parsed `x25519::Recipient` ready for encryption.
+/// Parse a public key string into an age recipient
 ///
 /// # Errors
 ///

@@ -5,7 +5,7 @@
 use crate::error::Result;
 use std::path::{Path, PathBuf};
 
-/// A parsed .env file.
+/// A parsed .env file
 #[derive(Debug, Clone)]
 pub struct Env {
     entries: Vec<(String, String)>,
@@ -13,14 +13,10 @@ pub struct Env {
 }
 
 impl Env {
-    /// Parse an .env file from disk.
+    /// Parse an .env file from disk
     ///
     /// Skips empty lines and comments (lines starting with #).
     /// Supports values with or without quotes.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the .env file
     ///
     /// # Errors
     ///
@@ -55,12 +51,7 @@ impl Env {
         })
     }
 
-    /// Create from raw key-value pairs.
-    ///
-    /// # Arguments
-    ///
-    /// * `pairs` - Vector of (key, value) tuples
-    /// * `path` - Path where this env file would be written
+    /// Create from raw key-value pairs
     pub fn from_pairs(pairs: Vec<(String, String)>, path: PathBuf) -> Self {
         Self {
             entries: pairs,
@@ -68,7 +59,7 @@ impl Env {
         }
     }
 
-    /// Write the env file to disk.
+    /// Write the env file to disk
     ///
     /// Writes all entries in KEY=value format to the configured path.
     /// Quotes values containing spaces, equals signs, or hash marks.
@@ -82,15 +73,7 @@ impl Env {
         Ok(())
     }
 
-    /// Get a value by key.
-    ///
-    /// # Arguments
-    ///
-    /// * `key` - The environment variable name
-    ///
-    /// # Returns
-    ///
-    /// The value if the key exists, `None` otherwise.
+    /// Get a value by key
     pub fn get(&self, key: &str) -> Option<&str> {
         self.entries
             .iter()
@@ -98,27 +81,27 @@ impl Env {
             .map(|(_, v)| v.as_str())
     }
 
-    /// All entries as key-value pairs.
+    /// All entries as key-value pairs
     pub fn entries(&self) -> &[(String, String)] {
         &self.entries
     }
 
-    /// Number of entries.
+    /// Number of entries
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
-    /// Whether empty.
+    /// Whether empty
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
 
-    /// The file path.
+    /// File path
     pub fn path(&self) -> &Path {
         &self.path
     }
 
-    /// Serialize to .env format string.
+    /// Serialize to .env format string
     ///
     /// Quotes values that contain spaces or special characters.
     fn to_env_string(&self) -> String {

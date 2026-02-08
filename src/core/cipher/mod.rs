@@ -35,7 +35,7 @@ pub mod gpg;
 pub use age::{parse_recipient, Age};
 pub use backend::CipherBackend;
 
-/// Cryptographic backend trait.
+/// Cryptographic backend trait
 ///
 /// Abstracts encryption and decryption operations to support
 /// multiple cryptographic backends (age, KMS, GPG, etc.).
@@ -46,45 +46,27 @@ pub use backend::CipherBackend;
 /// - GCP KMS: resource names (projects/.../cryptoKeys/...)
 /// - GPG: key fingerprints or email addresses
 pub trait Cipher {
-    /// Type representing a recipient public key.
+    /// Type representing a recipient public key
     type Recipient;
 
-    /// Type representing a private identity/key.
+    /// Type representing a private identity/key
     type Identity;
 
-    /// Encrypt plaintext for multiple recipients.
-    ///
-    /// # Arguments
-    ///
-    /// * `plaintext` - The string to encrypt
-    /// * `recipients` - List of recipient identifiers (backend-specific)
-    ///
-    /// # Returns
-    ///
-    /// Encrypted string (format depends on backend implementation).
+    /// Encrypt plaintext for multiple recipients
     ///
     /// # Errors
     ///
     /// Returns `CipherError` if encryption fails.
     fn encrypt(&self, plaintext: &str, recipients: &[Self::Recipient]) -> Result<String>;
 
-    /// Decrypt an encrypted string using a private identity.
-    ///
-    /// # Arguments
-    ///
-    /// * `encrypted` - Encrypted string
-    /// * `identity` - Private key/identity
-    ///
-    /// # Returns
-    ///
-    /// The decrypted plaintext string.
+    /// Decrypt an encrypted string using a private identity
     ///
     /// # Errors
     ///
     /// Returns `CipherError` if decryption fails.
     fn decrypt(&self, encrypted: &str, identity: &Self::Identity) -> Result<String>;
 
-    /// Backend name for display/config.
+    /// Backend name for display/config
     #[allow(dead_code)]
     fn name(&self) -> &'static str;
 }
@@ -94,38 +76,20 @@ pub trait Cipher {
 pub use ::age::x25519::{Identity, Recipient};
 
 // Convenience functions using the default age backend
-/// Encrypt plaintext for multiple age recipients.
+/// Encrypt plaintext for multiple age recipients
 ///
-/// This is a convenience wrapper around `Age::encrypt`.
-///
-/// # Arguments
-///
-/// * `plaintext` - The string to encrypt
-/// * `recipients` - List of age public key recipients
-///
-/// # Returns
-///
-/// ASCII-armored encrypted string that any recipient can decrypt.
+/// Convenience wrapper around `Age::encrypt`.
 ///
 /// # Errors
 ///
-/// Returns `CipherError` if encryption fails at any stage.
+/// Returns `CipherError` if encryption fails.
 pub fn encrypt(plaintext: &str, recipients: &[x25519::Recipient]) -> Result<String> {
     Age.encrypt(plaintext, recipients)
 }
 
-/// Decrypt an age-encrypted string using a private identity.
+/// Decrypt an age-encrypted string using a private identity
 ///
-/// This is a convenience wrapper around `Age::decrypt`.
-///
-/// # Arguments
-///
-/// * `encrypted` - ASCII-armored encrypted string
-/// * `identity` - age private key (x25519 identity)
-///
-/// # Returns
-///
-/// The decrypted plaintext string.
+/// Convenience wrapper around `Age::decrypt`.
 ///
 /// # Errors
 ///

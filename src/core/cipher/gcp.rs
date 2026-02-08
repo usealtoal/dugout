@@ -26,9 +26,7 @@ use tracing::trace;
 use super::Cipher;
 use crate::error::{CipherError, Result};
 
-/// Google Cloud KMS cipher backend.
-///
-/// Uses the gcloud CLI to encrypt/decrypt with GCP KMS.
+/// Google Cloud KMS cipher backend using gcloud CLI
 #[cfg(feature = "gcp")]
 #[allow(dead_code)]
 pub struct GcpKms {
@@ -38,11 +36,7 @@ pub struct GcpKms {
 
 #[cfg(feature = "gcp")]
 impl GcpKms {
-    /// Create a new GCP KMS cipher with the specified resource name.
-    ///
-    /// # Arguments
-    ///
-    /// * `resource_name` - Full KMS key resource name
+    /// Create a new GCP KMS cipher with the specified resource name
     ///
     /// # Example
     ///
@@ -56,7 +50,7 @@ impl GcpKms {
         Self { resource_name }
     }
 
-    /// Parse resource name into components for gcloud command.
+    /// Parse resource name into components for gcloud command
     #[allow(dead_code)]
     fn parse_resource_name(&self) -> Result<(String, String, String, String)> {
         let parts: Vec<&str> = self.resource_name.split('/').collect();
@@ -82,7 +76,7 @@ impl GcpKms {
         ))
     }
 
-    /// Check if gcloud CLI is available.
+    /// Check if gcloud CLI is available
     #[allow(dead_code)]
     fn check_gcloud() -> Result<()> {
         Command::new("gcloud")

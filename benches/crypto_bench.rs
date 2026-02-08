@@ -1,5 +1,5 @@
 use age::x25519;
-use burrow::core::cipher::{decrypt, encrypt, Age, Cipher};
+use burrow::core::cipher::{Age, Cipher};
 use burrow::core::config::Config;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use tempfile::TempDir;
@@ -22,6 +22,7 @@ fn generate_recipients(count: usize) -> Vec<x25519::Recipient> {
 /// Benchmark encrypt/decrypt roundtrip with varying payload sizes.
 fn bench_encrypt_decrypt_roundtrip(c: &mut Criterion) {
     let mut group = c.benchmark_group("encrypt_decrypt_roundtrip");
+    let cipher = Age;
 
     let sizes = [32, 256, 1024, 4096];
     let recipient_counts = [1, 3];
@@ -47,11 +48,12 @@ fn bench_encrypt_decrypt_roundtrip(c: &mut Criterion) {
                 &payload,
                 |b, payload| {
                     b.iter(|| {
-                        let encrypted =
-                            encrypt(black_box(payload), black_box(&recipients_with_identity))
-                                .unwrap();
-                        let decrypted =
-                            decrypt(black_box(&encrypted), black_box(&identity)).unwrap();
+                        let encrypted = cipher
+                            .encrypt(black_box(payload), black_box(&recipients_with_identity))
+                            .unwrap();
+                        let decrypted = cipher
+                            .decrypt(black_box(&encrypted), black_box(&identity))
+                            .unwrap();
                         black_box(decrypted);
                     });
                 },
@@ -62,9 +64,10 @@ fn bench_encrypt_decrypt_roundtrip(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark encryption only (no decryption).
+/// Benchmark encryption only.
 fn bench_encrypt_only(c: &mut Criterion) {
     let mut group = c.benchmark_group("encrypt_only");
+    let cipher = Age;
 
     let sizes = [32, 256, 1024, 4096];
     let recipient_counts = [1, 3];
@@ -84,8 +87,9 @@ fn bench_encrypt_only(c: &mut Criterion) {
                 &payload,
                 |b, payload| {
                     b.iter(|| {
-                        let encrypted =
-                            encrypt(black_box(payload), black_box(&recipients)).unwrap();
+                        let encrypted = cipher
+                            .encrypt(black_box(payload), black_box(&recipients))
+                            .unwrap();
                         black_box(encrypted);
                     });
                 },
@@ -96,9 +100,10 @@ fn bench_encrypt_only(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark decryption only (with pre-encrypted data).
+/// Benchmark decryption only with pre-encrypted data.
 fn bench_decrypt_only(c: &mut Criterion) {
     let mut group = c.benchmark_group("decrypt_only");
+    let cipher = Age;
 
     let sizes = [32, 256, 1024, 4096];
     let identity = x25519::Identity::generate();
@@ -106,7 +111,7 @@ fn bench_decrypt_only(c: &mut Criterion) {
 
     for size in sizes {
         let payload = generate_payload(size);
-        let encrypted = encrypt(&payload, &recipients).unwrap();
+        let encrypted = cipher.encrypt(&payload, &recipients).unwrap();
 
         group.throughput(Throughput::Bytes(size as u64));
 
@@ -115,7 +120,9 @@ fn bench_decrypt_only(c: &mut Criterion) {
             &encrypted,
             |b, encrypted| {
                 b.iter(|| {
-                    let decrypted = decrypt(black_box(encrypted), black_box(&identity)).unwrap();
+                    let decrypted = cipher
+                        .decrypt(black_box(encrypted), black_box(&identity))
+                        .unwrap();
                     black_box(decrypted);
                 });
             },
@@ -129,7 +136,6 @@ fn bench_decrypt_only(c: &mut Criterion) {
 fn bench_config_save_load(c: &mut Criterion) {
     let mut group = c.benchmark_group("config_save_load");
 
-    // Create temp directories for each benchmark iteration
     let secret_counts = [5, 20, 50];
 
     for &count in &secret_counts {
@@ -139,7 +145,6 @@ fn bench_config_save_load(c: &mut Criterion) {
             |b, &count| {
                 b.iter_batched(
                     || {
-                        // Setup: create temp dir and config
                         let temp_dir = TempDir::new().unwrap();
                         std::env::set_current_dir(temp_dir.path()).unwrap();
 
@@ -158,12 +163,11 @@ fn bench_config_save_load(c: &mut Criterion) {
 
                         (temp_dir, config)
                     },
-                    |(temp_dir, config)| {
-                        // Benchmark: save and load
+                    |(temp_dir, config): (TempDir, Config)| {
                         config.save().unwrap();
                         let loaded = Config::load().unwrap();
                         black_box(loaded);
-                        drop(temp_dir); // Cleanup
+                        drop(temp_dir);
                     },
                     criterion::BatchSize::SmallInput,
                 );
@@ -205,7 +209,7 @@ fn bench_config_save(c: &mut Criterion) {
 
                         (temp_dir, config)
                     },
-                    |(temp_dir, config)| {
+                    |(temp_dir, config): (TempDir, Config)| {
                         config.save().unwrap();
                         drop(temp_dir);
                     },

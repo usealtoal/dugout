@@ -29,16 +29,14 @@ use tracing::trace;
 use super::Cipher;
 use crate::error::{CipherError, Result};
 
-/// GPG cipher backend.
-///
-/// Uses the gpg CLI to encrypt/decrypt with OpenPGP keys.
+/// GPG cipher backend using gpg CLI
 #[cfg(feature = "gpg")]
 #[allow(dead_code)]
 pub struct Gpg;
 
 #[cfg(feature = "gpg")]
 impl Gpg {
-    /// Check if gpg CLI is available.
+    /// Check if gpg CLI is available
     #[allow(dead_code)]
     fn check_gpg() -> Result<()> {
         Command::new("gpg")

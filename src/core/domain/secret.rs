@@ -4,7 +4,7 @@
 
 use crate::core::types::{EncryptedValue, SecretKey};
 
-/// A single encrypted secret.
+/// An encrypted secret with its key name
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Secret {
     key: SecretKey,
@@ -12,17 +12,17 @@ pub struct Secret {
 }
 
 impl Secret {
-    /// Create a new secret from a key and encrypted value.
+    /// Create a new secret from a key and encrypted value
     pub fn new(key: SecretKey, value: EncryptedValue) -> Self {
         Self { key, value }
     }
 
-    /// The secret's key name.
+    /// Secret's key name
     pub fn key(&self) -> &str {
         &self.key
     }
 
-    /// The encrypted ciphertext.
+    /// Encrypted ciphertext
     pub fn encrypted(&self) -> &str {
         &self.value
     }

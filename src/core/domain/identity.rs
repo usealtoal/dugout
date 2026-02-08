@@ -12,14 +12,14 @@ use crate::core::constants;
 use crate::core::types::PublicKey;
 use crate::error::{Result, StoreError, ValidationError};
 
-/// A private key identity for decrypting secrets.
+/// A private key identity for decrypting secrets
 pub struct Identity {
     inner: x25519::Identity,
     path: PathBuf,
 }
 
 impl Identity {
-    /// Load an identity from the key directory.
+    /// Load an identity from the key directory
     pub fn load(key_dir: &Path) -> Result<Self> {
         let key_path = key_dir.join("identity.key");
         debug!(path = %key_path.display(), "loading identity");
@@ -63,7 +63,7 @@ impl Identity {
         })
     }
 
-    /// Generate a new identity and save to disk.
+    /// Generate a new identity and save to disk
     pub fn generate(key_dir: &Path) -> Result<Self> {
         debug!(path = %key_dir.display(), "generating new identity");
 
@@ -95,22 +95,22 @@ impl Identity {
         })
     }
 
-    /// Get the corresponding public key.
+    /// Corresponding public key
     pub fn public_key(&self) -> PublicKey {
         self.inner.to_public().to_string()
     }
 
-    /// Get a reference to the inner age identity (for decryption).
+    /// Reference to the inner age identity for decryption
     pub fn as_age(&self) -> &x25519::Identity {
         &self.inner
     }
 
-    /// Get the key file path.
+    /// Key file path
     pub fn path(&self) -> &Path {
         &self.path
     }
 
-    /// Base directory for all burrow keys (`~/.burrow/keys`).
+    /// Base directory for all burrow keys (`~/.burrow/keys`)
     fn base_dir() -> Result<PathBuf> {
         let home = dirs::home_dir().ok_or_else(|| {
             StoreError::GenerationFailed("unable to determine home directory".to_string())
@@ -118,12 +118,12 @@ impl Identity {
         Ok(home.join(constants::KEY_DIR))
     }
 
-    /// Directory for a specific project's keys.
+    /// Directory for a specific project's keys
     pub fn project_dir(project_id: &str) -> Result<PathBuf> {
         Ok(Self::base_dir()?.join(project_id))
     }
 
-    /// Validate file permissions (Unix only).
+    /// Validate file permissions (Unix only)
     #[cfg(unix)]
     fn validate_file_permissions(path: &Path, expected_mode: u32) -> Result<()> {
         use std::os::unix::fs::PermissionsExt;

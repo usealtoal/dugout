@@ -1,51 +1,43 @@
-//! Burrow - An extremely fast secrets manager for developers.
+//! A fast, secure secrets manager for development teams
+//!
+//! Burrow encrypts secrets at rest using pluggable cipher backends
+//! (age, AWS KMS, GCP KMS, GPG) and provides a simple CLI for
+//! managing secrets across teams.
+//!
+//! # Quick start
+//!
+//! ```no_run
+//! use burrow::Vault;
+//!
+//! let mut vault = Vault::open()?;
+//! vault.set("DATABASE_URL", "postgres://localhost/db", false)?;
+//! let value = vault.get("DATABASE_URL")?;
+//! # Ok::<(), burrow::error::Error>(())
+//! ```
 //!
 //! # Architecture
 //!
-//! ```text
-//! src/
-//! ├── cli/              # Command-line interface
-//! │   ├── init          # Initialize burrow
-//! │   ├── secrets       # Secret CRUD operations
-//! │   ├── lock          # Lock/unlock commands
-//! │   ├── run           # Run with injected secrets
-//! │   ├── shell         # Interactive shell with secrets
-//! │   ├── team          # Team management
-//! │   ├── env           # .env import/export/diff
-//! │   ├── status        # Quick status overview
-//! │   ├── audit         # Git history security audit
-//! │   └── completions   # Shell completions
-//! └── core/             # Core library components
-//!     ├── vault         # Main API - Vault struct
-//!     ├── domain/       # Domain types
-//!     │   ├── secret    # Secret
-//!     │   ├── recipient # Recipient
-//!     │   ├── identity  # Identity
-//!     │   ├── diff      # Diff, DiffEntry, EntryStatus
-//!     │   ├── env       # Env
-//!     │   └── audit     # Finding, Severity
-//!     ├── types         # Domain type aliases
-//!     ├── config        # .burrow.toml management
-//!     ├── cipher/       # Encryption backends
-//!     │   ├── mod       # Cipher trait
-//!     │   └── age       # age encryption implementation
-//!     └── store/        # Key storage backends
-//!         ├── mod       # Store trait
-//!         └── fs        # Filesystem storage implementation
-//! ```
+//! The crate is organized into two main modules:
+//!
+//! - **`core`**: Library code with [`Vault`] as the main entry point
+//! - **`cli`**: Command-line interface and user-facing commands
+//!
+//! ## Core Components
+//!
+//! - [`Vault`]: Main API for all secret operations
+//! - Domain types: [`Secret`], [`Recipient`], [`Identity`], [`Env`], [`Diff`]
+//! - Pluggable cipher backends (age, AWS KMS, GCP KMS, GPG)
+//! - Configuration in `.burrow.toml`
 //!
 //! # Features
 //!
-//! - Age-based encryption with x25519 keys
-//! - Team collaboration with multiple recipients
-//! - Fast encrypted secret storage
-//! - Seamless .env file integration
-//! - Extensible crypto and storage backends
+//! - **Fast**: Age encryption with x25519 keys
+//! - **Team-ready**: Multiple recipients, key rotation
+//! - **Flexible**: Pluggable cipher backends (age, KMS, GPG)
+//! - **Developer-friendly**: `.env` file integration, shell completion
+//! - **Secure**: No secrets in git history, encrypted at rest
 //!
-//! # Public API
-//!
-//! The primary entry point is the [`Vault`] struct, which provides all
-//! secret management and team collaboration operations.
+//! # Example: Initialize and use a vault
 //!
 //! ```rust,no_run
 //! use burrow::Vault;
@@ -61,7 +53,12 @@
 //! let value = vault.get("DATABASE_URL")?;
 //!
 //! // Add a team member
-//! vault.add_recipient("bob", "age1...")?;
+//! vault.add_recipient("bob", "age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p")?;
+//!
+//! // List all secrets
+//! for secret in vault.list() {
+//!     println!("{}", secret.key());
+//! }
 //! # Ok(())
 //! # }
 //! ```

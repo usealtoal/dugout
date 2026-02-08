@@ -6,9 +6,7 @@ use crate::core::cipher;
 use crate::core::types::{MemberName, PublicKey};
 use crate::error::Result;
 
-/// A team member who can decrypt secrets.
-///
-/// Represents a validated recipient with their name and age public key.
+/// A team member who can decrypt secrets
 #[derive(Debug, Clone)]
 pub struct Recipient {
     name: MemberName,
@@ -16,12 +14,7 @@ pub struct Recipient {
 }
 
 impl Recipient {
-    /// Create a new recipient, validating the public key.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - Display name for the team member
-    /// * `public_key` - age public key string (must be valid)
+    /// Create a new recipient, validating the public key
     ///
     /// # Errors
     ///
@@ -33,12 +26,12 @@ impl Recipient {
         Ok(Self { name, public_key })
     }
 
-    /// Get the recipient's name.
+    /// Recipient's name
     pub fn name(&self) -> &str {
         &self.name
     }
 
-    /// Get the recipient's public key.
+    /// Recipient's public key
     pub fn public_key(&self) -> &str {
         &self.public_key
     }
