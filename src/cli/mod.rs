@@ -25,9 +25,8 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(
     name = "burrow",
-    about = "An extremely fast secrets manager for developers",
-    version,
-    after_help = "Dig deep. Ship safe. 🐀"
+    about = "A local secrets manager for development teams",
+    version
 )]
 pub struct Cli {
     /// Enable verbose logging output

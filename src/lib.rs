@@ -1,4 +1,4 @@
-//! A fast, secure secrets manager for development teams
+//! A local secrets manager for development teams
 //!
 //! Burrow encrypts secrets at rest using pluggable cipher backends
 //! (age, AWS KMS, GCP KMS, GPG) and provides a simple CLI for
