@@ -305,7 +305,9 @@ fn test_rotate_unicode_secrets() {
 
 #[test]
 fn test_rotate_large_secret_values() {
-    let large_value = "x".repeat(100_000);
+    // Windows has ~32KB command line limit, so keep under that
+    let large_value = "x".repeat(if cfg!(windows) { 8_000 } else { 100_000 });
+    let expected_len = large_value.len();
     let t = Test::with_secrets("alice", &[("LARGE", &large_value)]);
 
     let output = t.secrets_rotate();
@@ -314,7 +316,7 @@ fn test_rotate_large_secret_values() {
     let output = t.get("LARGE");
     assert!(output.status.success());
     let actual = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    assert_eq!(actual.len(), 100_000);
+    assert_eq!(actual.len(), expected_len);
 }
 
 #[test]
