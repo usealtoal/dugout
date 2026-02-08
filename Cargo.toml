@@ -25,6 +25,7 @@ default = []
 aws = ["dep:aws-sdk-kms", "dep:aws-config", "dep:tokio", "dep:base64"]
 gcp = ["dep:base64"]
 gpg = []
+test-kms = []  # enables mock KMS for integration testing
 
 [dependencies]
 age = { version = "0.11", features = ["armor"] }

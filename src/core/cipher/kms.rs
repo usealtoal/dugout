@@ -110,11 +110,11 @@ pub trait KmsBackend: std::fmt::Debug {
 ///
 /// Uses simple hex encoding with prefix — NOT cryptographically secure,
 /// just validates the plumbing without external crate deps.
-#[cfg(test)]
+#[cfg(any(test, feature = "test-kms"))]
 #[derive(Debug)]
 pub struct MockKms;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-kms"))]
 impl KmsBackend for MockKms {
     fn encrypt(&self, plaintext: &str) -> Result<String> {
         let hex: String = plaintext.bytes().map(|b| format!("{:02x}", b)).collect();
@@ -140,7 +140,7 @@ impl KmsBackend for MockKms {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-kms"))]
 mod tests {
     use super::*;
 

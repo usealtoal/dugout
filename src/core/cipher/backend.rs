@@ -89,7 +89,7 @@ pub enum CipherBackend {
     Age,
 
     /// Hybrid: age + KMS encryption
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-kms"))]
     Hybrid {
         kms: super::kms::MockKms,
         provider: super::kms::KmsProvider,
@@ -216,7 +216,7 @@ impl CipherBackend {
         })?;
 
         match provider {
-            #[cfg(test)]
+            #[cfg(any(test, feature = "test-kms"))]
             KmsProvider::Aws | KmsProvider::Gcp => Ok(Self::Hybrid {
                 kms: super::kms::MockKms,
                 provider,
@@ -273,7 +273,7 @@ impl CipherBackend {
         match self {
             Self::Age => Self::encrypt_age(plaintext, recipients),
 
-            #[cfg(test)]
+            #[cfg(any(test, feature = "test-kms"))]
             Self::Hybrid { kms, provider } => {
                 use super::kms::KmsBackend;
                 let age_ct = Self::encrypt_age(plaintext, recipients)?;
@@ -346,7 +346,7 @@ impl CipherBackend {
                 super::Age.decrypt(ciphertext, identity)
             }
 
-            #[cfg(test)]
+            #[cfg(any(test, feature = "test-kms"))]
             Self::Hybrid { kms, .. } => {
                 if let Some(env) = Envelope::parse(ciphertext) {
                     // Try age first
@@ -416,7 +416,7 @@ impl CipherBackend {
     pub fn name(&self) -> &'static str {
         match self {
             Self::Age => "age",
-            #[cfg(test)]
+            #[cfg(any(test, feature = "test-kms"))]
             Self::Hybrid { .. } => "hybrid",
             #[cfg(feature = "aws")]
             Self::AwsKms { .. } => "aws-kms",
@@ -432,7 +432,7 @@ impl CipherBackend {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-kms"))]
 mod tests {
     use super::*;
 
