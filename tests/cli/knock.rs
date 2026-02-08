@@ -177,6 +177,163 @@ fn test_knock_pending_admit_workflow() {
 }
 
 #[test]
+fn test_full_onboarding_with_separate_identities() {
+    // Simulates: Alice creates vault, Bob knocks, Alice admits, Bob can decrypt
+    let t = Test::new();
+
+    // --- Alice's setup ---
+    // Create a separate home for Alice
+    let alice_home = tempfile::TempDir::new().unwrap();
+
+    // Alice sets up her global identity
+    let output = t
+        .cmd()
+        .env("HOME", alice_home.path())
+        .arg("setup")
+        .output()
+        .unwrap();
+    assert_success(&output);
+
+    let alice_pubkey = fs::read_to_string(alice_home.path().join(".dugout/identity.pub"))
+        .unwrap()
+        .trim()
+        .to_string();
+
+    // Alice inits the vault (uses her global identity)
+    let output = t
+        .cmd()
+        .env("HOME", alice_home.path())
+        .args(["init", "--name", "alice"])
+        .output()
+        .unwrap();
+    assert_success(&output);
+
+    // Alice sets a secret
+    let output = t
+        .cmd()
+        .env("HOME", alice_home.path())
+        .args(["set", "API_KEY", "super_secret_123"])
+        .output()
+        .unwrap();
+    assert_success(&output);
+
+    // Verify Alice can read it
+    let output = t
+        .cmd()
+        .env("HOME", alice_home.path())
+        .args(["get", "API_KEY"])
+        .output()
+        .unwrap();
+    assert_success(&output);
+    assert_eq!(stdout(&output).trim(), "super_secret_123");
+
+    // --- Bob's setup ---
+    let bob_home = tempfile::TempDir::new().unwrap();
+
+    // Bob sets up his global identity
+    let output = t
+        .cmd()
+        .env("HOME", bob_home.path())
+        .arg("setup")
+        .output()
+        .unwrap();
+    assert_success(&output);
+
+    let bob_pubkey = fs::read_to_string(bob_home.path().join(".dugout/identity.pub"))
+        .unwrap()
+        .trim()
+        .to_string();
+
+    // Keys should be different
+    assert_ne!(
+        alice_pubkey, bob_pubkey,
+        "alice and bob should have different keys"
+    );
+
+    // --- Bob knocks ---
+    let output = t
+        .cmd()
+        .env("HOME", bob_home.path())
+        .args(["knock", "bob"])
+        .output()
+        .unwrap();
+    assert_success(&output);
+
+    // Verify the request file contains Bob's public key
+    let request_path = t.dir.path().join(".dugout/requests/bob.pub");
+    assert!(request_path.exists());
+    let request_key = fs::read_to_string(&request_path).unwrap();
+    assert_eq!(request_key.trim(), bob_pubkey);
+
+    // --- Alice admits Bob ---
+    let output = t
+        .cmd()
+        .env("HOME", alice_home.path())
+        .args(["admit", "bob"])
+        .output()
+        .unwrap();
+    assert_success(&output);
+
+    // Request file should be cleaned up
+    assert!(!request_path.exists());
+
+    // --- Verify team has both members ---
+    let output = t
+        .cmd()
+        .env("HOME", alice_home.path())
+        .args(["team", "list", "--json"])
+        .output()
+        .unwrap();
+    assert_success(&output);
+    let team_json = stdout(&output);
+    assert!(
+        team_json.contains(&alice_pubkey),
+        "team should contain alice's key"
+    );
+    assert!(
+        team_json.contains(&bob_pubkey),
+        "team should contain bob's key"
+    );
+
+    // --- Bob can now decrypt ---
+    let output = t
+        .cmd()
+        .env("HOME", bob_home.path())
+        .args(["get", "API_KEY"])
+        .output()
+        .unwrap();
+    assert_success(&output);
+    assert_eq!(stdout(&output).trim(), "super_secret_123");
+}
+
+#[test]
+fn test_knock_uses_global_identity_key() {
+    // Verify knock writes the GLOBAL identity key, not a project key
+    let t = Test::init("alice");
+
+    let setup_output = t.cmd().arg("setup").output().unwrap();
+    assert_success(&setup_output);
+
+    let global_pubkey = fs::read_to_string(t.home.path().join(".dugout/identity.pub"))
+        .unwrap()
+        .trim()
+        .to_string();
+
+    let output = t.cmd().args(["knock", "bob"]).output().unwrap();
+    assert_success(&output);
+
+    let request_key = fs::read_to_string(t.dir.path().join(".dugout/requests/bob.pub"))
+        .unwrap()
+        .trim()
+        .to_string();
+
+    assert_eq!(
+        request_key, global_pubkey,
+        "knock should use the global identity key"
+    );
+}
+
+#[test]
 fn test_knock_output_includes_instructions() {
     let t = Test::init("alice");
 

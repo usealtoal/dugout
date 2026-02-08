@@ -43,7 +43,14 @@ impl Vault {
     pub fn open() -> Result<Self> {
         let config = Config::load()?;
         let project_id = config.project_id();
-        let identity = store::load_identity(&project_id)?;
+
+        // Try project-specific key first, fall back to global identity
+        let identity = match store::load_identity(&project_id) {
+            Ok(id) => id,
+            Err(_) if Identity::has_global().unwrap_or(false) => Identity::load_global()?,
+            Err(e) => return Err(e),
+        };
+
         let backend = cipher::CipherBackend::from_config(&config)?;
 
         Ok(Self {
