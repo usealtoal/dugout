@@ -27,7 +27,7 @@ cargo bench
 - `cargo fmt` before committing
 - `cargo clippy -- -D warnings` must pass
 - Doc comments on all public items
-- See [STYLE.md](STYLE.md) for conventions
+- Follow existing patterns in the codebase
 
 ## Pull Requests
 
