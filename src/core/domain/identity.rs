@@ -114,12 +114,25 @@ impl Identity {
         &self.path
     }
 
+    /// Resolve the user's home directory.
+    ///
+    /// Checks `DUGOUT_HOME` first (returns it directly as the `.dugout` dir),
+    /// then `HOME`, then falls back to `dirs::home_dir()`.
+    fn resolve_home() -> Result<PathBuf> {
+        if let Ok(dugout_home) = std::env::var("DUGOUT_HOME") {
+            return Ok(PathBuf::from(dugout_home));
+        }
+        if let Ok(home) = std::env::var("HOME") {
+            return Ok(PathBuf::from(home));
+        }
+        dirs::home_dir().ok_or_else(|| {
+            StoreError::GenerationFailed("unable to determine home directory".to_string()).into()
+        })
+    }
+
     /// Base directory for all dugout keys (`~/.dugout/keys`)
     fn base_dir() -> Result<PathBuf> {
-        let home = dirs::home_dir().ok_or_else(|| {
-            StoreError::GenerationFailed("unable to determine home directory".to_string())
-        })?;
-        Ok(home.join(constants::KEY_DIR))
+        Ok(Self::resolve_home()?.join(constants::KEY_DIR))
     }
 
     /// Directory for a specific project's keys
@@ -129,10 +142,7 @@ impl Identity {
 
     /// Global identity directory (`~/.dugout/`)
     pub fn global_dir() -> Result<PathBuf> {
-        let home = dirs::home_dir().ok_or_else(|| {
-            StoreError::GenerationFailed("unable to determine home directory".to_string())
-        })?;
-        Ok(home.join(".dugout"))
+        Ok(Self::resolve_home()?.join(".dugout"))
     }
 
     /// Global identity file path (`~/.dugout/identity`)

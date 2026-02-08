@@ -10,28 +10,15 @@ use std::path::PathBuf;
 
 /// Get the key archive directory.
 fn archive_dir(project_id: &str) -> Result<PathBuf> {
-    let home = dirs::home_dir().ok_or_else(|| {
-        crate::error::StoreError::GenerationFailed("unable to determine home directory".to_string())
-    })?;
-    Ok(home
-        .join(".dugout")
-        .join("keys")
-        .join(project_id)
-        .join("archive"))
+    use crate::core::domain::Identity;
+    let key_dir = Identity::project_dir(project_id)?;
+    Ok(key_dir.join("archive"))
 }
 
 /// Archive the old identity key with timestamp.
 fn archive_old_key(project_id: &str) -> Result<()> {
-    let old_key_path = dirs::home_dir()
-        .ok_or_else(|| {
-            crate::error::StoreError::GenerationFailed(
-                "unable to determine home directory".to_string(),
-            )
-        })?
-        .join(".dugout")
-        .join("keys")
-        .join(project_id)
-        .join("identity.key");
+    use crate::core::domain::Identity;
+    let old_key_path = Identity::project_dir(project_id)?.join("identity.key");
 
     if !old_key_path.exists() {
         return Ok(());
