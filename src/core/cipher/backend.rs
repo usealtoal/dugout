@@ -37,6 +37,9 @@ impl CipherBackend {
         if let Some(cipher) = config.cipher() {
             match cipher {
                 "gpg" => {
+                    if config.has_kms() {
+                        tracing::warn!("[kms] config ignored: GPG cipher does not use KMS");
+                    }
                     #[cfg(feature = "gpg")]
                     {
                         debug!("creating gpg cipher backend");
