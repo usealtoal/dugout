@@ -26,9 +26,16 @@
 ## Installation
 
 ```bash
+# macOS / Linux
+curl -LsSf https://raw.githubusercontent.com/usealtoal/dugout/main/scripts/install.sh | sh
+```
+
+```bash
 # Cargo
 cargo install dugout
+```
 
+```bash
 # From source
 git clone https://github.com/usealtoal/dugout && cd dugout
 cargo install --path .
