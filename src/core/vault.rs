@@ -44,11 +44,17 @@ impl Vault {
         let config = Config::load()?;
         let project_id = config.project_id();
 
-        // Prefer project identity, fall back to global when project key is
-        // missing or no longer a recipient.
-        let identity = store::load_identity(&project_id)
-            .ok()
+        // Identity resolution order:
+        // 1. DUGOUT_IDENTITY / DUGOUT_IDENTITY_FILE env vars (CI/CD)
+        // 2. Project-local identity (~/.dugout/keys/<project>/)
+        // 3. Global identity (~/.dugout/identity)
+        let identity = Identity::from_env()
             .filter(|id| identity_has_access(&config, id))
+            .or_else(|| {
+                store::load_identity(&project_id)
+                    .ok()
+                    .filter(|id| identity_has_access(&config, id))
+            })
             .or_else(|| {
                 Identity::has_global()
                     .ok()

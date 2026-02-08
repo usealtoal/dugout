@@ -161,6 +161,24 @@ cargo install dugout --features aws
 dugout init --cipher aws-kms --kms-key arn:aws:kms:us-east-1:...
 ```
 
+## Deployment
+
+dugout works in CI/CD and production. Set `DUGOUT_IDENTITY` and go:
+
+```yaml
+# GitHub Actions
+- env:
+    DUGOUT_IDENTITY: ${{ secrets.DUGOUT_IDENTITY }}
+  run: dugout run -- ./deploy.sh
+```
+
+```bash
+# Docker
+docker run -e DUGOUT_IDENTITY="$KEY" myapp
+```
+
+See the full [Deployment Guide](DEPLOY.md) for GitLab, Kubernetes, and more.
+
 ## Benchmarks
 
 Measured with [Criterion](https://github.com/bheisler/criterion.rs). See [BENCHMARKS.md](BENCHMARKS.md) for methodology.
