@@ -109,3 +109,62 @@ jobs:
             dugout-*.tar.gz
             dugout-*.tar.gz.sha256
             dugout-*.zip
+
+  homebrew:
+    name: Update Homebrew Tap
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tap
+        uses: actions/checkout@v4
+        with:
+          repository: usealtoal/homebrew-tap
+          token: ${{ secrets.TAP_TOKEN }}
+
+      - name: Download sha256 files
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: artifacts
+
+      - name: Update formula
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          FORMULA="Formula/dugout.rb"
+
+          # Read sha256 hashes
+          SHA_MACOS_ARM=$(awk '{print $1}' artifacts/dugout-aarch64-apple-darwin.tar.gz.sha256)
+          SHA_MACOS_INTEL=$(awk '{print $1}' artifacts/dugout-x86_64-apple-darwin.tar.gz.sha256)
+          SHA_LINUX_ARM=$(awk '{print $1}' artifacts/dugout-aarch64-unknown-linux-gnu.tar.gz.sha256)
+          SHA_LINUX_INTEL=$(awk '{print $1}' artifacts/dugout-x86_64-unknown-linux-gnu.tar.gz.sha256)
+
+          # Update version
+          sed -i "s/version \".*\"/version \"$VERSION\"/" "$FORMULA"
+
+          # Update sha256 hashes (in order of appearance)
+          python3 -c "
+          import re
+          with open('$FORMULA') as f:
+              content = f.read()
+          shas = ['$SHA_MACOS_ARM', '$SHA_MACOS_INTEL', '$SHA_LINUX_ARM', '$SHA_LINUX_INTEL']
+          i = 0
+          def replace_sha(m):
+              global i
+              result = f'sha256 \"{shas[i]}\"'
+              i += 1
+              return result
+          content = re.sub(r'sha256 \"[a-f0-9]+\"', replace_sha, content, count=4)
+          with open('$FORMULA', 'w') as f:
+              f.write(content)
+          "
+
+          cat "$FORMULA"
+
+      - name: Commit and push
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          git config user.name "Rob Dekovich"
+          git config user.email "rob@altoal.com"
+          git add Formula/dugout.rb
+          git commit -m "dugout $VERSION"
+          git push
