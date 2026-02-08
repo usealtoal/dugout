@@ -37,6 +37,7 @@ fn test_100_secrets() {
 }
 
 #[test]
+#[cfg_attr(windows, ignore)] // Windows 260-char path limit causes issues with large values in temp dirs
 fn test_large_secret_value() {
     let t = Test::init("test-user");
 
