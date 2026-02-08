@@ -154,12 +154,14 @@ No Slack DMs. No shared password vaults. No `.env` files in git history. Access 
 | GPG | `--features gpg` | Legacy systems, existing GPG workflows |
 
 ```bash
+# Initialize with hybrid encryption (age + KMS)
+dugout init --kms-key arn:aws:kms:us-east-1:...
+
 # Install with AWS KMS support
 cargo install dugout --features aws
-
-# Initialize with a specific backend
-dugout init --cipher aws-kms --kms-key arn:aws:kms:us-east-1:...
 ```
+
+See the full [KMS Integration Guide](KMS.md) for AWS, GCP, IAM setup, and multi-region.
 
 ## Deployment
 

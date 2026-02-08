@@ -98,9 +98,18 @@ impl Vault {
         let mut config = Config::new();
 
         // Set cipher configuration
-        config.dugout.cipher = cipher_type;
-        config.dugout.kms_key_id = kms_key_id;
+        config.dugout.cipher = cipher_type.clone();
+        config.dugout.kms_key_id = kms_key_id.clone();
         config.dugout.gcp_resource = gcp_resource;
+
+        // If --kms-key provided without --cipher, enable hybrid mode
+        if config.dugout.cipher.is_none() || config.dugout.cipher.as_deref() == Some("age") {
+            if let Some(ref key) = kms_key_id {
+                if cipher::KmsProvider::detect(key).is_some() {
+                    config.kms = Some(crate::core::config::KmsConfig { key: key.clone() });
+                }
+            }
+        }
 
         let project_id = config.project_id();
 
