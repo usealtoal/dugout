@@ -80,8 +80,13 @@ dugout init
 dugout set DATABASE_URL postgres://localhost/db
 dugout set STRIPE_KEY sk_live_xxx
 
-# Run your app with secrets
+# Run your app with secrets (auto-detect)
 dugout .
+
+# Or run any command with secrets injected
+dugout run -- npm start
+dugout run -- python manage.py runserver
+dugout run -- cargo run
 ```
 
 ## Team Workflow
