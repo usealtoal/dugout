@@ -1,6 +1,6 @@
 use age::x25519;
-use dugout::bench::{Age, Cipher};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use dugout::bench::{Age, Cipher};
 use std::time::Duration;
 
 /// Generate a payload of given size.
