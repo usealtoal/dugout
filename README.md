@@ -155,7 +155,7 @@ No Slack DMs. No shared password vaults. No `.env` files in git history. Access 
 
 ```bash
 # Initialize with hybrid encryption (age + KMS)
-dugout init --kms-key arn:aws:kms:us-east-1:...
+dugout init --kms arn:aws:kms:us-east-1:...
 
 # Install with AWS KMS support
 cargo install dugout --features aws

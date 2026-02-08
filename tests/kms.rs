@@ -7,7 +7,7 @@ mod support;
 use support::*;
 
 #[test]
-fn test_init_with_kms_key_creates_kms_config() {
+fn test_init_with_kms_creates_kms_config() {
     let t = Test::new();
 
     let output = t
@@ -17,7 +17,7 @@ fn test_init_with_kms_key_creates_kms_config() {
             "--no-banner",
             "--name",
             "alice",
-            "--kms-key",
+            "--kms",
             "arn:aws:kms:us-east-1:123:key/abc",
         ])
         .output()
@@ -43,7 +43,7 @@ fn test_hybrid_set_get_roundtrip() {
             "--no-banner",
             "--name",
             "alice",
-            "--kms-key",
+            "--kms",
             "arn:aws:kms:us-east-1:123:key/abc",
         ])
         .output()
@@ -67,7 +67,7 @@ fn test_hybrid_secrets_are_envelopes() {
             "--no-banner",
             "--name",
             "alice",
-            "--kms-key",
+            "--kms",
             "arn:aws:kms:us-east-1:123:key/abc",
         ])
         .output()
@@ -94,7 +94,7 @@ fn test_hybrid_list_works() {
             "--no-banner",
             "--name",
             "alice",
-            "--kms-key",
+            "--kms",
             "arn:aws:kms:us-east-1:123:key/abc",
         ])
         .output()
@@ -119,7 +119,7 @@ fn test_hybrid_unlock_produces_env_file() {
             "--no-banner",
             "--name",
             "alice",
-            "--kms-key",
+            "--kms",
             "arn:aws:kms:us-east-1:123:key/abc",
         ])
         .output()
@@ -147,7 +147,7 @@ fn test_hybrid_run_injects_secrets() {
             "--no-banner",
             "--name",
             "alice",
-            "--kms-key",
+            "--kms",
             "arn:aws:kms:us-east-1:123:key/abc",
         ])
         .output()
@@ -170,7 +170,7 @@ fn test_hybrid_rotate_preserves_secrets() {
             "--no-banner",
             "--name",
             "alice",
-            "--kms-key",
+            "--kms",
             "arn:aws:kms:us-east-1:123:key/abc",
         ])
         .output()
@@ -197,7 +197,7 @@ fn test_hybrid_team_add_reencrypts() {
             "--no-banner",
             "--name",
             "alice",
-            "--kms-key",
+            "--kms",
             "arn:aws:kms:us-east-1:123:key/abc",
         ])
         .output()

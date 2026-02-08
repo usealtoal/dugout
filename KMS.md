@@ -35,7 +35,7 @@ aws kms create-key --description "dugout secrets"
 2. Initialize with KMS:
 
 ```bash
-dugout init --kms-key arn:aws:kms:us-east-1:123456789012:key/abc-123
+dugout init --kms arn:aws:kms:us-east-1:123456789012:key/abc-123
 ```
 
 3. Grant your production IAM role decrypt access:
@@ -66,7 +66,7 @@ gcloud kms keys create my-key --keyring my-ring --location global --purpose encr
 2. Initialize with KMS:
 
 ```bash
-dugout init --kms-key projects/my-project/locations/global/keyRings/my-ring/cryptoKeys/my-key
+dugout init --kms projects/my-project/locations/global/keyRings/my-ring/cryptoKeys/my-key
 ```
 
 3. Grant your service account decrypt access:

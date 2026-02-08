@@ -12,7 +12,7 @@
 //!
 //! Initialize with KMS key:
 //! ```bash
-//! dugout init --kms-key projects/my-project/locations/global/keyRings/my-ring/cryptoKeys/my-key
+//! dugout init --kms projects/my-project/locations/global/keyRings/my-ring/cryptoKeys/my-key
 //! ```
 //!
 //! This creates a vault configuration with:

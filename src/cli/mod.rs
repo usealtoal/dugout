@@ -80,7 +80,7 @@ pub enum Command {
         cipher: Option<String>,
         /// KMS key for hybrid encryption (auto-detects AWS/GCP from format)
         #[arg(long, value_name = "KEY")]
-        kms_key: Option<String>,
+        kms: Option<String>,
     },
 
     /// Add a secret interactively with hidden input
@@ -252,8 +252,8 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
             name,
             no_banner,
             cipher,
-            kms_key,
-        } => init::execute(name, no_banner, cipher, kms_key),
+            kms,
+        } => init::execute(name, no_banner, cipher, kms),
         Add { key } => add::execute(&key),
         Set { key, value, force } => secrets::set(&key, &value, force),
         Get { key } => secrets::get(&key),
