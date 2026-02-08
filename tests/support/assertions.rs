@@ -60,3 +60,13 @@ pub fn assert_stdout_excludes(output: &Output, excluded: &str) {
         out
     );
 }
+
+/// Assert set/get roundtrip works for a key-value pair.
+pub fn assert_roundtrip(t: &super::Test, key: &str, value: &str) {
+    let output = t.set(key, value);
+    assert_success(&output);
+
+    let output = t.get(key);
+    assert_success(&output);
+    assert_stdout_contains(&output, value);
+}
