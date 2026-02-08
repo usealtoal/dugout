@@ -31,7 +31,6 @@ Dugout uses modern authenticated encryption, with **age** (Actually Good Encrypt
 
 - **Age (default):** X25519 recipients + ChaCha20-Poly1305
 - **Hybrid:** age + cloud KMS (AWS or GCP) — secrets encrypted for both age keys and KMS in an envelope format
-- **GPG:** GPG encryption via CLI (feature-gated, `--features gpg`)
 
 - **Cipher:** ChaCha20-Poly1305 (authenticated encryption)
 - **Key Exchange:** X25519 (elliptic curve Diffie-Hellman)

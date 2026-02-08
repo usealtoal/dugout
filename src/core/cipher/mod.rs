@@ -1,9 +1,10 @@
 //! Cryptographic operations.
 //!
-//! Backends:
+//! Two backends:
 //! - **age** (default): x25519 public-key encryption
 //! - **hybrid**: age + cloud KMS (AWS or GCP)
-//! - **gpg**: GPG encryption via CLI (feature-gated)
+//!
+//! Cloud KMS implementations live in `envelope.rs`, `aws.rs`, `gcp.rs`.
 
 use crate::error::Result;
 
@@ -16,9 +17,6 @@ pub mod aws;
 
 #[cfg(feature = "gcp")]
 pub mod gcp;
-
-#[cfg(feature = "gpg")]
-pub mod gpg;
 
 pub use age::{parse_recipient, Age};
 pub use backend::CipherBackend;

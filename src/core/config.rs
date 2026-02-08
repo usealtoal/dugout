@@ -46,9 +46,6 @@ pub struct KmsConfig {
 pub struct Meta {
     /// Configuration version
     pub version: String,
-    /// Cipher backend override: "age" (default), "gpg"
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cipher: Option<String>,
 }
 
 impl Config {
@@ -57,7 +54,6 @@ impl Config {
         Self {
             dugout: Meta {
                 version: env!("CARGO_PKG_VERSION").to_string(),
-                cipher: None,
             },
             kms: None,
             recipients: BTreeMap::new(),
@@ -125,11 +121,6 @@ impl Config {
             .unwrap_or_else(|| "default".to_string())
     }
 
-    /// Get the configured cipher backend name, if explicitly set.
-    pub fn cipher(&self) -> Option<&str> {
-        self.dugout.cipher.as_deref()
-    }
-
     /// Check if KMS hybrid mode is configured.
     pub fn has_kms(&self) -> bool {
         self.kms.is_some()
@@ -145,7 +136,7 @@ impl Config {
     /// Checks:
     /// - Version field is valid semver
     /// - At least one recipient exists
-    /// - Recipients are valid age public keys (or non-empty for GPG)
+    /// - Recipients are valid age public keys
     /// - All secret keys are valid environment variable names
     ///
     /// # Errors
@@ -176,18 +167,9 @@ impl Config {
             return Err(ConfigError::NoRecipients.into());
         }
 
-        // Validate recipients (age keys for age/hybrid, anything non-empty for GPG)
-        let is_gpg = self.dugout.cipher.as_deref() == Some("gpg");
+        // Validate recipients are valid age public keys
         for (name, key) in &self.recipients {
-            if is_gpg {
-                if key.trim().is_empty() {
-                    return Err(ConfigError::InvalidValue {
-                        field: "recipients",
-                        reason: format!("empty GPG recipient for '{}'", name),
-                    }
-                    .into());
-                }
-            } else if cipher::parse_recipient(key).is_err() {
+            if cipher::parse_recipient(key).is_err() {
                 return Err(ConfigError::InvalidValue {
                     field: "recipients",
                     reason: format!("invalid age public key for recipient '{}': {}", name, key),

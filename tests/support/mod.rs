@@ -7,6 +7,7 @@
 pub mod assertions;
 pub mod commands;
 pub mod fixtures;
+pub mod skip;
 
 pub use assertions::*;
 pub use fixtures::*;

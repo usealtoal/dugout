@@ -1,9 +1,8 @@
 //! Cipher backend selection and dispatch.
 //!
-//! Three backends:
+//! Two backends:
 //! - **Age** (default): secrets encrypted with age only
 //! - **Hybrid**: secrets encrypted with age + cloud KMS
-//! - **Gpg**: secrets encrypted with GPG (feature-gated)
 
 use crate::core::config::Config;
 use crate::error::{CipherError, Result};
@@ -15,7 +14,6 @@ use super::envelope::{Envelope, KmsProvider};
 ///
 /// - `Age`: raw age ciphertext (default)
 /// - `Hybrid`: v2 envelope with age + cloud KMS
-/// - `Gpg`: GPG encryption via gpg CLI
 #[derive(Debug)]
 pub enum CipherBackend {
     /// Age encryption (default)
@@ -24,46 +22,11 @@ pub enum CipherBackend {
     /// Hybrid: age + cloud KMS
     #[allow(dead_code)]
     Hybrid { provider: KmsProvider, key: String },
-
-    /// GPG encryption
-    #[cfg(feature = "gpg")]
-    Gpg,
 }
 
 impl CipherBackend {
     /// Create a cipher backend from configuration.
     pub fn from_config(config: &Config) -> Result<Self> {
-        // Check for explicit cipher override
-        if let Some(cipher) = config.cipher() {
-            match cipher {
-                "gpg" => {
-                    if config.has_kms() {
-                        tracing::warn!("[kms] config ignored: GPG cipher does not use KMS");
-                    }
-                    #[cfg(feature = "gpg")]
-                    {
-                        debug!("creating gpg cipher backend");
-                        return Ok(Self::Gpg);
-                    }
-                    #[cfg(not(feature = "gpg"))]
-                    {
-                        return Err(CipherError::EncryptionFailed(
-                            "GPG support not compiled. Rebuild with: cargo install dugout --features gpg".to_string()
-                        ).into());
-                    }
-                }
-                "age" => {} // fall through to age/hybrid logic
-                other => {
-                    return Err(CipherError::EncryptionFailed(format!(
-                        "unknown cipher: {}. Supported: age, gpg",
-                        other
-                    ))
-                    .into());
-                }
-            }
-        }
-
-        // Check for hybrid mode (age + KMS)
         if let Some(kms_key) = config.kms_key() {
             debug!(kms_key = %kms_key, "creating hybrid cipher backend");
             let provider = KmsProvider::detect(kms_key).ok_or_else(|| {
@@ -72,14 +35,14 @@ impl CipherBackend {
                     kms_key
                 ))
             })?;
-            return Ok(Self::Hybrid {
+            Ok(Self::Hybrid {
                 provider,
                 key: kms_key.to_string(),
-            });
+            })
+        } else {
+            debug!("creating age cipher backend");
+            Ok(Self::Age)
         }
-
-        debug!("creating age cipher backend");
-        Ok(Self::Age)
     }
 
     /// Encrypt plaintext with age for all recipients.
@@ -97,8 +60,6 @@ impl CipherBackend {
     fn encrypt_kms(&self, plaintext: &str) -> Result<String> {
         match self {
             Self::Age => unreachable!("encrypt_kms called on Age backend"),
-            #[cfg(feature = "gpg")]
-            Self::Gpg => unreachable!("encrypt_kms called on Gpg backend"),
 
             #[cfg(any(test, feature = "test-kms"))]
             Self::Hybrid { .. } => {
@@ -139,8 +100,6 @@ impl CipherBackend {
     fn decrypt_kms(&self, ciphertext: &str) -> Result<String> {
         match self {
             Self::Age => unreachable!("decrypt_kms called on Age backend"),
-            #[cfg(feature = "gpg")]
-            Self::Gpg => unreachable!("decrypt_kms called on Gpg backend"),
 
             #[cfg(any(test, feature = "test-kms"))]
             Self::Hybrid { .. } => {
@@ -180,17 +139,9 @@ impl CipherBackend {
     ///
     /// - Age: raw age ciphertext
     /// - Hybrid: v2 envelope with age + KMS ciphertext
-    /// - Gpg: GPG-encrypted ciphertext
     pub fn encrypt(&self, plaintext: &str, recipients: &[String]) -> Result<String> {
         match self {
             Self::Age => Self::encrypt_age(plaintext, recipients),
-
-            #[cfg(feature = "gpg")]
-            Self::Gpg => {
-                use super::Cipher;
-                super::gpg::Gpg.encrypt(plaintext, recipients)
-            }
-
             Self::Hybrid { provider, .. } => {
                 let age_ct = Self::encrypt_age(plaintext, recipients)?;
                 let kms_ct = self.encrypt_kms(plaintext)?;
@@ -201,19 +152,12 @@ impl CipherBackend {
 
     /// Decrypt ciphertext using the provided identity.
     ///
-    /// - Gpg: delegates to gpg CLI
     /// - Envelope: tries age first (fast, local), then KMS fallback
     /// - Raw age ciphertext: decrypts directly
     pub fn decrypt(&self, ciphertext: &str, identity: &age::x25519::Identity) -> Result<String> {
         use super::Cipher;
 
-        #[cfg(feature = "gpg")]
-        if let Self::Gpg = self {
-            return super::gpg::Gpg.decrypt(ciphertext, &());
-        }
-
         if let Some(env) = Envelope::parse(ciphertext) {
-            // Envelope: try age, then KMS
             if let Ok(result) = super::Age.decrypt(&env.age, identity) {
                 return Ok(result);
             }
@@ -226,7 +170,6 @@ impl CipherBackend {
             .into());
         }
 
-        // Raw age ciphertext
         super::Age.decrypt(ciphertext, identity)
     }
 
@@ -239,8 +182,6 @@ impl CipherBackend {
                 KmsProvider::Aws => "hybrid+aws",
                 KmsProvider::Gcp => "hybrid+gcp",
             },
-            #[cfg(feature = "gpg")]
-            Self::Gpg => "gpg",
         }
     }
 }
@@ -346,13 +287,11 @@ mod tests {
 
     #[test]
     fn test_hybrid_backward_compat_raw_age() {
-        // Encrypt with age-only
         let age_backend = CipherBackend::Age;
         let identity = age::x25519::Identity::generate();
         let recipient = identity.to_public().to_string();
         let age_encrypted = age_backend.encrypt("old-secret", &[recipient]).unwrap();
 
-        // Decrypt with hybrid backend
         let mut config = Config::new();
         config.kms = Some(KmsConfig {
             key: "arn:aws:kms:us-east-1:123:key/abc".to_string(),
@@ -364,7 +303,6 @@ mod tests {
 
     #[test]
     fn test_age_reads_hybrid_envelope() {
-        // Encrypt with hybrid
         let mut config = Config::new();
         config.kms = Some(KmsConfig {
             key: "arn:aws:kms:us-east-1:123:key/abc".to_string(),
@@ -376,7 +314,6 @@ mod tests {
             .encrypt("cross-compat", &[recipient])
             .unwrap();
 
-        // Decrypt with age-only
         let age_backend = CipherBackend::Age;
         let decrypted = age_backend.decrypt(&encrypted, &identity).unwrap();
         assert_eq!(decrypted, "cross-compat");
