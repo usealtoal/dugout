@@ -1,21 +1,21 @@
 [package]
-name = "burrow"
+name = "dugout"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.70"
 authors = ["Rob Dekovich <rob@altoal.com>"]
 description = "A local secrets manager for development teams, written in Rust"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/usealtoal/burrow"
-homepage = "https://github.com/usealtoal/burrow"
-documentation = "https://github.com/usealtoal/burrow#readme"
+repository = "https://github.com/usealtoal/dugout"
+homepage = "https://github.com/usealtoal/dugout"
+documentation = "https://github.com/usealtoal/dugout#readme"
 readme = "README.md"
 keywords = ["secrets", "encryption", "dotenv", "cli", "security"]
 categories = ["command-line-utilities", "cryptography", "development-tools"]
 exclude = [
     ".github/",
     ".git/",
-    ".burrow.toml",
+    ".dugout.toml",
     ".env",
     "tests/fixtures/",
 ]

@@ -18,6 +18,6 @@ pub fn execute(shell: Shell) -> Result<()> {
         Shell::PowerShell => CompletionShell::PowerShell,
     };
 
-    generate(shell, &mut cmd, "burrow", &mut std::io::stdout());
+    generate(shell, &mut cmd, "dugout", &mut std::io::stdout());
     Ok(())
 }

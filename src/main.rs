@@ -1,20 +1,20 @@
-//! Burrow - An extremely fast secrets manager for developers.
+//! Dugout - An extremely fast secrets manager for developers.
 
 use clap::Parser;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
-use burrow::cli::output;
-use burrow::cli::{execute, Cli};
+use dugout::cli::output;
+use dugout::cli::{execute, Cli};
 
 fn main() {
     let cli = Cli::parse();
 
     // Initialize tracing subscriber with env-filter support
-    let filter = EnvFilter::try_from_env("BURROW_LOG").unwrap_or_else(|_| {
+    let filter = EnvFilter::try_from_env("DUGOUT_LOG").unwrap_or_else(|_| {
         if cli.verbose {
-            EnvFilter::new("burrow=debug")
+            EnvFilter::new("dugout=debug")
         } else {
-            EnvFilter::new("burrow=warn")
+            EnvFilter::new("dugout=warn")
         }
     });
 
@@ -27,11 +27,11 @@ fn main() {
         // Format error with suggestion if available
         let error_msg = e.to_string();
         let suggestion = match &e {
-            burrow::error::Error::Config(burrow::error::ConfigError::NotInitialized) => {
-                Some("run: burrow init")
+            dugout::error::Error::Config(dugout::error::ConfigError::NotInitialized) => {
+                Some("run: dugout init")
             }
-            burrow::error::Error::Store(burrow::error::StoreError::NoPrivateKey(_)) => {
-                Some("run: burrow init")
+            dugout::error::Error::Store(dugout::error::StoreError::NoPrivateKey(_)) => {
+                Some("run: dugout init")
             }
             _ => None,
         };

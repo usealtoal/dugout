@@ -1,4 +1,4 @@
-//! Tests for `burrow knock`, `burrow pending`, and `burrow admit` commands.
+//! Tests for `dugout knock`, `dugout pending`, and `dugout admit` commands.
 
 use crate::support::*;
 use std::fs;
@@ -18,7 +18,7 @@ fn test_knock_creates_request_file() {
     assert_stdout_contains(&output, "created access request");
 
     // Check that request file exists
-    let request_path = t.dir.path().join(".burrow/requests/bob.pub");
+    let request_path = t.dir.path().join(".dugout/requests/bob.pub");
     assert!(request_path.exists(), "request file should exist");
 
     // Verify request file contains a valid age public key
@@ -33,7 +33,7 @@ fn test_knock_without_global_identity_fails() {
     let output = t.cmd().args(["knock", "bob"]).output().unwrap();
     assert_failure(&output);
     assert_stderr_contains(&output, "no identity found");
-    assert_stdout_contains(&output, "burrow setup");
+    assert_stdout_contains(&output, "dugout setup");
 }
 
 #[test]
@@ -45,7 +45,7 @@ fn test_knock_when_already_member() {
     assert_success(&setup_output);
 
     // Get the global public key
-    let pubkey_path = t.home.path().join(".burrow/identity.pub");
+    let pubkey_path = t.home.path().join(".dugout/identity.pub");
     let global_pubkey = fs::read_to_string(&pubkey_path).unwrap().trim().to_string();
 
     // Init vault
@@ -57,7 +57,7 @@ fn test_knock_when_already_member() {
     assert_success(&init_output);
 
     // Manually add the global public key to recipients to simulate already being a member
-    let config_path = t.dir.path().join(".burrow.toml");
+    let config_path = t.dir.path().join(".dugout.toml");
     let config_content = fs::read_to_string(&config_path).unwrap();
 
     // Replace the project-specific key with the global key
@@ -126,7 +126,7 @@ fn test_admit_approves_request() {
     assert_stdout_contains(&output, "admitted");
 
     // Request file should be deleted
-    let request_path = t.dir.path().join(".burrow/requests/bob.pub");
+    let request_path = t.dir.path().join(".dugout/requests/bob.pub");
     assert!(!request_path.exists(), "request file should be deleted");
 
     // Bob should now be in the team
@@ -188,5 +188,5 @@ fn test_knock_output_includes_instructions() {
 
     // Should show success and hint about sharing the request file
     assert_stdout_contains(&output, "created access request");
-    assert_stdout_contains(&output, ".burrow/requests/bob.pub");
+    assert_stdout_contains(&output, ".dugout/requests/bob.pub");
 }

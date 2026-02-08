@@ -9,7 +9,7 @@ use support::*;
 
 #[test]
 fn test_identity_generate_creates_file() {
-    use burrow::Vault;
+    use dugout::Vault;
     use std::env;
     use tempfile::TempDir;
 
@@ -23,8 +23,8 @@ fn test_identity_generate_creates_file() {
     // Init vault
     let _vault = Vault::init("test-user", None, None, None).unwrap();
 
-    // Verify identity file was created somewhere in ~/.burrow/keys/
-    let keys_dir = PathBuf::from(home_dir.path()).join(".burrow").join("keys");
+    // Verify identity file was created somewhere in ~/.dugout/keys/
+    let keys_dir = PathBuf::from(home_dir.path()).join(".dugout").join("keys");
 
     assert!(keys_dir.exists(), "Keys directory should exist");
 
@@ -64,7 +64,7 @@ fn test_identity_load_nonexistent_fails() {
     let t = Test::new();
 
     // Write a config file that references a non-existent identity
-    let config_content = r#"[burrow]
+    let config_content = r#"[dugout]
 version = "0.1.0"
 
 [recipients]
@@ -72,7 +72,7 @@ test = "age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p"
 
 [secrets]
 "#;
-    fs::write(t.dir.path().join(".burrow.toml"), config_content).unwrap();
+    fs::write(t.dir.path().join(".dugout.toml"), config_content).unwrap();
 
     // Try to open vault, should fail with clean error
     let output = t.cmd().args(["get", "ANYKEY"]).output().unwrap();
@@ -98,7 +98,7 @@ fn test_identity_public_key_format() {
 
 #[test]
 fn test_identity_roundtrip() {
-    use burrow::Vault;
+    use dugout::Vault;
     use std::env;
     use tempfile::TempDir;
 
@@ -130,7 +130,7 @@ fn test_identity_roundtrip() {
 #[cfg(unix)]
 #[test]
 fn test_identity_insecure_permissions_warns() {
-    use burrow::Vault;
+    use dugout::Vault;
     use std::env;
     use std::os::unix::fs::PermissionsExt;
     use tempfile::TempDir;
@@ -146,7 +146,7 @@ fn test_identity_insecure_permissions_warns() {
     let _vault = Vault::init("test-user", None, None, None).unwrap();
 
     // Find the identity file
-    let keys_dir = PathBuf::from(home_dir.path()).join(".burrow").join("keys");
+    let keys_dir = PathBuf::from(home_dir.path()).join(".dugout").join("keys");
     let mut key_path = None;
 
     if let Ok(entries) = std::fs::read_dir(&keys_dir) {
@@ -167,7 +167,7 @@ fn test_identity_insecure_permissions_warns() {
     fs::set_permissions(&key_path, perms).unwrap();
 
     // Try to use the vault - should work but could warn
-    // burrow is forgiving, we're mainly verifying it doesn't crash
+    // dugout is forgiving, we're mainly verifying it doesn't crash
     let result = Vault::open();
     assert!(
         result.is_ok(),

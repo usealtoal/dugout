@@ -1,4 +1,4 @@
-//! Error types for Burrow
+//! Error types for Dugout
 //!
 //! Domain-specific error types following best practices.
 
@@ -7,10 +7,10 @@ use thiserror::Error;
 /// Configuration-related errors
 #[derive(Error, Debug)]
 pub enum ConfigError {
-    #[error("not initialized\n  → Run `burrow init` to get started")]
+    #[error("not initialized\n  → Run `dugout init` to get started")]
     NotInitialized,
 
-    #[error("already initialized: .burrow.toml exists")]
+    #[error("already initialized: .dugout.toml exists")]
     AlreadyInitialized,
 
     #[error("no recipients configured")]
@@ -63,7 +63,7 @@ pub enum CipherError {
 /// Key storage and management errors
 #[derive(Error, Debug)]
 pub enum StoreError {
-    #[error("no private key found for project '{0}'\n  → Ask a team member to share the project key, or run `burrow init` to start fresh")]
+    #[error("no private key found for project '{0}'\n  → Ask a team member to share the project key, or run `dugout init` to start fresh")]
     NoPrivateKey(String),
 
     #[error("failed to generate keypair: {0}")]
@@ -102,7 +102,7 @@ impl SecretError {
     /// Create a NotFound error with suggestions based on available keys
     pub fn not_found_with_suggestions(key: String, available_keys: &[String]) -> Self {
         let suggestion = if available_keys.is_empty() {
-            "\n  → No secrets stored yet. Use `burrow set KEY VALUE` to add one".to_string()
+            "\n  → No secrets stored yet. Use `dugout set KEY VALUE` to add one".to_string()
         } else {
             let keys_list = available_keys.join(", ");
             format!(
@@ -135,7 +135,7 @@ pub enum ValidationError {
     },
 }
 
-/// Top-level error type for all burrow operations
+/// Top-level error type for all dugout operations
 #[derive(Error, Debug)]
 pub enum Error {
     #[error(transparent)]
@@ -173,5 +173,5 @@ impl From<dialoguer::Error> for Error {
     }
 }
 
-/// Result type alias for all burrow operations
+/// Result type alias for all dugout operations
 pub type Result<T> = std::result::Result<T, Error>;

@@ -1,4 +1,4 @@
-//! Tests for `burrow check status/audit` commands.
+//! Tests for `dugout check status/audit` commands.
 
 use crate::support::*;
 

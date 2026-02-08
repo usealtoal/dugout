@@ -1,9 +1,9 @@
 //! Config corruption and validation tests.
 //!
-//! These tests verify that burrow handles malformed, corrupted, or invalid
+//! These tests verify that dugout handles malformed, corrupted, or invalid
 //! configuration files gracefully with clear error messages.
 
-use burrow::Vault;
+use dugout::Vault;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -40,8 +40,8 @@ fn setup() -> TestEnv {
 fn test_load_malformed_toml() {
     let _env = setup();
 
-    // Write garbage to .burrow.toml
-    fs::write(".burrow.toml", "this is not valid toml { [ }").unwrap();
+    // Write garbage to .dugout.toml
+    fs::write(".dugout.toml", "this is not valid toml { [ }").unwrap();
 
     // Try to open, expect clean error
     let result = Vault::open();
@@ -53,12 +53,12 @@ fn test_load_truncated_config() {
     let _env = setup();
 
     // Write half a valid config
-    let truncated = r#"[burrow]
+    let truncated = r#"[dugout]
 version = "0.1.0"
 
 [recipients]
 alice = "age1ql3z7hjy54pw3"#;
-    fs::write(".burrow.toml", truncated).unwrap();
+    fs::write(".dugout.toml", truncated).unwrap();
 
     // Try to open, expect error
     let result = Vault::open();
@@ -70,14 +70,14 @@ fn test_load_missing_version() {
     let _env = setup();
 
     // Write config without version field
-    let no_version = r#"[burrow]
+    let no_version = r#"[dugout]
 
 [recipients]
 alice = "age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p"
 
 [secrets]
 "#;
-    fs::write(".burrow.toml", no_version).unwrap();
+    fs::write(".dugout.toml", no_version).unwrap();
 
     // Try to open, expect validation error
     let result = Vault::open();
@@ -88,8 +88,8 @@ alice = "age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p"
 fn test_load_empty_config_file() {
     let _env = setup();
 
-    // Write empty .burrow.toml
-    fs::write(".burrow.toml", "").unwrap();
+    // Write empty .dugout.toml
+    fs::write(".dugout.toml", "").unwrap();
 
     // Try to open, expect error
     let result = Vault::open();
@@ -105,7 +105,7 @@ fn test_load_config_wrong_type() {
 type = "wrong"
 value = 123
 "#;
-    fs::write(".burrow.toml", wrong_type).unwrap();
+    fs::write(".dugout.toml", wrong_type).unwrap();
 
     // Try to open, expect error
     let result = Vault::open();
@@ -121,14 +121,14 @@ fn test_config_with_invalid_secret_key() {
     drop(vault);
 
     // Manually craft config with invalid secret key
-    let config_content = fs::read_to_string(".burrow.toml").unwrap();
+    let config_content = fs::read_to_string(".dugout.toml").unwrap();
 
     // Try to append invalid secrets section
     let bad_config = format!(
         "{}\n[secrets]\n\"123BAD\" = \"AGE-SECRET-KEY-1...\"\n",
         config_content
     );
-    fs::write(".burrow.toml", bad_config).unwrap();
+    fs::write(".dugout.toml", bad_config).unwrap();
 
     // The config might load but trying to use it should fail gracefully
     // This is a best-effort test - exact behavior depends on implementation
@@ -146,14 +146,14 @@ fn test_config_with_no_recipients() {
     let _env = setup();
 
     // Write config with empty recipients
-    let no_recipients = r#"[burrow]
+    let no_recipients = r#"[dugout]
 version = "0.1.0"
 
 [recipients]
 
 [secrets]
 "#;
-    fs::write(".burrow.toml", no_recipients).unwrap();
+    fs::write(".dugout.toml", no_recipients).unwrap();
 
     // Try to open, expect validation error
     let result = Vault::open();

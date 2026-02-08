@@ -3,7 +3,7 @@
 //! These tests verify the Vault API works correctly through the public interface.
 //! Unit tests in src/core/vault.rs already cover crypto roundtrips.
 
-use burrow::Vault;
+use dugout::Vault;
 use std::env;
 use std::fs;
 use std::path::PathBuf;

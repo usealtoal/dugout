@@ -623,36 +623,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5dd9dc738b7a8311c7ade152424974d8115f2cdad61e8dab8dac9f2362298510"
 
 [[package]]
-name = "burrow"
-version = "0.1.0"
-dependencies = [
- "age",
- "assert_cmd",
- "aws-config",
- "aws-sdk-kms",
- "base64 0.22.1",
- "chrono",
- "clap",
- "clap_complete",
- "console",
- "criterion",
- "dialoguer",
- "dirs",
- "predicates",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "toml 0.8.23",
- "tracing",
- "tracing-subscriber",
- "which",
- "whoami",
- "zeroize",
-]
-
-[[package]]
 name = "bytes"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1050,6 +1020,36 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "dugout"
+version = "0.1.0"
+dependencies = [
+ "age",
+ "assert_cmd",
+ "aws-config",
+ "aws-sdk-kms",
+ "base64 0.22.1",
+ "chrono",
+ "clap",
+ "clap_complete",
+ "console",
+ "criterion",
+ "dialoguer",
+ "dirs",
+ "predicates",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "toml 0.8.23",
+ "tracing",
+ "tracing-subscriber",
+ "which",
+ "whoami",
+ "zeroize",
 ]
 
 [[package]]

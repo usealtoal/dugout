@@ -9,7 +9,7 @@ fn test_no_command_shows_help() {
     let output = t.cmd().arg("--help").output().unwrap();
     assert_success(&output);
     let out = stdout(&output);
-    assert!(out.contains("burrow") || out.contains("Usage"));
+    assert!(out.contains("dugout") || out.contains("Usage"));
 }
 
 #[test]
@@ -40,7 +40,7 @@ fn test_version_flag() {
     let output = t.cmd().arg("--version").output().unwrap();
     assert_success(&output);
     let out = stdout(&output);
-    assert!(out.contains("burrow") || !out.is_empty());
+    assert!(out.contains("dugout") || !out.is_empty());
 }
 
 #[test]
@@ -50,7 +50,7 @@ fn test_completions_bash_outputs_script() {
     let output = t.cmd().args(["completions", "bash"]).output().unwrap();
     assert_success(&output);
     let out = stdout(&output);
-    assert!(out.contains("_burrow") || out.contains("complete"));
+    assert!(out.contains("_dugout") || out.contains("complete"));
 }
 
 #[test]
@@ -62,7 +62,7 @@ fn test_completions_zsh() {
     let out = stdout(&output);
     // Verify output contains zsh-specific syntax
     assert!(
-        out.contains("#compdef") || out.contains("_burrow"),
+        out.contains("#compdef") || out.contains("_dugout"),
         "zsh completion should contain zsh-specific syntax"
     );
 }
@@ -76,7 +76,7 @@ fn test_completions_fish() {
     let out = stdout(&output);
     // Verify output contains fish-specific syntax
     assert!(
-        out.contains("complete") && out.contains("burrow"),
+        out.contains("complete") && out.contains("dugout"),
         "fish completion should contain fish-specific syntax"
     );
 }

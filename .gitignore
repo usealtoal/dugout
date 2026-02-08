@@ -2,5 +2,5 @@
 .env
 .env.*
 !.env.example
-.burrow.toml
-.burrow/
+.dugout.toml
+.dugout/

@@ -3,7 +3,7 @@
 //! These tests verify the domain types work correctly at the API level.
 //! Unit tests in src/core/domain/* already cover most of the behavior.
 
-use burrow::Env;
+use dugout::Env;
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;

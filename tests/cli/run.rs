@@ -1,4 +1,4 @@
-//! Tests for `burrow run` and `burrow env` commands.
+//! Tests for `dugout run` and `dugout env` commands.
 
 use crate::support::*;
 

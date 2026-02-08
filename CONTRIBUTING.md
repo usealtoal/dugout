@@ -1,12 +1,12 @@
-# Contributing to burrow
+# Contributing to dugout
 
 ## Setup
 
-[Rust](https://rustup.rs/) is required to build burrow.
+[Rust](https://rustup.rs/) is required to build dugout.
 
 ```bash
-git clone https://github.com/usealtoal/burrow
-cd burrow
+git clone https://github.com/usealtoal/dugout
+cd dugout
 cargo build
 ```
 
@@ -38,8 +38,8 @@ cargo bench
 
 ## Reporting Issues
 
-Use [GitHub Issues](https://github.com/usealtoal/burrow/issues). Include:
+Use [GitHub Issues](https://github.com/usealtoal/dugout/issues). Include:
 
-- burrow version (`burrow --version`)
+- dugout version (`dugout --version`)
 - OS and architecture
 - Steps to reproduce

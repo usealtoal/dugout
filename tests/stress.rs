@@ -1,6 +1,6 @@
 //! Stress and performance tests.
 //!
-//! These tests verify that burrow handles large numbers of secrets,
+//! These tests verify that dugout handles large numbers of secrets,
 //! large values, and many team members gracefully.
 
 mod support;

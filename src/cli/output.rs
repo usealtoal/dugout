@@ -34,14 +34,14 @@ pub fn warn(msg: &str) {
 
 /// Print a hint message (dim, for actionable suggestions after errors).
 ///
-/// Example: `  run: burrow init`
+/// Example: `  run: dugout init`
 pub fn hint(msg: &str) {
     println!("  {}", style(msg).dim());
 }
 
 /// Print a key-value pair (label: value).
 ///
-/// Example: `vault: .burrow.toml`
+/// Example: `vault: .dugout.toml`
 pub fn kv(label: &str, value: impl Display) {
     println!("{}: {}", label, value);
 }

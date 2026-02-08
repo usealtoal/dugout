@@ -1,10 +1,10 @@
 <p align="center">
-  <img alt="burrow" src="assets/banner.jpg" width="600">
+  <img alt="dugout" src="assets/banner.jpg" width="600">
 </p>
 
 <p align="center">
-  <a href="https://github.com/usealtoal/burrow/actions"><img src="https://github.com/usealtoal/burrow/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://crates.io/crates/burrow"><img src="https://img.shields.io/crates/v/burrow.svg" alt="Crates.io"></a>
+  <a href="https://github.com/usealtoal/dugout/actions"><img src="https://github.com/usealtoal/dugout/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://crates.io/crates/dugout"><img src="https://img.shields.io/crates/v/dugout.svg" alt="Crates.io"></a>
   <a href="LICENSE-MIT"><img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg" alt="License"></a>
 </p>
 
@@ -18,8 +18,8 @@
 - **Vendor-agnostic** — no cloud lock-in, works with any git host and any infrastructure
 - **Team-friendly** — add members, share secrets, rotate keys, all through git
 - **Fast** — encrypts in ~100µs, single binary, no runtime dependencies
-- **Zero config** — `burrow init` and start adding secrets
-- **Auto-detect** — `burrow .` detects your stack and runs with secrets injected
+- **Zero config** — `dugout init` and start adding secrets
+- **Auto-detect** — `dugout .` detects your stack and runs with secrets injected
 - **No server required** — secrets live in your repo, encrypted
 - **Language-agnostic** — works with Python, Node, Rust, Go, Docker, and anything else
 
@@ -27,10 +27,10 @@
 
 ```bash
 # Cargo
-cargo install burrow
+cargo install dugout
 
 # From source
-git clone https://github.com/usealtoal/burrow && cd burrow
+git clone https://github.com/usealtoal/dugout && cd dugout
 cargo install --path .
 ```
 
@@ -38,41 +38,41 @@ cargo install --path .
 
 ```bash
 # One-time identity setup
-burrow setup
+dugout setup
 
 # Initialize in your project
 cd my-app
-burrow init
+dugout init
 
 # Add secrets
-burrow set DATABASE_URL postgres://localhost/db
-burrow set STRIPE_KEY sk_live_xxx
+dugout set DATABASE_URL postgres://localhost/db
+dugout set STRIPE_KEY sk_live_xxx
 
 # Run your app with secrets
-burrow .
+dugout .
 ```
 
 ## Team Workflow
 
 ```bash
 # Alice creates the project
-burrow init
-burrow set API_KEY sk_live_xxx
-git add .burrow.toml && git commit -m "init vault" && git push
+dugout init
+dugout set API_KEY sk_live_xxx
+git add .dugout.toml && git commit -m "init vault" && git push
 
 # Bob clones and requests access
 git clone ... && cd project
-burrow knock
-git add .burrow/requests/ && git commit -m "request access" && git push
+dugout knock
+git add .dugout/requests/ && git commit -m "request access" && git push
 
 # Alice approves
 git pull
-burrow admit bob
+dugout admit bob
 git commit -am "grant bob access" && git push
 
 # Bob pulls and runs
 git pull
-burrow .
+dugout .
 ```
 
 No Slack DMs. No shared password vaults. No `.env` files in git history. Access requests and approvals are git commits.
@@ -81,25 +81,25 @@ No Slack DMs. No shared password vaults. No `.env` files in git history. Access 
 
 | Command | Description |
 |---------|-------------|
-| `burrow setup` | Generate global identity |
-| `burrow init` | Initialize vault in current directory |
-| `burrow set KEY VALUE` | Set a secret |
-| `burrow get KEY` | Get a secret value |
-| `burrow add KEY` | Add a secret interactively |
-| `burrow list` | List all secret keys |
-| `burrow rm KEY` | Remove a secret |
-| `burrow .` | Auto-detect project and run with secrets |
-| `burrow run -- CMD` | Run a command with secrets injected |
-| `burrow knock` | Request vault access |
-| `burrow admit NAME` | Approve an access request |
-| `burrow pending` | List pending requests |
-| `burrow team add/rm/list` | Manage team members |
-| `burrow secrets diff` | Compare vault and .env |
-| `burrow secrets rotate` | Rotate encryption keys |
-| `burrow secrets lock/unlock` | Lock or decrypt secrets |
-| `burrow secrets import/export` | Import or export .env files |
-| `burrow check status` | Vault overview |
-| `burrow check audit` | Audit for leaked secrets |
+| `dugout setup` | Generate global identity |
+| `dugout init` | Initialize vault in current directory |
+| `dugout set KEY VALUE` | Set a secret |
+| `dugout get KEY` | Get a secret value |
+| `dugout add KEY` | Add a secret interactively |
+| `dugout list` | List all secret keys |
+| `dugout rm KEY` | Remove a secret |
+| `dugout .` | Auto-detect project and run with secrets |
+| `dugout run -- CMD` | Run a command with secrets injected |
+| `dugout knock` | Request vault access |
+| `dugout admit NAME` | Approve an access request |
+| `dugout pending` | List pending requests |
+| `dugout team add/rm/list` | Manage team members |
+| `dugout secrets diff` | Compare vault and .env |
+| `dugout secrets rotate` | Rotate encryption keys |
+| `dugout secrets lock/unlock` | Lock or decrypt secrets |
+| `dugout secrets import/export` | Import or export .env files |
+| `dugout check status` | Vault overview |
+| `dugout check audit` | Audit for leaked secrets |
 
 ## Cipher Backends
 
@@ -112,10 +112,10 @@ No Slack DMs. No shared password vaults. No `.env` files in git history. Access 
 
 ```bash
 # Install with AWS KMS support
-cargo install burrow --features aws
+cargo install dugout --features aws
 
 # Initialize with a specific backend
-burrow init --cipher aws-kms --kms-key arn:aws:kms:us-east-1:...
+dugout init --cipher aws-kms --kms-key arn:aws:kms:us-east-1:...
 ```
 
 ## Benchmarks

@@ -1,4 +1,4 @@
-//! Tests for `burrow add` command.
+//! Tests for `dugout add` command.
 
 use crate::support::*;
 

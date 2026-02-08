@@ -1,6 +1,6 @@
 //! Configuration file management.
 //!
-//! Handles reading, writing, and validating `.burrow.toml` configuration files.
+//! Handles reading, writing, and validating `.dugout.toml` configuration files.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -12,11 +12,11 @@ use crate::core::types::{EncryptedValue, MemberName, PublicKey, SecretKey};
 use crate::core::vault;
 use crate::error::{ConfigError, Result};
 
-/// Project configuration stored in `.burrow.toml`
+/// Project configuration stored in `.dugout.toml`
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     /// Metadata about the vault configuration
-    pub burrow: Meta,
+    pub dugout: Meta,
     /// Map of recipient names to their age public keys
     #[serde(default)]
     pub recipients: BTreeMap<MemberName, PublicKey>,
@@ -45,7 +45,7 @@ impl Config {
     /// Create a new empty configuration with current version
     pub fn new() -> Self {
         Self {
-            burrow: Meta {
+            dugout: Meta {
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 cipher: None,
                 kms_key_id: None,
@@ -66,7 +66,7 @@ impl Config {
         Self::config_path().exists()
     }
 
-    /// Load configuration from `.burrow.toml`
+    /// Load configuration from `.dugout.toml`
     ///
     /// # Errors
     ///
@@ -94,7 +94,7 @@ impl Config {
         Ok(config)
     }
 
-    /// Save configuration to `.burrow.toml`
+    /// Save configuration to `.dugout.toml`
     ///
     /// # Errors
     ///
@@ -133,16 +133,16 @@ impl Config {
         debug!("validating config");
 
         // Check version is valid semver
-        if self.burrow.version.is_empty() {
+        if self.dugout.version.is_empty() {
             return Err(ConfigError::MissingField { field: "version" }.into());
         }
 
         // Try to parse as semver (basic check - just ensure it has valid format)
-        let version_parts: Vec<&str> = self.burrow.version.split('.').collect();
+        let version_parts: Vec<&str> = self.dugout.version.split('.').collect();
         if version_parts.len() < 2 {
             return Err(ConfigError::InvalidValue {
                 field: "version",
-                reason: format!("not a valid semver: {}", self.burrow.version),
+                reason: format!("not a valid semver: {}", self.dugout.version),
             }
             .into());
         }

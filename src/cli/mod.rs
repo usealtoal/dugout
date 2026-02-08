@@ -21,10 +21,10 @@ pub mod check;
 
 use clap::{Parser, Subcommand};
 
-/// Burrow - An extremely fast secrets manager for developers.
+/// Dugout - An extremely fast secrets manager for developers.
 #[derive(Parser)]
 #[command(
-    name = "burrow",
+    name = "dugout",
     about = "A local secrets manager for development teams",
     version
 )]
@@ -40,7 +40,7 @@ pub struct Cli {
 /// Top-level commands.
 #[derive(Subcommand)]
 pub enum Command {
-    /// Generate global identity at ~/.burrow/identity
+    /// Generate global identity at ~/.dugout/identity
     Setup {
         /// Overwrite existing identity
         #[arg(short, long)]
@@ -50,7 +50,7 @@ pub enum Command {
     /// Print your public key
     Whoami,
 
-    /// Initialize burrow in the current directory
+    /// Initialize dugout in the current directory
     Init {
         /// Your name (used as recipient identifier)
         #[arg(short, long)]
@@ -206,7 +206,7 @@ pub enum SecretsCommand {
     /// Export secrets as .env format
     Export,
 
-    /// Show diff between .burrow.toml and .env
+    /// Show diff between .dugout.toml and .env
     Diff,
 
     /// Rotate the project keypair and re-encrypt all secrets

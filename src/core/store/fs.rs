@@ -1,7 +1,7 @@
 //! Filesystem-based key storage implementation.
 //!
 //! Manages age identity (private key) generation and retrieval from
-//! the local filesystem (~/.burrow/keys/).
+//! the local filesystem (~/.dugout/keys/).
 
 use super::Store;
 use crate::core::domain::Identity;
@@ -9,7 +9,7 @@ use crate::error::Result;
 
 /// Filesystem-based key storage.
 ///
-/// Stores age identities in `~/.burrow/keys/<project_id>/identity.key`.
+/// Stores age identities in `~/.dugout/keys/<project_id>/identity.key`.
 pub struct Filesystem;
 
 impl Store for Filesystem {

@@ -13,9 +13,9 @@ pub fn execute(name: Option<String>) -> Result<()> {
     // Check if global identity exists
     if !Identity::has_global()? {
         output::error("no identity found");
-        output::hint("run: burrow setup");
+        output::hint("run: dugout setup");
         return Err(
-            crate::error::StoreError::NoPrivateKey("~/.burrow/identity".to_string()).into(),
+            crate::error::StoreError::NoPrivateKey("~/.dugout/identity".to_string()).into(),
         );
     }
 
@@ -45,10 +45,10 @@ pub fn execute(name: Option<String>) -> Result<()> {
     let pubkey = Identity::load_global_pubkey()?;
 
     // Create requests directory
-    std::fs::create_dir_all(".burrow/requests")?;
+    std::fs::create_dir_all(".dugout/requests")?;
 
     // Write request file
-    let request_path = format!(".burrow/requests/{}.pub", name);
+    let request_path = format!(".dugout/requests/{}.pub", name);
     std::fs::write(&request_path, format!("{}\n", pubkey))?;
 
     output::success("created access request");

@@ -1,4 +1,4 @@
-//! Tests for `burrow setup` and `burrow whoami` commands.
+//! Tests for `dugout setup` and `dugout whoami` commands.
 
 use crate::support::*;
 use std::fs;
@@ -11,13 +11,13 @@ fn test_setup_creates_global_identity() {
     assert_success(&output);
     assert_stdout_contains(&output, "generated identity");
 
-    // Check that ~/.burrow/identity exists
-    let identity_path = t.home.path().join(".burrow/identity");
-    assert!(identity_path.exists(), "~/.burrow/identity should exist");
+    // Check that ~/.dugout/identity exists
+    let identity_path = t.home.path().join(".dugout/identity");
+    assert!(identity_path.exists(), "~/.dugout/identity should exist");
 
-    // Check that ~/.burrow/identity.pub exists
-    let pubkey_path = t.home.path().join(".burrow/identity.pub");
-    assert!(pubkey_path.exists(), "~/.burrow/identity.pub should exist");
+    // Check that ~/.dugout/identity.pub exists
+    let pubkey_path = t.home.path().join(".dugout/identity.pub");
+    assert!(pubkey_path.exists(), "~/.dugout/identity.pub should exist");
 
     // Verify public key starts with age1
     let pubkey = fs::read_to_string(&pubkey_path).unwrap();
@@ -32,7 +32,7 @@ fn test_setup_idempotent_without_force() {
     let output = t.cmd().arg("setup").output().unwrap();
     assert_success(&output);
 
-    let pubkey_path = t.home.path().join(".burrow/identity.pub");
+    let pubkey_path = t.home.path().join(".dugout/identity.pub");
     let first_pubkey = fs::read_to_string(&pubkey_path).unwrap();
 
     // Second setup without --force should warn and not overwrite
@@ -55,7 +55,7 @@ fn test_setup_with_force_overwrites() {
     let output = t.cmd().arg("setup").output().unwrap();
     assert_success(&output);
 
-    let pubkey_path = t.home.path().join(".burrow/identity.pub");
+    let pubkey_path = t.home.path().join(".dugout/identity.pub");
     let first_pubkey = fs::read_to_string(&pubkey_path).unwrap();
 
     // Second setup with --force should overwrite
@@ -86,7 +86,7 @@ fn test_whoami_prints_public_key() {
     assert!(output_str.trim().starts_with("age1"));
 
     // Should match the public key file
-    let pubkey_path = t.home.path().join(".burrow/identity.pub");
+    let pubkey_path = t.home.path().join(".dugout/identity.pub");
     let expected_pubkey = fs::read_to_string(&pubkey_path).unwrap();
     assert_eq!(output_str.trim(), expected_pubkey.trim());
 }
@@ -98,7 +98,7 @@ fn test_whoami_without_setup_fails() {
     let output = t.cmd().arg("whoami").output().unwrap();
     assert_failure(&output);
     assert_stderr_contains(&output, "no identity found");
-    assert_stdout_contains(&output, "burrow setup");
+    assert_stdout_contains(&output, "dugout setup");
 }
 
 #[test]

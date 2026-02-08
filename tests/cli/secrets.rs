@@ -1,4 +1,4 @@
-//! Tests for `burrow set/get/rm/list` and `burrow secrets` commands.
+//! Tests for `dugout set/get/rm/list` and `dugout secrets` commands.
 
 use crate::support::*;
 use std::fs;

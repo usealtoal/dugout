@@ -14,7 +14,7 @@ fn archive_dir(project_id: &str) -> Result<PathBuf> {
         crate::error::StoreError::GenerationFailed("unable to determine home directory".to_string())
     })?;
     Ok(home
-        .join(".burrow")
+        .join(".dugout")
         .join("keys")
         .join(project_id)
         .join("archive"))
@@ -28,7 +28,7 @@ fn archive_old_key(project_id: &str) -> Result<()> {
                 "unable to determine home directory".to_string(),
             )
         })?
-        .join(".burrow")
+        .join(".dugout")
         .join("keys")
         .join(project_id)
         .join("identity.key");

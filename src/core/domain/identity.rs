@@ -110,7 +110,7 @@ impl Identity {
         &self.path
     }
 
-    /// Base directory for all burrow keys (`~/.burrow/keys`)
+    /// Base directory for all dugout keys (`~/.dugout/keys`)
     fn base_dir() -> Result<PathBuf> {
         let home = dirs::home_dir().ok_or_else(|| {
             StoreError::GenerationFailed("unable to determine home directory".to_string())
@@ -123,20 +123,20 @@ impl Identity {
         Ok(Self::base_dir()?.join(project_id))
     }
 
-    /// Global identity directory (`~/.burrow/`)
+    /// Global identity directory (`~/.dugout/`)
     pub fn global_dir() -> Result<PathBuf> {
         let home = dirs::home_dir().ok_or_else(|| {
             StoreError::GenerationFailed("unable to determine home directory".to_string())
         })?;
-        Ok(home.join(".burrow"))
+        Ok(home.join(".dugout"))
     }
 
-    /// Global identity file path (`~/.burrow/identity`)
+    /// Global identity file path (`~/.dugout/identity`)
     pub fn global_path() -> Result<PathBuf> {
         Ok(Self::global_dir()?.join("identity"))
     }
 
-    /// Global public key path (`~/.burrow/identity.pub`)
+    /// Global public key path (`~/.dugout/identity.pub`)
     pub fn global_pubkey_path() -> Result<PathBuf> {
         Ok(Self::global_dir()?.join("identity.pub"))
     }
@@ -235,7 +235,7 @@ impl Identity {
         let pubkey_path = Self::global_pubkey_path()?;
 
         if !pubkey_path.exists() {
-            return Err(StoreError::NoPrivateKey("~/.burrow/identity".to_string()).into());
+            return Err(StoreError::NoPrivateKey("~/.dugout/identity".to_string()).into());
         }
 
         let contents = fs::read_to_string(&pubkey_path).map_err(StoreError::ReadFailed)?;

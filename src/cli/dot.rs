@@ -11,7 +11,7 @@ pub fn execute() -> Result<()> {
     // Check if vault is initialized
     if !Config::exists() {
         output::error("no vault found");
-        output::hint("run: burrow init");
+        output::hint("run: dugout init");
         return Err(crate::error::ConfigError::NotInitialized.into());
     }
 
@@ -23,7 +23,7 @@ pub fn execute() -> Result<()> {
 
         if !config.recipients.values().any(|k| k == &pubkey) {
             output::error("no access to this vault");
-            output::hint("run: burrow knock");
+            output::hint("run: dugout knock");
             return Err(crate::error::ConfigError::NoRecipients.into());
         }
     }
@@ -33,7 +33,7 @@ pub fn execute() -> Result<()> {
 
     if project_kind.is_none() {
         output::error("couldn't detect project type");
-        output::hint("use: burrow run -- <command>");
+        output::hint("use: dugout run -- <command>");
         return Err(crate::error::ConfigError::InvalidValue {
             field: "project",
             reason: "could not detect project type".to_string(),
@@ -48,7 +48,7 @@ pub fn execute() -> Result<()> {
     if which::which(&command[0]).is_err() {
         output::error(&format!("{} not found", command[0]));
         output::hint(&format!(
-            "install {} or use: burrow run -- <command>",
+            "install {} or use: dugout run -- <command>",
             command[0]
         ));
         return Err(crate::error::Error::Other(format!(

@@ -50,24 +50,24 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           cd target/${{ matrix.target }}/release
-          tar czf ../../../burrow-${{ matrix.target }}.tar.gz burrow
+          tar czf ../../../dugout-${{ matrix.target }}.tar.gz dugout
           cd ../../..
-          sha256sum burrow-${{ matrix.target }}.tar.gz > burrow-${{ matrix.target }}.tar.gz.sha256
+          sha256sum dugout-${{ matrix.target }}.tar.gz > dugout-${{ matrix.target }}.tar.gz.sha256
         shell: bash
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
           cd target/${{ matrix.target }}/release
-          7z a ../../../burrow-${{ matrix.target }}.zip burrow.exe
+          7z a ../../../dugout-${{ matrix.target }}.zip dugout.exe
           cd ../../..
         shell: bash
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: burrow-${{ matrix.target }}
-          path: burrow-${{ matrix.target }}.*
+          name: dugout-${{ matrix.target }}
+          path: dugout-${{ matrix.target }}.*
 
   release:
     name: Create Release
@@ -86,6 +86,6 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            burrow-*.tar.gz
-            burrow-*.tar.gz.sha256
-            burrow-*.zip
+            dugout-*.tar.gz
+            dugout-*.tar.gz.sha256
+            dugout-*.zip

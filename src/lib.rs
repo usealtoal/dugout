@@ -1,18 +1,18 @@
 //! A local secrets manager for development teams
 //!
-//! Burrow encrypts secrets at rest using pluggable cipher backends
+//! Dugout encrypts secrets at rest using pluggable cipher backends
 //! (age, AWS KMS, GCP KMS, GPG) and provides a simple CLI for
 //! managing secrets across teams.
 //!
 //! # Quick start
 //!
 //! ```no_run
-//! use burrow::Vault;
+//! use dugout::Vault;
 //!
 //! let mut vault = Vault::open()?;
 //! vault.set("DATABASE_URL", "postgres://localhost/db", false)?;
 //! let value = vault.get("DATABASE_URL")?;
-//! # Ok::<(), burrow::error::Error>(())
+//! # Ok::<(), dugout::error::Error>(())
 //! ```
 //!
 //! # Architecture
@@ -27,7 +27,7 @@
 //! - [`Vault`]: Main API for all secret operations
 //! - Domain types: [`Secret`], [`Recipient`], [`Identity`], [`Env`], [`Diff`]
 //! - Pluggable cipher backends (age, AWS KMS, GCP KMS, GPG)
-//! - Configuration in `.burrow.toml`
+//! - Configuration in `.dugout.toml`
 //!
 //! # Features
 //!
@@ -40,7 +40,7 @@
 //! # Example: Initialize and use a vault
 //!
 //! ```rust,no_run
-//! use burrow::Vault;
+//! use dugout::Vault;
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! // Initialize a new vault with default age cipher

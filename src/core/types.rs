@@ -19,5 +19,5 @@ pub type PublicKey = String;
 
 /// A team member name.
 ///
-/// Identifies a recipient in the burrow configuration.
+/// Identifies a recipient in the dugout configuration.
 pub type MemberName = String;

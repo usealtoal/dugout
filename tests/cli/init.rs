@@ -1,4 +1,4 @@
-//! Tests for `burrow init` command.
+//! Tests for `dugout init` command.
 
 use crate::support::*;
 use std::fs;
@@ -11,16 +11,16 @@ fn test_init_creates_config_and_key() {
     assert_success(&output);
     assert_stdout_contains(&output, "initialized");
 
-    // Check that .burrow.toml exists
-    let config_path = t.dir.path().join(".burrow.toml");
-    assert!(config_path.exists(), ".burrow.toml should exist");
+    // Check that .dugout.toml exists
+    let config_path = t.dir.path().join(".dugout.toml");
+    assert!(config_path.exists(), ".dugout.toml should exist");
 
-    // Check that a key was created in ~/.burrow/keys/<project_id>/identity.key
+    // Check that a key was created in ~/.dugout/keys/<project_id>/identity.key
     let project_id = t.dir.path().file_name().unwrap().to_string_lossy();
     let identity_path = t
         .home
         .path()
-        .join(".burrow/keys")
+        .join(".dugout/keys")
         .join(&*project_id)
         .join("identity.key");
     assert!(identity_path.exists(), "identity key should exist");
@@ -47,7 +47,7 @@ fn test_init_with_custom_name() {
     let output = t.init_cmd("alice");
     assert_success(&output);
 
-    let config_path = t.dir.path().join(".burrow.toml");
+    let config_path = t.dir.path().join(".dugout.toml");
     let config_content = fs::read_to_string(config_path).unwrap();
     assert!(config_content.contains("alice"));
 }
@@ -63,7 +63,7 @@ fn test_init_creates_gitignore_entry() {
     if gitignore_path.exists() {
         let gitignore_content = fs::read_to_string(gitignore_path).unwrap();
         // Should contain .env or related entries
-        assert!(gitignore_content.contains(".env") || gitignore_content.contains("burrow"));
+        assert!(gitignore_content.contains(".env") || gitignore_content.contains("dugout"));
     }
 }
 

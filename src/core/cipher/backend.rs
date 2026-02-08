@@ -41,7 +41,7 @@ impl CipherBackend {
     /// - Required configuration fields are missing
     /// - Cipher type requires a feature that wasn't compiled in
     pub fn from_config(config: &Config) -> Result<Self> {
-        let cipher_type = config.burrow.cipher.as_deref().unwrap_or("age");
+        let cipher_type = config.dugout.cipher.as_deref().unwrap_or("age");
 
         debug!(cipher = %cipher_type, "creating cipher backend");
 
@@ -53,7 +53,7 @@ impl CipherBackend {
                 {
                     let key_id =
                         config
-                            .burrow
+                            .dugout
                             .kms_key_id
                             .clone()
                             .ok_or(ConfigError::MissingField {
@@ -64,7 +64,7 @@ impl CipherBackend {
                 #[cfg(not(feature = "aws"))]
                 {
                     Err(CipherError::EncryptionFailed(
-                        "AWS KMS support not compiled. Rebuild with: cargo install burrow --features aws".to_string()
+                        "AWS KMS support not compiled. Rebuild with: cargo install dugout --features aws".to_string()
                     ).into())
                 }
             }
@@ -74,7 +74,7 @@ impl CipherBackend {
                 {
                     let resource =
                         config
-                            .burrow
+                            .dugout
                             .gcp_resource
                             .clone()
                             .ok_or(ConfigError::MissingField {
@@ -85,7 +85,7 @@ impl CipherBackend {
                 #[cfg(not(feature = "gcp"))]
                 {
                     Err(CipherError::EncryptionFailed(
-                        "GCP KMS support not compiled. Rebuild with: cargo install burrow --features gcp".to_string()
+                        "GCP KMS support not compiled. Rebuild with: cargo install dugout --features gcp".to_string()
                     ).into())
                 }
             }
@@ -98,7 +98,7 @@ impl CipherBackend {
                 #[cfg(not(feature = "gpg"))]
                 {
                     Err(CipherError::EncryptionFailed(
-                        "GPG support not compiled. Rebuild with: cargo install burrow --features gpg".to_string()
+                        "GPG support not compiled. Rebuild with: cargo install dugout --features gpg".to_string()
                     ).into())
                 }
             }
@@ -205,7 +205,7 @@ mod tests {
     #[test]
     fn test_backend_from_config_explicit_age() {
         let mut config = Config::new();
-        config.burrow.cipher = Some("age".to_string());
+        config.dugout.cipher = Some("age".to_string());
         let backend = CipherBackend::from_config(&config).unwrap();
         assert_eq!(backend.name(), "age");
     }
@@ -214,8 +214,8 @@ mod tests {
     #[cfg(feature = "aws")]
     fn test_backend_from_config_aws_kms() {
         let mut config = Config::new();
-        config.burrow.cipher = Some("aws-kms".to_string());
-        config.burrow.kms_key_id = Some("arn:aws:kms:us-east-1:123456789012:key/test".to_string());
+        config.dugout.cipher = Some("aws-kms".to_string());
+        config.dugout.kms_key_id = Some("arn:aws:kms:us-east-1:123456789012:key/test".to_string());
         let backend = CipherBackend::from_config(&config).unwrap();
         assert_eq!(backend.name(), "aws-kms");
     }
@@ -224,7 +224,7 @@ mod tests {
     #[cfg(feature = "aws")]
     fn test_backend_from_config_aws_kms_missing_key() {
         let mut config = Config::new();
-        config.burrow.cipher = Some("aws-kms".to_string());
+        config.dugout.cipher = Some("aws-kms".to_string());
         let result = CipherBackend::from_config(&config);
         assert!(result.is_err());
     }
@@ -232,7 +232,7 @@ mod tests {
     #[test]
     fn test_backend_from_config_unknown_cipher() {
         let mut config = Config::new();
-        config.burrow.cipher = Some("unknown".to_string());
+        config.dugout.cipher = Some("unknown".to_string());
         let result = CipherBackend::from_config(&config);
         assert!(result.is_err());
     }
@@ -256,8 +256,8 @@ mod tests {
     #[cfg(not(feature = "aws"))]
     fn test_backend_aws_kms_not_compiled() {
         let mut config = Config::new();
-        config.burrow.cipher = Some("aws-kms".to_string());
-        config.burrow.kms_key_id = Some("test-key".to_string());
+        config.dugout.cipher = Some("aws-kms".to_string());
+        config.dugout.kms_key_id = Some("test-key".to_string());
 
         let result = CipherBackend::from_config(&config);
         assert!(result.is_err());
@@ -269,8 +269,8 @@ mod tests {
     #[cfg(not(feature = "gcp"))]
     fn test_backend_gcp_kms_not_compiled() {
         let mut config = Config::new();
-        config.burrow.cipher = Some("gcp-kms".to_string());
-        config.burrow.gcp_resource = Some("test-resource".to_string());
+        config.dugout.cipher = Some("gcp-kms".to_string());
+        config.dugout.gcp_resource = Some("test-resource".to_string());
 
         let result = CipherBackend::from_config(&config);
         assert!(result.is_err());
@@ -282,7 +282,7 @@ mod tests {
     #[cfg(not(feature = "gpg"))]
     fn test_backend_gpg_not_compiled() {
         let mut config = Config::new();
-        config.burrow.cipher = Some("gpg".to_string());
+        config.dugout.cipher = Some("gpg".to_string());
 
         let result = CipherBackend::from_config(&config);
         assert!(result.is_err());

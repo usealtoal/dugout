@@ -1,6 +1,6 @@
 //! Vault
 //!
-//! The primary interface for all burrow operations.
+//! The primary interface for all dugout operations.
 
 use crate::core::cipher;
 use crate::core::config::{self, Config};
@@ -11,7 +11,7 @@ use crate::error::{ConfigError, Result, SecretError, ValidationError};
 use tracing::{debug, info, instrument};
 use zeroize::Zeroizing;
 
-/// The primary interface for all burrow operations
+/// The primary interface for all dugout operations
 ///
 /// Owns the config, manages keys, and provides all secret operations.
 pub struct Vault {
@@ -38,7 +38,7 @@ impl Vault {
     ///
     /// # Errors
     ///
-    /// Returns `ConfigError::NotInitialized` if no `.burrow.toml` exists.
+    /// Returns `ConfigError::NotInitialized` if no `.dugout.toml` exists.
     /// Returns error if the configuration is invalid or cannot be read.
     pub fn open() -> Result<Self> {
         let config = Config::load()?;
@@ -56,7 +56,7 @@ impl Vault {
 
     /// Initialize a new vault
     ///
-    /// Creates a new `.burrow.toml` configuration file, generates a keypair,
+    /// Creates a new `.dugout.toml` configuration file, generates a keypair,
     /// and adds the specified user as the first recipient.
     ///
     /// # Errors
@@ -76,9 +76,9 @@ impl Vault {
         let mut config = Config::new();
 
         // Set cipher configuration
-        config.burrow.cipher = cipher_type;
-        config.burrow.kms_key_id = kms_key_id;
-        config.burrow.gcp_resource = gcp_resource;
+        config.dugout.cipher = cipher_type;
+        config.dugout.kms_key_id = kms_key_id;
+        config.dugout.gcp_resource = gcp_resource;
 
         let project_id = config.project_id();
 
@@ -308,13 +308,13 @@ impl Vault {
 
     /// List pending access requests
     ///
-    /// Returns a vector of (name, public_key) pairs from `.burrow/requests/` directory.
+    /// Returns a vector of (name, public_key) pairs from `.dugout/requests/` directory.
     ///
     /// # Errors
     ///
     /// Returns error if the directory cannot be read.
     pub fn pending_requests(&self) -> Result<Vec<(String, String)>> {
-        let requests_dir = std::path::Path::new(".burrow/requests");
+        let requests_dir = std::path::Path::new(".dugout/requests");
 
         if !requests_dir.exists() {
             return Ok(Vec::new());
@@ -353,7 +353,7 @@ impl Vault {
     pub fn admit(&mut self, name: &str) -> Result<()> {
         info!(name = %name, "admitting team member from request");
 
-        let request_path = std::path::PathBuf::from(format!(".burrow/requests/{}.pub", name));
+        let request_path = std::path::PathBuf::from(format!(".dugout/requests/{}.pub", name));
 
         if !request_path.exists() {
             return Err(ConfigError::RecipientNotFound(format!(

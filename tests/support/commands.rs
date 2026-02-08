@@ -5,40 +5,40 @@ use assert_cmd::Command;
 use std::process::Output;
 
 impl Test {
-    /// Create a burrow command with correct environment variables.
+    /// Create a dugout command with correct environment variables.
     ///
     /// Returns a Command configured with:
     /// - HOME set to the temporary home directory
     /// - Current directory set to the test project directory
     pub fn cmd(&self) -> Command {
-        let mut cmd = Command::cargo_bin("burrow").expect("failed to find burrow binary");
+        let mut cmd = Command::cargo_bin("dugout").expect("failed to find dugout binary");
         cmd.env("HOME", self.home.path());
         cmd.current_dir(self.dir.path());
         cmd
     }
 
-    /// Shortcut for `burrow init` command.
+    /// Shortcut for `dugout init` command.
     pub fn init_cmd(&self, name: &str) -> Output {
         self.cmd()
             .args(["init", "--no-banner", "--name", name])
             .output()
-            .expect("failed to run burrow init")
+            .expect("failed to run dugout init")
     }
 
-    /// Shortcut for `burrow set` command.
+    /// Shortcut for `dugout set` command.
     pub fn set(&self, key: &str, val: &str) -> Output {
         self.cmd()
             .args(["set", key, val])
             .output()
-            .expect("failed to run burrow set")
+            .expect("failed to run dugout set")
     }
 
-    /// Shortcut for `burrow set --force` command.
+    /// Shortcut for `dugout set --force` command.
     pub fn set_force(&self, key: &str, val: &str) -> Output {
         self.cmd()
             .args(["set", key, val, "--force"])
             .output()
-            .expect("failed to run burrow set --force")
+            .expect("failed to run dugout set --force")
     }
 
     /// Set multiple secrets at once.
@@ -46,141 +46,141 @@ impl Test {
         pairs.iter().map(|(k, v)| self.set(k, v)).collect()
     }
 
-    /// Shortcut for `burrow get` command.
+    /// Shortcut for `dugout get` command.
     pub fn get(&self, key: &str) -> Output {
         self.cmd()
             .args(["get", key])
             .output()
-            .expect("failed to run burrow get")
+            .expect("failed to run dugout get")
     }
 
-    /// Shortcut for `burrow rm` command.
+    /// Shortcut for `dugout rm` command.
     pub fn rm(&self, key: &str) -> Output {
         self.cmd()
             .args(["rm", key])
             .output()
-            .expect("failed to run burrow rm")
+            .expect("failed to run dugout rm")
     }
 
-    /// Shortcut for `burrow list` command.
+    /// Shortcut for `dugout list` command.
     pub fn list(&self) -> Output {
         self.cmd()
             .arg("list")
             .output()
-            .expect("failed to run burrow list")
+            .expect("failed to run dugout list")
     }
 
-    /// Shortcut for `burrow list --json` command.
+    /// Shortcut for `dugout list --json` command.
     pub fn list_json(&self) -> Output {
         self.cmd()
             .args(["list", "--json"])
             .output()
-            .expect("failed to run burrow list --json")
+            .expect("failed to run dugout list --json")
     }
 
-    /// Shortcut for `burrow secrets lock` command.
+    /// Shortcut for `dugout secrets lock` command.
     pub fn secrets_lock(&self) -> Output {
         self.cmd()
             .args(["secrets", "lock"])
             .output()
-            .expect("failed to run burrow secrets lock")
+            .expect("failed to run dugout secrets lock")
     }
 
-    /// Shortcut for `burrow secrets unlock` command.
+    /// Shortcut for `dugout secrets unlock` command.
     pub fn secrets_unlock(&self) -> Output {
         self.cmd()
             .args(["secrets", "unlock"])
             .output()
-            .expect("failed to run burrow secrets unlock")
+            .expect("failed to run dugout secrets unlock")
     }
 
-    /// Shortcut for `burrow secrets import` command.
+    /// Shortcut for `dugout secrets import` command.
     pub fn secrets_import(&self, path: &str) -> Output {
         self.cmd()
             .args(["secrets", "import", path])
             .output()
-            .expect("failed to run burrow secrets import")
+            .expect("failed to run dugout secrets import")
     }
 
-    /// Shortcut for `burrow secrets export` command.
+    /// Shortcut for `dugout secrets export` command.
     pub fn secrets_export(&self) -> Output {
         self.cmd()
             .args(["secrets", "export"])
             .output()
-            .expect("failed to run burrow secrets export")
+            .expect("failed to run dugout secrets export")
     }
 
-    /// Shortcut for `burrow secrets diff` command.
+    /// Shortcut for `dugout secrets diff` command.
     pub fn secrets_diff(&self) -> Output {
         self.cmd()
             .args(["secrets", "diff"])
             .output()
-            .expect("failed to run burrow secrets diff")
+            .expect("failed to run dugout secrets diff")
     }
 
-    /// Shortcut for `burrow secrets rotate` command.
+    /// Shortcut for `dugout secrets rotate` command.
     pub fn secrets_rotate(&self) -> Output {
         self.cmd()
             .args(["secrets", "rotate"])
             .output()
-            .expect("failed to run burrow secrets rotate")
+            .expect("failed to run dugout secrets rotate")
     }
 
-    /// Shortcut for `burrow team add` command.
+    /// Shortcut for `dugout team add` command.
     pub fn team_add(&self, name: &str, key: &str) -> Output {
         self.cmd()
             .args(["team", "add", name, key])
             .output()
-            .expect("failed to run burrow team add")
+            .expect("failed to run dugout team add")
     }
 
-    /// Shortcut for `burrow team list` command.
+    /// Shortcut for `dugout team list` command.
     pub fn team_list(&self) -> Output {
         self.cmd()
             .args(["team", "list"])
             .output()
-            .expect("failed to run burrow team list")
+            .expect("failed to run dugout team list")
     }
 
-    /// Shortcut for `burrow team list --json` command.
+    /// Shortcut for `dugout team list --json` command.
     pub fn team_list_json(&self) -> Output {
         self.cmd()
             .args(["team", "list", "--json"])
             .output()
-            .expect("failed to run burrow team list --json")
+            .expect("failed to run dugout team list --json")
     }
 
-    /// Shortcut for `burrow team rm` command.
+    /// Shortcut for `dugout team rm` command.
     pub fn team_rm(&self, name: &str) -> Output {
         self.cmd()
             .args(["team", "rm", name])
             .output()
-            .expect("failed to run burrow team rm")
+            .expect("failed to run dugout team rm")
     }
 
-    /// Shortcut for `burrow check status` command.
+    /// Shortcut for `dugout check status` command.
     pub fn check_status(&self) -> Output {
         self.cmd()
             .args(["check", "status"])
             .output()
-            .expect("failed to run burrow check status")
+            .expect("failed to run dugout check status")
     }
 
-    /// Shortcut for `burrow check audit` command.
+    /// Shortcut for `dugout check audit` command.
     pub fn check_audit(&self) -> Output {
         self.cmd()
             .args(["check", "audit"])
             .output()
-            .expect("failed to run burrow check audit")
+            .expect("failed to run dugout check audit")
     }
 
-    /// Shortcut for `burrow run` command.
+    /// Shortcut for `dugout run` command.
     pub fn run(&self, command: &[&str]) -> Output {
         let mut cmd = self.cmd();
         cmd.arg("run").arg("--");
         for arg in command {
             cmd.arg(arg);
         }
-        cmd.output().expect("failed to run burrow run")
+        cmd.output().expect("failed to run dugout run")
     }
 }

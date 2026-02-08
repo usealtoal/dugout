@@ -43,22 +43,22 @@ fn test_default_no_log_output() {
 }
 
 #[test]
-fn test_burrow_log_env_var() {
+fn test_dugout_log_env_var() {
     let t = Test::init("test-user");
 
     let output = t.set("TEST_KEY", "test_value");
     assert_success(&output);
 
-    // Run with BURROW_LOG=debug environment variable
+    // Run with DUGOUT_LOG=debug environment variable
     let output = t
         .cmd()
-        .env("BURROW_LOG", "debug")
+        .env("DUGOUT_LOG", "debug")
         .arg("list")
         .output()
         .unwrap();
     assert_success(&output);
 
-    // The BURROW_LOG env var should be accepted without errors
+    // The DUGOUT_LOG env var should be accepted without errors
     // Note: actual debug output depends on the logging implementation
     // We're mainly verifying the env var is recognized
 }

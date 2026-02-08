@@ -1,4 +1,4 @@
-//! Tests for `burrow team add/list/rm` commands.
+//! Tests for `dugout team add/list/rm` commands.
 
 use crate::support::*;
 

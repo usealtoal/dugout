@@ -1,16 +1,16 @@
-//! Constants used throughout burrow.
+//! Constants used throughout dugout.
 //!
 //! Centralizes magic strings and configuration values.
 
-/// Configuration file name (.burrow.toml).
-pub const CONFIG_FILE: &str = ".burrow.toml";
+/// Configuration file name (.dugout.toml).
+pub const CONFIG_FILE: &str = ".dugout.toml";
 
 /// Environment variables file name (.env).
 #[allow(dead_code)]
 pub const ENV_FILE: &str = ".env";
 
-/// Key storage directory relative to HOME (~/.burrow/keys).
-pub const KEY_DIR: &str = ".burrow/keys";
+/// Key storage directory relative to HOME (~/.dugout/keys).
+pub const KEY_DIR: &str = ".dugout/keys";
 
 /// Gitignore entries to protect secrets.
 ///

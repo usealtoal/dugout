@@ -1,4 +1,4 @@
-//! Test support utilities for burrow integration tests.
+//! Test support utilities for dugout integration tests.
 //!
 //! Provides reusable test environment setup and helper commands.
 

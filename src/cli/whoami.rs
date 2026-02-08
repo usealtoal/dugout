@@ -8,9 +8,9 @@ use crate::error::Result;
 pub fn execute() -> Result<()> {
     if !Identity::has_global()? {
         output::error("no identity found");
-        output::hint("run: burrow setup");
+        output::hint("run: dugout setup");
         return Err(
-            crate::error::StoreError::NoPrivateKey("~/.burrow/identity".to_string()).into(),
+            crate::error::StoreError::NoPrivateKey("~/.dugout/identity".to_string()).into(),
         );
     }
 

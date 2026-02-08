@@ -1,4 +1,4 @@
-//! Tests for `burrow .` (dot) command - project detection.
+//! Tests for `dugout .` (dot) command - project detection.
 
 use crate::support::*;
 use std::fs;
@@ -95,7 +95,7 @@ fn test_dot_no_project_detected() {
     assert_failure(&output);
     assert_stderr_contains(&output, "couldn't detect project type");
     // Check stdout for the hint
-    assert_stdout_contains(&output, "burrow run");
+    assert_stdout_contains(&output, "dugout run");
 }
 
 #[test]

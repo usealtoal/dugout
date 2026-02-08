@@ -9,7 +9,7 @@ pub fn execute() -> Result<()> {
     let vault = Vault::open()?;
 
     // Project name
-    output::kv("vault", ".burrow.toml");
+    output::kv("vault", ".dugout.toml");
 
     // Cipher backend
     output::kv("cipher", "age");
