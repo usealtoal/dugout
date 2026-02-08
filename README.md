@@ -14,7 +14,7 @@
 
 ## Highlights
 
-- **Encrypted at rest** — age encryption by default, with AWS KMS, GCP KMS, and GPG backends
+- **Encrypted at rest** — age encryption by default, optional support for AWS KMS, GCP KMS, and GPG
 - **Team-friendly** — add members, share secrets, rotate keys, all through git
 - **Fast** — encrypts in ~100µs, single binary, no runtime dependencies
 - **Zero config** — `burrow init` and start adding secrets
