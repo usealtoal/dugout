@@ -1,7 +1,4 @@
-/target
 .env
 .env.*
 !.env.example
-.dugout.toml
-.dugout/
-docs/plans/
+target/
