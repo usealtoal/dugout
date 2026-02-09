@@ -29,19 +29,18 @@ pub fn execute() -> Result<()> {
     }
 
     // Detect project type
-    let project_kind = ProjectKind::detect();
-
-    if project_kind.is_none() {
-        output::error("couldn't detect project type");
-        output::hint("use: dugout run -- <command>");
-        return Err(crate::error::ConfigError::InvalidValue {
-            field: "project",
-            reason: "could not detect project type".to_string(),
+    let kind = match ProjectKind::detect() {
+        Some(k) => k,
+        None => {
+            output::error("couldn't detect project type");
+            output::hint("use: dugout run -- <command>");
+            return Err(crate::error::ConfigError::InvalidValue {
+                field: "project",
+                reason: "could not detect project type".to_string(),
+            }
+            .into());
         }
-        .into());
-    }
-
-    let kind = project_kind.unwrap();
+    };
     let command = kind.command();
 
     // Check if the tool exists before trying to run
@@ -56,6 +55,16 @@ pub fn execute() -> Result<()> {
             command[0]
         )));
     }
+
+    // Show what we're doing (one concise line)
+    let secrets_count = config.secrets.len();
+    let cmd_display = command.join(" ");
+    output::success(&format!(
+        "{} project, {} secrets → {}",
+        kind.display_name(),
+        secrets_count,
+        cmd_display
+    ));
 
     crate::cli::run::execute(&command)
 }

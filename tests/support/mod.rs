@@ -14,41 +14,31 @@ pub use assertions::*;
 #[allow(unused_imports)]
 pub use fixtures::*;
 
-use std::env;
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 /// Test environment with isolated temp directories.
 ///
-/// Automatically sets up temporary directories for the project and home,
-/// and restores the original working directory on drop.
+/// Each test gets its own temporary project dir and home dir.
+/// No process-global state is mutated — child processes use `.current_dir()`
+/// so tests can safely run in parallel.
 pub struct Test {
     /// Temporary directory for the test project
     pub dir: TempDir,
     /// Temporary home directory
     pub home: TempDir,
-    /// Original working directory to restore on drop
-    original_dir: PathBuf,
 }
 
 impl Test {
     /// Create a new empty test environment.
     ///
-    /// Sets up temporary directories and changes the current directory
-    /// to the test project directory.
+    /// Sets up temporary directories for project and home.
+    /// Does NOT change the process working directory — child commands
+    /// use `.current_dir()` for isolation instead.
     pub fn new() -> Self {
         let dir = TempDir::new().expect("failed to create temp dir");
         let home = TempDir::new().expect("failed to create temp home");
-        let original_dir = env::current_dir().expect("failed to get current dir");
 
-        // Change to the test directory
-        env::set_current_dir(dir.path()).expect("failed to change to temp dir");
-
-        Self {
-            dir,
-            home,
-            original_dir,
-        }
+        Self { dir, home }
     }
 
     /// Create a test environment with vault initialized.
@@ -76,12 +66,5 @@ impl Test {
             );
         }
         t
-    }
-}
-
-impl Drop for Test {
-    /// Restore the original working directory when the test environment is dropped.
-    fn drop(&mut self) {
-        let _ = env::set_current_dir(&self.original_dir);
     }
 }
