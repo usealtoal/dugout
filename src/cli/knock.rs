@@ -58,7 +58,9 @@ pub fn execute(name: Option<String>, vault: Option<String>) -> Result<()> {
     std::fs::write(&request_path, format!("{}\n", pubkey))?;
 
     output::success("created access request");
-    output::hint(&format!("share {} with an admin", request_path.display()));
+    // Use forward slashes for consistent cross-platform output
+    let display_path = request_path.display().to_string().replace('\\', "/");
+    output::hint(&format!("share {} with an admin", display_path));
 
     Ok(())
 }
