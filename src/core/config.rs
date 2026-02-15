@@ -97,10 +97,18 @@ impl Config {
     }
 
     /// Save configuration to vault file.
+    ///
+    /// Uses atomic write (temp file + rename) to prevent corruption on crash.
     pub fn save_to(&self, vault: Option<&str>) -> Result<()> {
         debug!("saving config");
         let contents = toml::to_string_pretty(self).map_err(ConfigError::Serialize)?;
-        std::fs::write(Self::config_path_for(vault), contents)?;
+        let target_path = Self::config_path_for(vault);
+
+        // Write to temp file in same directory, then rename for atomicity
+        let temp_path = target_path.with_extension("toml.tmp");
+        std::fs::write(&temp_path, &contents)?;
+        std::fs::rename(&temp_path, &target_path)?;
+
         Ok(())
     }
 
