@@ -95,7 +95,7 @@ fn test_multiple_vaults_requires_flag() {
 
     let stderr = String::from_utf8_lossy(&get.stderr);
     assert!(stderr.contains("multiple vaults"));
-    assert!(stderr.contains("-v"));
+    assert!(stderr.contains("--vault"));
 }
 
 #[test]
@@ -119,23 +119,44 @@ fn test_env_var_selects_vault() {
 }
 
 #[test]
+fn test_env_var_isolates_vault() {
+    let t = Test::new();
+    t.init_cmd("alice");
+    t.init_vault("alice", "dev");
+
+    t.set_vault("default", "DEFAULT_KEY", "default_value");
+    t.set_vault("dev", "DEV_KEY", "dev_value");
+
+    // Env var selects dev vault, so DEFAULT_KEY (only in default) should not be found
+    let get = t.cmd()
+        .env("DUGOUT_VAULT", "dev")
+        .args(["get", "DEFAULT_KEY"])
+        .output()
+        .unwrap();
+
+    // Should fail because DEFAULT_KEY doesn't exist in dev vault
+    assert!(!get.status.success());
+}
+
+#[test]
 fn test_flag_overrides_env_var() {
     let t = Test::new();
     t.init_cmd("alice");
     t.init_vault("alice", "dev");
 
-    t.set("DEFAULT_KEY", "default_value");
+    t.set_vault("default", "DEFAULT_KEY", "default_value");
     t.set_vault("dev", "DEV_KEY", "dev_value");
 
-    // Flag should override env var - get from default vault while env says dev
+    // Flag (--vault default) should override env var (DUGOUT_VAULT=dev)
     let get = t.cmd()
         .env("DUGOUT_VAULT", "dev")
-        .args(["get", "DEFAULT_KEY"])  // This key only exists in default vault
+        .args(["--vault", "default", "get", "DEFAULT_KEY"])
         .output()
         .unwrap();
 
-    // Should fail because DEFAULT_KEY doesn't exist in dev vault (env var selected)
-    assert!(!get.status.success());
+    // Should succeed because flag overrides env var to select default vault
+    assert!(get.status.success());
+    assert!(String::from_utf8_lossy(&get.stdout).contains("default_value"));
 }
 
 #[test]

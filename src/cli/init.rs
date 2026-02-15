@@ -14,7 +14,7 @@ pub fn execute(
     vault: Option<String>,
 ) -> Result<()> {
     // Use resolve_vault_default since init creates a specific vault
-    let vault_name = crate::cli::resolve::resolve_vault_default(vault.as_deref());
+    let vault_name = crate::cli::resolve::resolve_vault_default(vault.as_deref())?;
 
     let name = name.unwrap_or_else(whoami::username);
 

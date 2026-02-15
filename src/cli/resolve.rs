@@ -1,17 +1,79 @@
 //! Vault resolution helpers for CLI commands.
 
 use crate::core::vault::Vault;
-use crate::error::{ConfigError, Result};
+use crate::error::{ConfigError, Result, ValidationError};
+
+/// Validate a vault name.
+///
+/// Vault names must be safe for use in file paths:
+/// - Not empty
+/// - Not "." or ".."
+/// - No path separators (/ or \)
+/// - Only alphanumeric, underscore, hyphen, and dot
+/// - Max 64 characters
+pub fn validate_vault_name(name: &str) -> Result<()> {
+    if name.is_empty() {
+        return Err(ValidationError::InvalidKey {
+            key: name.to_string(),
+            reason: "vault name cannot be empty".to_string(),
+        }
+        .into());
+    }
+
+    if name == "." || name == ".." {
+        return Err(ValidationError::InvalidKey {
+            key: name.to_string(),
+            reason: "vault name cannot be '.' or '..'".to_string(),
+        }
+        .into());
+    }
+
+    if name.len() > 64 {
+        return Err(ValidationError::InvalidKey {
+            key: name.to_string(),
+            reason: "vault name must be at most 64 characters".to_string(),
+        }
+        .into());
+    }
+
+    for (i, ch) in name.chars().enumerate() {
+        if ch == '/' || ch == '\\' {
+            return Err(ValidationError::InvalidKey {
+                key: name.to_string(),
+                reason: format!(
+                    "invalid character '{}' at position {}. Path separators are not allowed",
+                    ch,
+                    i + 1
+                ),
+            }
+            .into());
+        }
+        if !ch.is_ascii_alphanumeric() && ch != '_' && ch != '-' && ch != '.' {
+            return Err(ValidationError::InvalidKey {
+                key: name.to_string(),
+                reason: format!(
+                    "invalid character '{}' at position {}. Allowed: A-Z, a-z, 0-9, _, -, .",
+                    ch,
+                    i + 1
+                ),
+            }
+            .into());
+        }
+    }
+
+    Ok(())
+}
 
 /// Resolve which vault to use based on CLI flag and available vaults.
 ///
 /// Rules:
-/// - If vault is specified, use it
+/// - If vault is specified, validate and use it
 /// - If only one vault exists, use it
 /// - If multiple vaults exist, error with guidance
 pub fn resolve_vault(vault: Option<&str>) -> Result<Option<String>> {
-    // If explicit vault specified, use it
+    // If explicit vault specified, validate and use it
     if let Some(v) = vault {
+        validate_vault_name(v)?;
         return Ok(Some(v.to_string()));
     }
 
@@ -51,6 +113,49 @@ pub fn resolve_vault(vault: Option<&str>) -> Result<Option<String>> {
 ///
 /// Unlike resolve_vault(), this always defaults to None (the default vault)
 /// if no explicit vault is specified, regardless of how many vaults exist.
-pub fn resolve_vault_default(vault: Option<&str>) -> Option<String> {
-    vault.map(|s| s.to_string())
+pub fn resolve_vault_default(vault: Option<&str>) -> Result<Option<String>> {
+    if let Some(v) = vault {
+        validate_vault_name(v)?;
+        return Ok(Some(v.to_string()));
+    }
+    Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_vault_name_valid() {
+        assert!(validate_vault_name("dev").is_ok());
+        assert!(validate_vault_name("prod").is_ok());
+        assert!(validate_vault_name("staging-1").is_ok());
+        assert!(validate_vault_name("test_env").is_ok());
+        assert!(validate_vault_name("v1.0").is_ok());
+    }
+
+    #[test]
+    fn test_validate_vault_name_rejects_empty() {
+        assert!(validate_vault_name("").is_err());
+    }
+
+    #[test]
+    fn test_validate_vault_name_rejects_dots() {
+        assert!(validate_vault_name(".").is_err());
+        assert!(validate_vault_name("..").is_err());
+    }
+
+    #[test]
+    fn test_validate_vault_name_rejects_path_separators() {
+        assert!(validate_vault_name("foo/bar").is_err());
+        assert!(validate_vault_name("foo\\bar").is_err());
+        assert!(validate_vault_name("../secrets").is_err());
+    }
+
+    #[test]
+    fn test_validate_vault_name_rejects_special_chars() {
+        assert!(validate_vault_name("foo bar").is_err());
+        assert!(validate_vault_name("foo@bar").is_err());
+        assert!(validate_vault_name("foo:bar").is_err());
+    }
 }

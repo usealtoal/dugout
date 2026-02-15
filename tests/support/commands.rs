@@ -187,26 +187,26 @@ impl Test {
         cmd.output().expect("failed to run dugout run")
     }
 
-    /// Shortcut for `dugout init -v <vault>` command.
+    /// Shortcut for `dugout init --vault <vault>` command.
     pub fn init_vault(&self, name: &str, vault: &str) -> Output {
         self.cmd()
-            .args(["init", "--no-banner", "--name", name, "-v", vault])
+            .args(["init", "--no-banner", "--name", name, "--vault", vault])
             .output()
             .expect("failed to run dugout init")
     }
 
-    /// Shortcut for `dugout -v <vault> set` command.
+    /// Shortcut for `dugout --vault <vault> set` command.
     pub fn set_vault(&self, vault: &str, key: &str, val: &str) -> Output {
         self.cmd()
-            .args(["-v", vault, "set", key, val])
+            .args(["--vault", vault, "set", key, val])
             .output()
             .expect("failed to run dugout set")
     }
 
-    /// Shortcut for `dugout -v <vault> get` command.
+    /// Shortcut for `dugout --vault <vault> get` command.
     pub fn get_vault(&self, vault: &str, key: &str) -> Output {
         self.cmd()
-            .args(["-v", vault, "get", key])
+            .args(["--vault", vault, "get", key])
             .output()
             .expect("failed to run dugout get")
     }

@@ -22,7 +22,7 @@ pub enum ConfigError {
     #[error("identity does not have access to this vault")]
     AccessDenied,
 
-    #[error("multiple vaults found\n\n{vaults}\n\nspecify which vault to use:\n\n  dugout -v <name> <command>\n\nor set DUGOUT_VAULT environment variable:\n\n  export DUGOUT_VAULT=<name>")]
+    #[error("multiple vaults found\n\n{vaults}\n\nspecify which vault to use:\n\n  dugout --vault <name> <command>\n\nor set DUGOUT_VAULT environment variable:\n\n  export DUGOUT_VAULT=<name>")]
     MultipleVaults { vaults: String },
 
     #[error("missing required field: {field}")]
