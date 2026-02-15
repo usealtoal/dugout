@@ -42,8 +42,12 @@ const STYLES: Styles = Styles::styled()
 )]
 pub struct Cli {
     /// Enable verbose logging output
-    #[arg(short, long, global = true)]
+    #[arg(long, global = true)]
     pub verbose: bool,
+
+    /// Select vault (e.g., "dev", "prod"). Uses .dugout.toml by default.
+    #[arg(short = 'v', long = "vault", global = true, env = "DUGOUT_VAULT")]
+    pub vault: Option<String>,
 
     #[command(subcommand)]
     pub command: Command,
