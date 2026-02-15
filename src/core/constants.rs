@@ -21,11 +21,7 @@ pub const GITIGNORE_ENTRIES: &[&str] = &[".env", ".env.*", "!.env.example"];
 ///
 /// Defense in depth: rejects path separators and special names even if CLI already validated.
 fn is_safe_vault_name(name: &str) -> bool {
-    !name.is_empty()
-        && name != "."
-        && name != ".."
-        && !name.contains('/')
-        && !name.contains('\\')
+    !name.is_empty() && name != "." && name != ".." && !name.contains('/') && !name.contains('\\')
 }
 
 /// Get vault file path for given vault name.
@@ -145,8 +141,14 @@ mod tests {
     #[test]
     fn test_vault_name_from_path_invalid() {
         // Non-vault files should return None
-        assert_eq!(vault_name_from_path(std::path::Path::new("config.toml")), None);
+        assert_eq!(
+            vault_name_from_path(std::path::Path::new("config.toml")),
+            None
+        );
         assert_eq!(vault_name_from_path(std::path::Path::new(".env")), None);
-        assert_eq!(vault_name_from_path(std::path::Path::new("dugout.toml")), None);
+        assert_eq!(
+            vault_name_from_path(std::path::Path::new("dugout.toml")),
+            None
+        );
     }
 }

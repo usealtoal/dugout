@@ -30,7 +30,6 @@ pub fn validate_vault_name(name: &str) -> Result<()> {
         .into());
     }
 
-
     if name.len() > 64 {
         return Err(ValidationError::InvalidVaultName {
             name: name.to_string(),

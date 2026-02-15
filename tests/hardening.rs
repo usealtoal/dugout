@@ -43,7 +43,10 @@ fn test_concurrent_reads() {
         .collect();
 
     let results: Vec<bool> = handles.into_iter().map(|h| h.join().unwrap()).collect();
-    assert!(results.iter().all(|&r| r), "All concurrent reads should succeed");
+    assert!(
+        results.iter().all(|&r| r),
+        "All concurrent reads should succeed"
+    );
 }
 
 #[test]
@@ -79,7 +82,10 @@ fn test_concurrent_writes_different_keys() {
 
     // At least some should succeed (last writer wins for config)
     let successes = results.iter().filter(|(_, success)| *success).count();
-    assert!(successes > 0, "At least one concurrent write should succeed");
+    assert!(
+        successes > 0,
+        "At least one concurrent write should succeed"
+    );
 
     // Verify all keys that were written can be read
     for i in 0..4 {
@@ -153,31 +159,31 @@ fn test_concurrent_read_write() {
 /// Edge case values that should be handled without panic
 fn edge_case_values() -> Vec<&'static str> {
     vec![
-        "",                           // empty
-        " ",                          // whitespace only
-        "\n",                         // newline only
-        "\r\n",                       // CRLF
-        "\t\t\t",                     // tabs
-        "=",                          // just equals
-        "===",                        // multiple equals
-        "key=value=extra",            // multiple equals
-        "\"unclosed",                 // unclosed quote
-        "'unclosed",                  // unclosed single quote
-        "\\n\\t\\r",                  // escaped chars as literal
-        "\x00",                       // null byte
-        "\x00\x00\x00",               // multiple null bytes
-        "a]b[c{d}e",                  // brackets
-        "a\nb\nc",                    // embedded newlines
+        "",                          // empty
+        " ",                         // whitespace only
+        "\n",                        // newline only
+        "\r\n",                      // CRLF
+        "\t\t\t",                    // tabs
+        "=",                         // just equals
+        "===",                       // multiple equals
+        "key=value=extra",           // multiple equals
+        "\"unclosed",                // unclosed quote
+        "'unclosed",                 // unclosed single quote
+        "\\n\\t\\r",                 // escaped chars as literal
+        "\x00",                      // null byte
+        "\x00\x00\x00",              // multiple null bytes
+        "a]b[c{d}e",                 // brackets
+        "a\nb\nc",                   // embedded newlines
         "emoji: \u{1F600}\u{1F4A9}", // emoji
-        "日本語テスト",                // Japanese
-        "مرحبا",                      // Arabic (RTL)
-        "\u{202E}reversed",           // RTL override
-        "path/../../../etc/passwd",   // path traversal attempt
-        "${VAR}",                     // shell variable
-        "$(command)",                 // command substitution
-        "`command`",                  // backtick command
-        "'; DROP TABLE secrets; --",  // SQL injection attempt
-        "<script>alert(1)</script>",  // XSS attempt
+        "日本語テスト",              // Japanese
+        "مرحبا",                     // Arabic (RTL)
+        "\u{202E}reversed",          // RTL override
+        "path/../../../etc/passwd",  // path traversal attempt
+        "${VAR}",                    // shell variable
+        "$(command)",                // command substitution
+        "`command`",                 // backtick command
+        "'; DROP TABLE secrets; --", // SQL injection attempt
+        "<script>alert(1)</script>", // XSS attempt
     ]
 }
 
@@ -229,14 +235,14 @@ fn test_env_parser_edge_cases() {
         ("VALID=value", true),
         ("VALID=value\nINVALID LINE\nVALID2=value2", true),
         ("=no_key", false),
-        ("NO_VALUE=", true),  // empty value is valid
+        ("NO_VALUE=", true), // empty value is valid
         ("SPACES = value", true),
         ("  LEADING=value", true),
         ("TRAILING=value  ", true),
         ("QUOTED=\"value with spaces\"", true),
         ("SINGLE='value'", true),
-        ("MIXED=\"unclosed", true),  // partial parse
-        ("KEY1=val1\nKEY1=val2", true),  // duplicate keys
+        ("MIXED=\"unclosed", true),     // partial parse
+        ("KEY1=val1\nKEY1=val2", true), // duplicate keys
     ];
 
     for (i, (content, should_import)) in edge_cases.iter().enumerate() {
@@ -258,10 +264,10 @@ fn test_key_name_edge_cases() {
         "",
         " ",
         "has space",
-        "has-dash",  // valid
-        "has_underscore",  // valid
+        "has-dash",       // valid
+        "has_underscore", // valid
         "123starts_with_digit",
-        "VALID_KEY",  // valid
+        "VALID_KEY", // valid
         "has.dot",
         "has/slash",
         "has\\backslash",
@@ -296,7 +302,11 @@ fn test_recovery_corrupted_config() {
     // Operations should fail gracefully
     let output = t.get("KEY");
     assert_failure(&output);
-    assert!(stderr(&output).contains("parse") || stderr(&output).contains("TOML") || stderr(&output).contains("error"));
+    assert!(
+        stderr(&output).contains("parse")
+            || stderr(&output).contains("TOML")
+            || stderr(&output).contains("error")
+    );
 }
 
 #[test]
@@ -487,8 +497,8 @@ fn test_vault_name_validation_comprehensive() {
         "foo\\bar",
         "../escape",
         "..\\escape",
-        &"a".repeat(65),  // too long
-        "default",  // reserved
+        &"a".repeat(65), // too long
+        "default",       // reserved
     ];
 
     for name in &invalid_vault_names {
@@ -654,7 +664,10 @@ fn test_rotation_preserves_all_secrets() {
         .map(|i| (format!("ROTATE_KEY_{}", i), format!("rotate_value_{}", i)))
         .collect();
 
-    let pairs: Vec<(&str, &str)> = secrets.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+    let pairs: Vec<(&str, &str)> = secrets
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
     let t = Test::with_secrets("alice", &pairs);
 
     // Rotate

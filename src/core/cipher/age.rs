@@ -72,7 +72,9 @@ impl Cipher for Age {
             .map_err(|e| CipherError::DecryptionFailed(format!("{}", e)))?;
 
         // Limit read size to prevent memory exhaustion from malicious ciphertext
-        reader.take(MAX_DECRYPT_SIZE + 1).read_to_end(&mut decrypted)?;
+        reader
+            .take(MAX_DECRYPT_SIZE + 1)
+            .read_to_end(&mut decrypted)?;
 
         if decrypted.len() as u64 > MAX_DECRYPT_SIZE {
             return Err(CipherError::DecryptionFailed(format!(
