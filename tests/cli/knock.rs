@@ -373,3 +373,87 @@ fn test_knock_rejects_invalid_member_name() {
         "invalid names must not create request files"
     );
 }
+
+#[test]
+fn test_knock_idempotent_same_key() {
+    // Running knock twice with the same identity should be idempotent
+    let t = Test::init("alice");
+
+    let setup_output = t.cmd().arg("setup").output().unwrap();
+    assert_success(&setup_output);
+
+    // First knock
+    let output1 = t.cmd().args(["knock", "bob"]).output().unwrap();
+    assert_success(&output1);
+    assert_stdout_contains(&output1, "created access request");
+
+    // Second knock with same identity
+    let output2 = t.cmd().args(["knock", "bob"]).output().unwrap();
+    assert_success(&output2);
+    assert_stdout_contains(&output2, "already exists with your key");
+}
+
+#[test]
+fn test_knock_different_key_fails() {
+    // If someone else already requested with this name, reject
+    let t = Test::init("alice");
+
+    // Create first identity
+    let home1 = tempfile::TempDir::new().unwrap();
+    let output = t
+        .cmd()
+        .env("HOME", home1.path())
+        .env("USERPROFILE", home1.path())
+        .arg("setup")
+        .output()
+        .unwrap();
+    assert_success(&output);
+
+    // First person knocks as "bob"
+    let output = t
+        .cmd()
+        .env("HOME", home1.path())
+        .env("USERPROFILE", home1.path())
+        .args(["knock", "bob"])
+        .output()
+        .unwrap();
+    assert_success(&output);
+
+    // Create second identity
+    let home2 = tempfile::TempDir::new().unwrap();
+    let output = t
+        .cmd()
+        .env("HOME", home2.path())
+        .env("USERPROFILE", home2.path())
+        .arg("setup")
+        .output()
+        .unwrap();
+    assert_success(&output);
+
+    // Second person tries to knock as "bob" - should fail
+    let output = t
+        .cmd()
+        .env("HOME", home2.path())
+        .env("USERPROFILE", home2.path())
+        .args(["knock", "bob"])
+        .output()
+        .unwrap();
+    assert_failure(&output);
+    assert_stderr_contains(&output, "already exists with a different key");
+}
+
+#[test]
+fn test_admit_corrupted_request_file() {
+    let t = Test::init("alice");
+
+    // Create a corrupted request file
+    let request_dir = t.dir.path().join(".dugout/requests/default");
+    fs::create_dir_all(&request_dir).unwrap();
+    fs::write(request_dir.join("baduser.pub"), "not-a-valid-age-key\n").unwrap();
+
+    // Try to admit - should fail with invalid key error
+    let output = t.cmd().args(["admit", "baduser"]).output().unwrap();
+    assert_failure(&output);
+    // Should mention invalid key format
+    assert_stderr_contains(&output, "invalid");
+}

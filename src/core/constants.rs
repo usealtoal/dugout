@@ -134,4 +134,19 @@ mod tests {
         let path = std::path::Path::new(".dugout.dev.toml");
         assert_eq!(vault_name_from_path(path), Some("dev".to_string()));
     }
+
+    #[test]
+    fn test_vault_name_from_path_empty_name() {
+        // .dugout..toml should return None, not Some("")
+        let path = std::path::Path::new(".dugout..toml");
+        assert_eq!(vault_name_from_path(path), None);
+    }
+
+    #[test]
+    fn test_vault_name_from_path_invalid() {
+        // Non-vault files should return None
+        assert_eq!(vault_name_from_path(std::path::Path::new("config.toml")), None);
+        assert_eq!(vault_name_from_path(std::path::Path::new(".env")), None);
+        assert_eq!(vault_name_from_path(std::path::Path::new("dugout.toml")), None);
+    }
 }
