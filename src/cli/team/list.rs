@@ -5,9 +5,10 @@ use crate::core::vault::Vault;
 use crate::error::Result;
 
 /// List team members.
-pub fn execute(json: bool) -> Result<()> {
-    let vault = Vault::open()?;
-    let members = vault.recipients();
+pub fn execute(json: bool, vault: Option<String>) -> Result<()> {
+    let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
+    let v = Vault::open_vault(vault_name.as_deref())?;
+    let members = v.recipients();
 
     if json {
         let members_json: Vec<_> = members

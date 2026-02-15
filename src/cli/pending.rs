@@ -5,9 +5,10 @@ use crate::core::vault::Vault;
 use crate::error::Result;
 
 /// List pending access requests.
-pub fn execute() -> Result<()> {
-    let vault = Vault::open()?;
-    let requests = vault.pending_requests()?;
+pub fn execute(vault: Option<String>) -> Result<()> {
+    let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
+    let v = Vault::open_vault(vault_name.as_deref())?;
+    let requests = v.pending_requests()?;
 
     if requests.is_empty() {
         output::data("no pending requests");

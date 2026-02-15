@@ -5,9 +5,10 @@ use crate::error::Result;
 use zeroize::Zeroizing;
 
 /// Spawn an interactive shell with secrets loaded.
-pub fn execute() -> Result<()> {
-    let vault = Vault::open()?;
-    let pairs = vault.decrypt_all()?;
+pub fn execute(vault: Option<String>) -> Result<()> {
+    let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
+    let v = Vault::open_vault(vault_name.as_deref())?;
+    let pairs = v.decrypt_all()?;
 
     // Determine which shell to use
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());

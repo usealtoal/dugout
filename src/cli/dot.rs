@@ -7,16 +7,19 @@ use crate::core::domain::Identity;
 use crate::error::Result;
 
 /// Auto-detect project and run with secrets.
-pub fn execute() -> Result<()> {
+pub fn execute(vault: Option<String>) -> Result<()> {
+    // dot always uses default vault unless explicit
+    let vault_name = crate::cli::resolve::resolve_vault_default(vault.as_deref())?;
+
     // Check if vault is initialized
-    if !Config::exists() {
+    if !Config::exists_for(vault_name.as_deref()) {
         output::error("no vault found");
         output::hint("run: dugout init");
         return Err(crate::error::ConfigError::NotInitialized.into());
     }
 
     // Check if user has access
-    let config = Config::load()?;
+    let config = Config::load_from(vault_name.as_deref())?;
 
     if Identity::has_global()? {
         let pubkey = Identity::load_global_pubkey()?;
@@ -66,5 +69,5 @@ pub fn execute() -> Result<()> {
         cmd_display
     ));
 
-    crate::cli::run::execute(&command)
+    crate::cli::run::execute_with_vault(&command, vault_name)
 }

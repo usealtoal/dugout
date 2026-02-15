@@ -4,7 +4,8 @@
 
 use crate::core::cipher;
 use crate::core::config::{self, Config};
-use crate::core::domain::{Diff, Env, Identity, Recipient, Secret, SyncResult};
+use crate::core::constants;
+use crate::core::domain::{Diff, Env, Identity, Recipient, Secret, SyncResult, VaultInfo};
 use crate::core::store;
 use crate::core::types::{MemberName, PublicKey, SecretKey};
 use crate::error::{ConfigError, Result, SecretError, ValidationError};
@@ -20,6 +21,7 @@ pub struct Vault {
     project_id: String,
     identity: Identity,
     backend: cipher::CipherBackend,
+    vault_name: Option<String>,
 }
 
 impl std::fmt::Debug for Vault {
@@ -29,20 +31,25 @@ impl std::fmt::Debug for Vault {
             .field("project_id", &self.project_id)
             .field("identity", &self.identity)
             .field("backend", &self.backend)
+            .field("vault_name", &self.vault_name)
             .finish()
     }
 }
 
 impl Vault {
     // --- Construction ---
-    /// Open an existing vault in the current directory
+    /// Open an existing vault.
+    ///
+    /// # Arguments
+    ///
+    /// * `vault` - Optional vault name (None = default `.dugout.toml`)
     ///
     /// # Errors
     ///
-    /// Returns `ConfigError::NotInitialized` if no `.dugout.toml` exists.
+    /// Returns `ConfigError::NotInitialized` if no vault config exists.
     /// Returns error if the configuration is invalid or cannot be read.
-    pub fn open() -> Result<Self> {
-        let config = Config::load()?;
+    pub fn open_vault(vault: Option<&str>) -> Result<Self> {
+        let config = Config::load_from(vault)?;
         let project_id = config.project_id();
 
         // Identity resolution order:
@@ -72,23 +79,37 @@ impl Vault {
             project_id,
             identity,
             backend,
+            vault_name: vault.map(|s| s.to_string()),
         })
     }
 
-    /// Initialize a new vault
+    /// Open the default vault (backward compat).
     ///
-    /// Creates a new `.dugout.toml` configuration file, generates a keypair,
-    /// and adds the specified user as the first recipient.
+    /// # Errors
+    ///
+    /// Returns `ConfigError::NotInitialized` if no `.dugout.toml` exists.
+    /// Returns error if the configuration is invalid or cannot be read.
+    pub fn open() -> Result<Self> {
+        Self::open_vault(None)
+    }
+
+    /// Initialize a new vault.
+    ///
+    /// # Arguments
+    ///
+    /// * `vault` - Optional vault name (None = default `.dugout.toml`)
+    /// * `name` - Name of the first recipient (the initializing user)
+    /// * `kms_key` - Optional KMS key for hybrid encryption
     ///
     /// # Errors
     ///
     /// Returns `ConfigError::AlreadyInitialized` if vault already exists.
     /// Returns error if keypair generation or file operations fail.
-    pub fn init(name: &str, kms_key: Option<String>) -> Result<Self> {
+    pub fn init_vault(vault: Option<&str>, name: &str, kms_key: Option<String>) -> Result<Self> {
         validate_member_name(name)?;
 
-        if Config::exists() {
-            return Err(crate::error::ConfigError::AlreadyInitialized.into());
+        if Config::exists_for(vault) {
+            return Err(ConfigError::AlreadyInitialized.into());
         }
 
         let mut config = Config::new();
@@ -100,9 +121,16 @@ impl Vault {
 
         let project_id = config.project_id();
 
-        // If a global identity exists, use it instead of generating a new one.
-        // This ensures `dugout .` works immediately after `dugout init`.
-        let (public_key, identity) = if Identity::has_global()? {
+        // Priority for identity:
+        // 1. Existing project key (for multi-vault in same directory)
+        // 2. Global identity (copy to project dir)
+        // 3. Generate new project key
+        let (public_key, identity) = if store::has_key(&project_id) {
+            // Reuse existing project key (multi-vault scenario)
+            let id = store::load_identity(&project_id)?;
+            let pk = id.public_key();
+            (pk, id)
+        } else if Identity::has_global()? {
             let global_pubkey = Identity::load_global_pubkey()?;
             let global_identity = Identity::load_global()?;
             // Copy global key into project key dir so open() can find it
@@ -130,7 +158,7 @@ impl Vault {
         config
             .recipients
             .insert(name.to_string(), public_key.clone());
-        config.save()?;
+        config.save_to(vault)?;
 
         config::ensure_gitignore()?;
         let backend = cipher::CipherBackend::from_config(&config)?;
@@ -140,7 +168,21 @@ impl Vault {
             project_id,
             identity,
             backend,
+            vault_name: vault.map(|s| s.to_string()),
         })
+    }
+
+    /// Initialize the default vault (backward compat).
+    ///
+    /// Creates a new `.dugout.toml` configuration file, generates a keypair,
+    /// and adds the specified user as the first recipient.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ConfigError::AlreadyInitialized` if vault already exists.
+    /// Returns error if keypair generation or file operations fail.
+    pub fn init(name: &str, kms_key: Option<String>) -> Result<Self> {
+        Self::init_vault(None, name, kms_key)
     }
 
     /// Config reference
@@ -188,7 +230,7 @@ impl Vault {
             .secrets
             .insert(key.to_string(), encrypted.clone());
         self.update_recipients_hash();
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
 
         debug!(key = %key, "secret set, saving config");
         Ok(Secret::new(key.to_string(), encrypted))
@@ -233,7 +275,7 @@ impl Vault {
                 SecretError::not_found_with_suggestions(key.to_string(), &available).into(),
             );
         }
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
         Ok(())
     }
 
@@ -287,7 +329,7 @@ impl Vault {
 
         self.config.secrets = updated;
         self.update_recipients_hash();
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
 
         Ok(())
     }
@@ -311,7 +353,7 @@ impl Vault {
         self.config
             .recipients
             .insert(name.to_string(), key.to_string());
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
 
         // Re-encrypt all secrets for the new recipient set
         if !self.config.secrets.is_empty() {
@@ -334,7 +376,7 @@ impl Vault {
         if self.config.recipients.remove(name).is_none() {
             return Err(ConfigError::RecipientNotFound(name.to_string()).into());
         }
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
 
         // Re-encrypt all secrets without the removed recipient
         if !self.config.secrets.is_empty() {
@@ -352,6 +394,54 @@ impl Vault {
             .collect()
     }
 
+    /// Migrate legacy request files to per-vault directories.
+    ///
+    /// Moves files from `.dugout/requests/*.pub` to `.dugout/requests/default/*.pub`.
+    /// This is called automatically when listing pending requests.
+    fn migrate_legacy_requests() -> Result<()> {
+        let legacy_dir = std::path::Path::new(".dugout/requests");
+        let new_dir = constants::request_dir(None); // .dugout/requests/default
+
+        if !legacy_dir.exists() {
+            return Ok(());
+        }
+
+        // Check for .pub files directly in .dugout/requests/ (legacy location)
+        let mut has_legacy_files = false;
+        for entry in std::fs::read_dir(legacy_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("pub") {
+                has_legacy_files = true;
+                break;
+            }
+        }
+
+        if !has_legacy_files {
+            return Ok(());
+        }
+
+        // Create new directory if needed
+        std::fs::create_dir_all(&new_dir)?;
+
+        // Move files
+        for entry in std::fs::read_dir(legacy_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("pub") {
+                if let Some(filename) = path.file_name() {
+                    let new_path = new_dir.join(filename);
+                    if !new_path.exists() {
+                        std::fs::rename(&path, &new_path)?;
+                        debug!(from = %path.display(), to = %new_path.display(), "migrated legacy request file");
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// List pending access requests
     ///
     /// Returns a vector of (name, public_key) pairs from `.dugout/requests/` directory.
@@ -360,7 +450,10 @@ impl Vault {
     ///
     /// Returns error if the directory cannot be read.
     pub fn pending_requests(&self) -> Result<Vec<(String, String)>> {
-        let requests_dir = std::path::Path::new(".dugout/requests");
+        // Migrate legacy requests on first access
+        Self::migrate_legacy_requests()?;
+
+        let requests_dir = constants::request_dir(self.vault_name.as_deref());
 
         if !requests_dir.exists() {
             return Ok(Vec::new());
@@ -401,7 +494,8 @@ impl Vault {
 
         validate_member_name(name)?;
 
-        let request_path = std::path::PathBuf::from(format!(".dugout/requests/{}.pub", name));
+        let request_path =
+            constants::request_dir(self.vault_name.as_deref()).join(format!("{}.pub", name));
 
         if !request_path.exists() {
             return Err(ConfigError::RecipientNotFound(format!(
@@ -456,7 +550,7 @@ impl Vault {
         }
 
         self.update_recipients_hash();
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
         debug!(count = imported.len(), "import complete");
         Ok(imported)
     }
@@ -590,7 +684,7 @@ impl Vault {
 
         // Update fingerprint (reencrypt_all already saved, but we need the hash)
         self.config.dugout.recipients_hash = Some(self.recipients_fingerprint());
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
 
         Ok(SyncResult {
             secrets,
@@ -599,11 +693,85 @@ impl Vault {
         })
     }
 
+    /// Get the vault name (None = default vault)
+    pub fn vault_name(&self) -> Option<&str> {
+        self.vault_name.as_deref()
+    }
+
     /// Update the recipients hash in config.
     ///
     /// Call this after any operation that writes secrets.
     fn update_recipients_hash(&mut self) {
         self.config.dugout.recipients_hash = Some(self.recipients_fingerprint());
+    }
+
+    /// Find all vault files in the current directory.
+    ///
+    /// Returns paths to all `.dugout*.toml` files.
+    pub fn find_vault_files() -> Result<Vec<std::path::PathBuf>> {
+        let mut vaults = Vec::new();
+
+        for entry in std::fs::read_dir(".")? {
+            let entry = entry?;
+            let path = entry.path();
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                if name == ".dugout.toml"
+                    || (name.starts_with(".dugout.") && name.ends_with(".toml"))
+                {
+                    vaults.push(path);
+                }
+            }
+        }
+
+        // Sort for consistent ordering
+        vaults.sort();
+        Ok(vaults)
+    }
+
+    /// List all vaults with their info.
+    ///
+    /// Returns info about each vault including access status.
+    pub fn list_vaults() -> Result<Vec<VaultInfo>> {
+        use crate::core::constants::vault_name_from_path;
+
+        let vault_files = Self::find_vault_files()?;
+        let mut infos = Vec::new();
+
+        // Try to get current identity for access check
+        let identity_pubkey = Identity::load_global_pubkey().ok();
+
+        for path in vault_files {
+            let vault_name = vault_name_from_path(&path);
+
+            // Load config without identity check (we just want metadata)
+            let config_path = &path;
+            if !config_path.exists() {
+                continue;
+            }
+
+            let contents = std::fs::read_to_string(config_path)?;
+            let config: Config = toml::from_str(&contents).map_err(ConfigError::Parse)?;
+
+            let has_access = identity_pubkey
+                .as_ref()
+                .map(|pk| config.recipients.values().any(|k| k == pk))
+                .unwrap_or(false);
+
+            infos.push(VaultInfo {
+                name: vault_name.unwrap_or_else(|| "default".to_string()),
+                path: path.clone(),
+                secret_count: config.secrets.len(),
+                recipient_count: config.recipients.len(),
+                has_access,
+            });
+        }
+
+        Ok(infos)
+    }
+
+    /// Check if multiple vaults exist.
+    pub fn has_multiple_vaults() -> Result<bool> {
+        Ok(Self::find_vault_files()?.len() > 1)
     }
 }
 

@@ -5,9 +5,17 @@ use crate::error::Result;
 use zeroize::Zeroizing;
 
 /// Run a command with secrets injected as environment variables.
-pub fn execute(command: &[String]) -> Result<()> {
-    let vault = Vault::open()?;
-    let exit_code = run_with_secrets(&vault, command)?;
+pub fn execute(command: &[String], vault: Option<String>) -> Result<()> {
+    let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
+    execute_with_vault(command, vault_name)
+}
+
+/// Run a command with an already-resolved vault name.
+///
+/// This is used by dot command which has its own vault resolution logic.
+pub fn execute_with_vault(command: &[String], vault_name: Option<String>) -> Result<()> {
+    let v = Vault::open_vault(vault_name.as_deref())?;
+    let exit_code = run_with_secrets(&v, command)?;
     std::process::exit(exit_code);
 }
 

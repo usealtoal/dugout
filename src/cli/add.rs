@@ -10,10 +10,11 @@ use crate::core::vault::Vault;
 use crate::error::Result;
 
 /// Add a secret interactively.
-pub fn execute(key: &str) -> Result<()> {
+pub fn execute(key: &str, vault: Option<String>) -> Result<()> {
+    let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
     info!("Adding secret: {}", key);
 
-    let mut vault = Vault::open()?;
+    let mut vault = Vault::open_vault(vault_name.as_deref())?;
 
     // Check if stdin is a pipe
     let value = if !io::stdin().is_terminal() {

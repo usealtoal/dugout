@@ -10,7 +10,9 @@ use crate::core::vault::validate_member_name;
 use crate::error::Result;
 
 /// Request access to a vault.
-pub fn execute(name: Option<String>) -> Result<()> {
+pub fn execute(name: Option<String>, vault: Option<String>) -> Result<()> {
+    let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
+
     // Check if global identity exists
     if !Identity::has_global()? {
         output::error("no identity found");
@@ -21,8 +23,8 @@ pub fn execute(name: Option<String>) -> Result<()> {
     }
 
     // Check if already a team member
-    if Config::exists() {
-        let config = Config::load()?;
+    if Config::exists_for(vault_name.as_deref()) {
+        let config = Config::load_from(vault_name.as_deref())?;
         let pubkey = Identity::load_global_pubkey()?;
 
         if config.recipients.values().any(|k| k == &pubkey) {
@@ -47,15 +49,18 @@ pub fn execute(name: Option<String>) -> Result<()> {
 
     let pubkey = Identity::load_global_pubkey()?;
 
-    // Create requests directory
-    std::fs::create_dir_all(".dugout/requests")?;
+    // Create vault-specific requests directory
+    let request_dir = crate::core::constants::request_dir(vault_name.as_deref());
+    std::fs::create_dir_all(&request_dir)?;
 
     // Write request file
-    let request_path = format!(".dugout/requests/{}.pub", name);
+    let request_path = request_dir.join(format!("{}.pub", name));
     std::fs::write(&request_path, format!("{}\n", pubkey))?;
 
     output::success("created access request");
-    output::hint(&format!("share {} with an admin", request_path));
+    // Use forward slashes for consistent cross-platform output
+    let display_path = request_path.display().to_string().replace('\\', "/");
+    output::hint(&format!("share {} with an admin", display_path));
 
     Ok(())
 }

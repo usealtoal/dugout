@@ -9,6 +9,7 @@ pub mod init;
 pub mod knock;
 pub mod output;
 pub mod pending;
+pub mod resolve;
 pub mod run;
 pub mod secrets;
 pub mod setup;
@@ -19,6 +20,7 @@ pub mod whoami;
 
 // Subcommand groups
 pub mod check;
+pub mod vault;
 
 use clap::builder::styling::{AnsiColor, Effects, Styles};
 use clap::{Parser, Subcommand};
@@ -42,8 +44,12 @@ const STYLES: Styles = Styles::styled()
 )]
 pub struct Cli {
     /// Enable verbose logging output
-    #[arg(short, long, global = true)]
+    #[arg(short = 'v', long, global = true)]
     pub verbose: bool,
+
+    /// Select vault (e.g., "dev", "prod"). Uses .dugout.toml by default.
+    #[arg(long = "vault", global = true, env = "DUGOUT_VAULT")]
+    pub vault: Option<String>,
 
     #[command(subcommand)]
     pub command: Command,
@@ -168,6 +174,10 @@ pub enum Command {
     #[command(subcommand)]
     Check(CheckCommand),
 
+    /// Vault management commands
+    #[command(subcommand)]
+    Vault(VaultCommand),
+
     /// Generate shell completions
     Completions {
         /// Shell to generate completions for
@@ -245,8 +255,19 @@ pub enum CheckCommand {
     Audit,
 }
 
-/// Execute a command.
-pub fn execute(command: Command) -> crate::error::Result<()> {
+/// Vault management subcommands.
+#[derive(Subcommand)]
+pub enum VaultCommand {
+    /// List all vaults in the repository
+    List {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+/// Execute a command with vault context.
+pub fn execute(command: Command, vault: Option<String>) -> crate::error::Result<()> {
     use Command::*;
 
     match command {
@@ -260,35 +281,38 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
             name,
             no_banner,
             kms,
-        } => init::execute(name, no_banner, kms),
-        Add { key } => add::execute(&key),
-        Set { key, value, force } => secrets::set(&key, &value, force),
-        Get { key } => secrets::get(&key),
-        Rm { key } => secrets::rm(&key),
-        List { json } => secrets::list(json),
-        Knock { name } => knock::execute(name),
-        Pending => pending::execute(),
-        Admit { name } => admit::execute(&name),
-        Sync { dry_run, force } => sync::execute(dry_run, force),
-        Dot => dot::execute(),
-        Run { command } => run::execute(&command),
-        Env => shell::execute(),
+        } => init::execute(name, no_banner, kms, vault),
+        Add { key } => add::execute(&key, vault),
+        Set { key, value, force } => secrets::set(&key, &value, force, vault),
+        Get { key } => secrets::get(&key, vault),
+        Rm { key } => secrets::rm(&key, vault),
+        List { json } => secrets::list(json, vault),
+        Knock { name } => knock::execute(name, vault),
+        Pending => pending::execute(vault),
+        Admit { name } => admit::execute(&name, vault),
+        Sync { dry_run, force } => sync::execute(dry_run, force, vault),
+        Dot => dot::execute(vault),
+        Run { command: cmd } => run::execute(&cmd, vault),
+        Env => shell::execute(vault),
         Team(action) => match action {
-            TeamAction::Add { name, key } => team::add(&name, &key),
-            TeamAction::List { json } => team::list(json),
-            TeamAction::Rm { name } => team::rm(&name),
+            TeamAction::Add { name, key } => team::add(&name, &key, vault),
+            TeamAction::List { json } => team::list(json, vault),
+            TeamAction::Rm { name } => team::rm(&name, vault),
         },
         Secrets(cmd) => match cmd {
-            SecretsCommand::Lock => secrets::lock(),
-            SecretsCommand::Unlock => secrets::unlock(),
-            SecretsCommand::Import { path } => secrets::import(&path),
-            SecretsCommand::Export => secrets::export(),
-            SecretsCommand::Diff => secrets::diff(),
-            SecretsCommand::Rotate => secrets::rotate(),
+            SecretsCommand::Lock => secrets::lock(vault),
+            SecretsCommand::Unlock => secrets::unlock(vault),
+            SecretsCommand::Import { path } => secrets::import(&path, vault),
+            SecretsCommand::Export => secrets::export(vault),
+            SecretsCommand::Diff => secrets::diff(vault),
+            SecretsCommand::Rotate => secrets::rotate(vault),
         },
         Check(cmd) => match cmd {
-            CheckCommand::Status => check::status(),
+            CheckCommand::Status => check::status(vault),
             CheckCommand::Audit => check::audit(),
+        },
+        Vault(cmd) => match cmd {
+            VaultCommand::List { json } => vault::list::execute(json),
         },
         Completions { shell } => completions::execute(shell),
     }

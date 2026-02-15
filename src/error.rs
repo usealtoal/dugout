@@ -22,6 +22,9 @@ pub enum ConfigError {
     #[error("identity does not have access to this vault")]
     AccessDenied,
 
+    #[error("multiple vaults found\n\n{vaults}\n\nspecify which vault to use:\n\n  dugout --vault <name> <command>\n\nor set DUGOUT_VAULT environment variable:\n\n  export DUGOUT_VAULT=<name>")]
+    MultipleVaults { vaults: String },
+
     #[error("missing required field: {field}")]
     MissingField { field: &'static str },
 
@@ -132,6 +135,9 @@ pub enum ValidationError {
 
     #[error("invalid member name '{name}': {reason}")]
     InvalidMemberName { name: String, reason: String },
+
+    #[error("invalid vault name '{name}': {reason}")]
+    InvalidVaultName { name: String, reason: String },
 
     #[error("invalid file permissions on '{path}': expected {expected}, got {actual}")]
     InvalidPermissions {

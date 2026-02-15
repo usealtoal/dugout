@@ -23,7 +23,7 @@ fn main() {
         .with(fmt::layer().with_target(false).without_time())
         .init();
 
-    if let Err(e) = execute(cli.command) {
+    if let Err(e) = execute(cli.command, cli.vault) {
         // Format error with suggestion if available
         let error_msg = e.to_string();
         let suggestion = match &e {

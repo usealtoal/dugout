@@ -37,15 +37,16 @@ fn archive_old_key(project_id: &str) -> Result<()> {
 }
 
 /// Execute key rotation.
-pub fn execute() -> Result<()> {
+pub fn execute(vault: Option<String>) -> Result<()> {
+    let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
     info!("Starting key rotation");
 
     // Verify access and pick the effective identity for decryption.
-    let vault = Vault::open()?;
-    let old_public_key = vault.identity().public_key();
+    let v = Vault::open_vault(vault_name.as_deref())?;
+    let old_public_key = v.identity().public_key();
 
     // Load config
-    let mut cfg = config::Config::load()?;
+    let mut cfg = config::Config::load_from(vault_name.as_deref())?;
     let project_id = cfg.project_id();
     let backend = cipher::CipherBackend::from_config(&cfg)?;
 
@@ -57,7 +58,7 @@ pub fn execute() -> Result<()> {
     // Step 1: Decrypt all secrets
     let mut decrypted_secrets = Vec::new();
     for (key, ciphertext) in &cfg.secrets {
-        let plaintext = backend.decrypt(ciphertext, vault.identity().as_age())?;
+        let plaintext = backend.decrypt(ciphertext, v.identity().as_age())?;
         decrypted_secrets.push((key.clone(), plaintext));
     }
 
@@ -105,7 +106,7 @@ pub fn execute() -> Result<()> {
         cfg.recipients.insert(name, new_public_key.clone());
     }
 
-    cfg.save()?;
+    cfg.save_to(vault_name.as_deref())?;
 
     output::success(&format!("rotated ({} secrets re-encrypted)", secret_count));
 

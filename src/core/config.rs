@@ -65,24 +65,19 @@ impl Config {
         }
     }
 
-    /// Path to the configuration file in the current directory
-    pub fn config_path() -> PathBuf {
-        PathBuf::from(constants::CONFIG_FILE)
+    /// Path to the configuration file for a given vault.
+    pub fn config_path_for(vault: Option<&str>) -> PathBuf {
+        constants::vault_path(vault)
     }
 
-    /// Check if a configuration file exists in the current directory
-    pub fn exists() -> bool {
-        Self::config_path().exists()
+    /// Check if a configuration file exists for the given vault.
+    pub fn exists_for(vault: Option<&str>) -> bool {
+        Self::config_path_for(vault).exists()
     }
 
-    /// Load configuration from `.dugout.toml`
-    ///
-    /// # Errors
-    ///
-    /// Returns `ConfigError::NotInitialized` if the file doesn't exist,
-    /// or `ConfigError::Parse` if the TOML is malformed.
-    pub fn load() -> Result<Self> {
-        let path = Self::config_path();
+    /// Load configuration from vault file.
+    pub fn load_from(vault: Option<&str>) -> Result<Self> {
+        let path = Self::config_path_for(vault);
         debug!(path = %path.display(), "loading config");
 
         if !path.exists() {
@@ -97,24 +92,36 @@ impl Config {
             "config loaded"
         );
 
-        // Validate the loaded configuration
         config.validate()?;
-
         Ok(config)
     }
 
-    /// Save configuration to `.dugout.toml`
-    ///
-    /// # Errors
-    ///
-    /// Returns error if serialization or file write fails.
-    pub fn save(&self) -> Result<()> {
+    /// Save configuration to vault file.
+    pub fn save_to(&self, vault: Option<&str>) -> Result<()> {
         debug!("saving config");
-
         let contents = toml::to_string_pretty(self).map_err(ConfigError::Serialize)?;
-        std::fs::write(Self::config_path(), contents)?;
-
+        std::fs::write(Self::config_path_for(vault), contents)?;
         Ok(())
+    }
+
+    /// Path to the default configuration file (backward compat).
+    pub fn config_path() -> PathBuf {
+        Self::config_path_for(None)
+    }
+
+    /// Check if the default configuration file exists (backward compat).
+    pub fn exists() -> bool {
+        Self::exists_for(None)
+    }
+
+    /// Load configuration from default vault (backward compat).
+    pub fn load() -> Result<Self> {
+        Self::load_from(None)
+    }
+
+    /// Save configuration to default vault (backward compat).
+    pub fn save(&self) -> Result<()> {
+        self.save_to(None)
     }
 
     /// Unique project identifier based on the current directory name
@@ -325,5 +332,17 @@ mod tests {
         let result = config.validate();
         assert!(result.is_err());
         // Should fail because secret key has invalid characters
+    }
+
+    #[test]
+    fn test_config_path_for_vault() {
+        assert_eq!(
+            Config::config_path_for(None),
+            std::path::PathBuf::from(".dugout.toml")
+        );
+        assert_eq!(
+            Config::config_path_for(Some("dev")),
+            std::path::PathBuf::from(".dugout.dev.toml")
+        );
     }
 }
