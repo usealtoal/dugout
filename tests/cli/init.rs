@@ -91,3 +91,50 @@ fn test_init_rejects_invalid_member_name() {
     assert_failure(&output);
     assert_stderr_contains(&output, "invalid member name");
 }
+
+#[test]
+fn test_init_rejects_default_vault_name() {
+    let t = Test::new();
+
+    // "default" is reserved for the default vault (.dugout.toml)
+    let output = t
+        .cmd()
+        .args(["init", "--name", "alice", "--vault", "default"])
+        .output()
+        .unwrap();
+    assert_failure(&output);
+    assert_stderr_contains(&output, "reserved");
+}
+
+#[test]
+fn test_init_vault_name_boundary() {
+    let t = Test::new();
+
+    // 64 character vault name should be allowed
+    let name_64 = "a".repeat(64);
+    let output = t
+        .cmd()
+        .args(["init", "--name", "alice", "--vault", &name_64])
+        .output()
+        .unwrap();
+    assert_success(&output);
+
+    // Vault file should exist
+    let vault_path = t.dir.path().join(format!(".dugout.{}.toml", name_64));
+    assert!(vault_path.exists());
+}
+
+#[test]
+fn test_init_vault_name_too_long() {
+    let t = Test::new();
+
+    // 65 character vault name should be rejected
+    let name_65 = "a".repeat(65);
+    let output = t
+        .cmd()
+        .args(["init", "--name", "alice", "--vault", &name_65])
+        .output()
+        .unwrap();
+    assert_failure(&output);
+    assert_stderr_contains(&output, "64 characters");
+}

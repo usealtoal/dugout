@@ -209,7 +209,7 @@ impl Vault {
     /// Returns `SecretError::AlreadyExists` if key exists and `force` is false.
     #[instrument(skip(self, value))]
     pub fn set(&mut self, key: &str, value: &str, force: bool) -> Result<Secret> {
-        info!(key = %key, force = force, "setting secret");
+        debug!(key = %key, force = force, "setting secret");
 
         // Validate input
         validate_key(key)?;
@@ -267,7 +267,7 @@ impl Vault {
     /// Returns `SecretError::NotFound` if the key doesn't exist.
     #[instrument(skip(self))]
     pub fn remove(&mut self, key: &str) -> Result<()> {
-        info!(key = %key, "removing secret");
+        debug!(key = %key, "removing secret");
 
         if self.config.secrets.remove(key).is_none() {
             let available: Vec<String> = self.config.secrets.keys().cloned().collect();

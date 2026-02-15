@@ -53,8 +53,27 @@ pub fn execute(name: Option<String>, vault: Option<String>) -> Result<()> {
     let request_dir = crate::core::constants::request_dir(vault_name.as_deref());
     std::fs::create_dir_all(&request_dir)?;
 
-    // Write request file
+    // Check if request file already exists
     let request_path = request_dir.join(format!("{}.pub", name));
+    if request_path.exists() {
+        let existing = std::fs::read_to_string(&request_path)?;
+        let existing_key = existing.trim();
+        if existing_key == pubkey {
+            // Same key - idempotent, already requested
+            output::warn("request already exists with your key");
+            return Ok(());
+        } else {
+            // Different key - someone else requested with this name
+            output::error(&format!("request '{}' already exists with a different key", name));
+            output::hint("use a different name or contact an admin");
+            return Err(crate::error::Error::Other(format!(
+                "request file '{}' already exists with different key",
+                name
+            )));
+        }
+    }
+
+    // Write request file
     std::fs::write(&request_path, format!("{}\n", pubkey))?;
 
     output::success("created access request");

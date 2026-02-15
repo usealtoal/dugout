@@ -7,7 +7,7 @@ mod lock;
 mod rotate;
 mod unlock;
 
-use tracing::info;
+use tracing::debug;
 
 use crate::cli::output;
 use crate::core::vault::Vault;
@@ -24,7 +24,7 @@ pub use unlock::execute as unlock;
 /// Set a secret value.
 pub fn set(key: &str, value: &str, force: bool, vault: Option<String>) -> Result<()> {
     let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
-    info!("Setting secret: {} (force: {})", key, force);
+    debug!("Setting secret: {} (force: {})", key, force);
     let mut v = Vault::open_vault(vault_name.as_deref())?;
     v.set(key, value, force)?;
     output::success(&format!("set {}", key));
@@ -44,7 +44,7 @@ pub fn get(key: &str, vault: Option<String>) -> Result<()> {
 /// Remove a secret.
 pub fn rm(key: &str, vault: Option<String>) -> Result<()> {
     let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
-    info!("Removing secret: {}", key);
+    debug!("Removing secret: {}", key);
     let mut v = Vault::open_vault(vault_name.as_deref())?;
     v.remove(key)?;
     output::success(&format!("removed {}", key));

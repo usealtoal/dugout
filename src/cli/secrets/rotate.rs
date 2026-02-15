@@ -1,6 +1,7 @@
 //! Rotate command - rotate keypair and re-encrypt secrets.
 
 use tracing::info;
+use zeroize::Zeroizing;
 
 use crate::cli::output;
 use crate::core::vault::Vault;
@@ -56,11 +57,11 @@ pub fn execute(vault: Option<String>) -> Result<()> {
         return Err(crate::error::StoreError::NoPrivateKey(project_id.clone()).into());
     }
 
-    // Step 1: Decrypt all secrets
-    let mut decrypted_secrets = Vec::new();
+    // Step 1: Decrypt all secrets (wrapped in Zeroizing for secure memory cleanup)
+    let mut decrypted_secrets: Vec<(String, Zeroizing<String>)> = Vec::new();
     for (key, ciphertext) in &cfg.secrets {
         let plaintext = backend.decrypt(ciphertext, v.identity().as_age())?;
-        decrypted_secrets.push((key.clone(), plaintext));
+        decrypted_secrets.push((key.clone(), Zeroizing::new(plaintext)));
     }
 
     // Step 2: Archive old key
@@ -90,10 +91,11 @@ pub fn execute(vault: Option<String>) -> Result<()> {
     // Step 5: Re-encrypt all secrets
     let secret_count = decrypted_secrets.len();
     cfg.secrets.clear();
-    for (key, plaintext) in decrypted_secrets {
-        let ciphertext = backend.encrypt(&plaintext, &recipients)?;
-        cfg.secrets.insert(key, ciphertext);
+    for (key, plaintext) in &decrypted_secrets {
+        let ciphertext = backend.encrypt(plaintext.as_str(), &recipients)?;
+        cfg.secrets.insert(key.clone(), ciphertext);
     }
+    // decrypted_secrets dropped here, Zeroizing will securely clear memory
 
     // Step 6: Update config with new public key
     let owner_name = cfg

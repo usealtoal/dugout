@@ -13,8 +13,11 @@ pub fn execute(
     kms: Option<String>,
     vault: Option<String>,
 ) -> Result<()> {
-    // Use resolve_vault_default since init creates a specific vault
-    let vault_name = crate::cli::resolve::resolve_vault_default(vault.as_deref())?;
+    // Validate vault name for init (rejects "default" as reserved)
+    if let Some(ref v) = vault {
+        crate::cli::resolve::validate_vault_name_for_init(v)?;
+    }
+    let vault_name = vault;
 
     let name = name.unwrap_or_else(whoami::username);
 
