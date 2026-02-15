@@ -266,49 +266,41 @@ pub enum VaultCommand {
     },
 }
 
-/// Execute a command.
-pub fn execute(command: Command) -> crate::error::Result<()> {
+/// Execute a command with vault context.
+pub fn execute(command: Command, vault: Option<String>) -> crate::error::Result<()> {
     use Command::*;
 
     match command {
-        Setup {
-            force,
-            name,
-            output,
-        } => setup::execute(force, name, output),
+        Setup { force, name, output } => setup::execute(force, name, output),
         Whoami => whoami::execute(),
-        Init {
-            name,
-            no_banner,
-            kms,
-        } => init::execute(name, no_banner, kms),
-        Add { key } => add::execute(&key),
-        Set { key, value, force } => secrets::set(&key, &value, force),
-        Get { key } => secrets::get(&key),
-        Rm { key } => secrets::rm(&key),
-        List { json } => secrets::list(json),
-        Knock { name } => knock::execute(name),
-        Pending => pending::execute(),
-        Admit { name } => admit::execute(&name),
-        Sync { dry_run, force } => sync::execute(dry_run, force),
-        Dot => dot::execute(),
-        Run { command } => run::execute(&command),
-        Env => shell::execute(),
+        Init { name, no_banner, kms } => init::execute(name, no_banner, kms, vault),
+        Add { key } => add::execute(&key, vault),
+        Set { key, value, force } => secrets::set(&key, &value, force, vault),
+        Get { key } => secrets::get(&key, vault),
+        Rm { key } => secrets::rm(&key, vault),
+        List { json } => secrets::list(json, vault),
+        Knock { name } => knock::execute(name, vault),
+        Pending => pending::execute(vault),
+        Admit { name } => admit::execute(&name, vault),
+        Sync { dry_run, force } => sync::execute(dry_run, force, vault),
+        Dot => dot::execute(vault),
+        Run { command: cmd } => run::execute(&cmd, vault),
+        Env => shell::execute(vault),
         Team(action) => match action {
-            TeamAction::Add { name, key } => team::add(&name, &key),
-            TeamAction::List { json } => team::list(json),
-            TeamAction::Rm { name } => team::rm(&name),
+            TeamAction::Add { name, key } => team::add(&name, &key, vault),
+            TeamAction::List { json } => team::list(json, vault),
+            TeamAction::Rm { name } => team::rm(&name, vault),
         },
         Secrets(cmd) => match cmd {
-            SecretsCommand::Lock => secrets::lock(),
-            SecretsCommand::Unlock => secrets::unlock(),
-            SecretsCommand::Import { path } => secrets::import(&path),
-            SecretsCommand::Export => secrets::export(),
-            SecretsCommand::Diff => secrets::diff(),
-            SecretsCommand::Rotate => secrets::rotate(),
+            SecretsCommand::Lock => secrets::lock(vault),
+            SecretsCommand::Unlock => secrets::unlock(vault),
+            SecretsCommand::Import { path } => secrets::import(&path, vault),
+            SecretsCommand::Export => secrets::export(vault),
+            SecretsCommand::Diff => secrets::diff(vault),
+            SecretsCommand::Rotate => secrets::rotate(vault),
         },
         Check(cmd) => match cmd {
-            CheckCommand::Status => check::status(),
+            CheckCommand::Status => check::status(vault),
             CheckCommand::Audit => check::audit(),
         },
         Vault(cmd) => match cmd {
