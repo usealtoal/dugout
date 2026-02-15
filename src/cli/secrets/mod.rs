@@ -22,36 +22,40 @@ pub use rotate::execute as rotate;
 pub use unlock::execute as unlock;
 
 /// Set a secret value.
-pub fn set(key: &str, value: &str, force: bool) -> Result<()> {
+pub fn set(key: &str, value: &str, force: bool, vault: Option<String>) -> Result<()> {
+    let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
     info!("Setting secret: {} (force: {})", key, force);
-    let mut vault = Vault::open()?;
-    vault.set(key, value, force)?;
+    let mut v = Vault::open_vault(vault_name.as_deref())?;
+    v.set(key, value, force)?;
     output::success(&format!("set {}", key));
     Ok(())
 }
 
 /// Get a secret value.
-pub fn get(key: &str) -> Result<()> {
-    let vault = Vault::open()?;
-    let value = vault.get(key)?;
+pub fn get(key: &str, vault: Option<String>) -> Result<()> {
+    let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
+    let v = Vault::open_vault(vault_name.as_deref())?;
+    let value = v.get(key)?;
     // Plain output for scripting - no decoration
     output::data(value.as_str());
     Ok(())
 }
 
 /// Remove a secret.
-pub fn rm(key: &str) -> Result<()> {
+pub fn rm(key: &str, vault: Option<String>) -> Result<()> {
+    let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
     info!("Removing secret: {}", key);
-    let mut vault = Vault::open()?;
-    vault.remove(key)?;
+    let mut v = Vault::open_vault(vault_name.as_deref())?;
+    v.remove(key)?;
     output::success(&format!("removed {}", key));
     Ok(())
 }
 
 /// List all secret keys.
-pub fn list(json: bool) -> Result<()> {
-    let vault = Vault::open()?;
-    let secrets = vault.list();
+pub fn list(json: bool, vault: Option<String>) -> Result<()> {
+    let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
+    let v = Vault::open_vault(vault_name.as_deref())?;
+    let secrets = v.list();
 
     if json {
         let keys: Vec<String> = secrets.iter().map(|s| s.key().to_string()).collect();
