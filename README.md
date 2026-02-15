@@ -1,5 +1,5 @@
 <p align="center">
-  <img alt="dugout" src="assets/mole-banner.png" width="600">
+  <img alt="dugout" src="assets/mole-banner.png" width="1000">
 </p>
 
 <p align="center">
