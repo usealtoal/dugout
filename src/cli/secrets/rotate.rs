@@ -17,13 +17,11 @@ fn archive_dir(project_id: &str) -> Result<PathBuf> {
 }
 
 /// Archive the old identity key with timestamp.
+///
+/// Uses atomic rename and handles missing files gracefully to avoid TOCTOU races.
 fn archive_old_key(project_id: &str) -> Result<()> {
     use crate::core::domain::Identity;
     let old_key_path = Identity::project_dir(project_id)?.join("identity.key");
-
-    if !old_key_path.exists() {
-        return Ok(());
-    }
 
     let archive_path = archive_dir(project_id)?;
     fs::create_dir_all(&archive_path)?;
@@ -31,9 +29,12 @@ fn archive_old_key(project_id: &str) -> Result<()> {
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let archive_file = archive_path.join(format!("identity.key.{}", timestamp));
 
-    fs::rename(&old_key_path, &archive_file)?;
-
-    Ok(())
+    // Try to rename directly - handles TOCTOU by checking error instead of exists()
+    match fs::rename(&old_key_path, &archive_file) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()), // No key to archive
+        Err(e) => Err(e.into()),
+    }
 }
 
 /// Execute key rotation.

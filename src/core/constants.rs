@@ -17,15 +17,33 @@ pub const KEY_DIR: &str = ".dugout/keys";
 /// These entries ensure that .env files are not accidentally committed.
 pub const GITIGNORE_ENTRIES: &[&str] = &[".env", ".env.*", "!.env.example"];
 
+/// Check if a vault name is safe for path construction.
+///
+/// Defense in depth: rejects path separators and special names even if CLI already validated.
+fn is_safe_vault_name(name: &str) -> bool {
+    !name.is_empty()
+        && name != "."
+        && name != ".."
+        && !name.contains('/')
+        && !name.contains('\\')
+}
+
 /// Get vault file path for given vault name.
 ///
 /// - `None` → `.dugout.toml` (default)
 /// - `Some("default")` → `.dugout.toml` (default is alias for None)
 /// - `Some("dev")` → `.dugout.dev.toml`
+///
+/// # Panics
+///
+/// Panics if vault name contains path separators (defense in depth).
 pub fn vault_path(vault: Option<&str>) -> std::path::PathBuf {
     match vault {
         None | Some("default") => std::path::PathBuf::from(CONFIG_FILE),
-        Some(name) => std::path::PathBuf::from(format!(".dugout.{}.toml", name)),
+        Some(name) => {
+            assert!(is_safe_vault_name(name), "unsafe vault name: {}", name);
+            std::path::PathBuf::from(format!(".dugout.{}.toml", name))
+        }
     }
 }
 
@@ -34,11 +52,18 @@ pub fn vault_path(vault: Option<&str>) -> std::path::PathBuf {
 /// - `None` → `.dugout/requests/default`
 /// - `Some("default")` → `.dugout/requests/default` (alias for None)
 /// - `Some("prod")` → `.dugout/requests/prod`
+///
+/// # Panics
+///
+/// Panics if vault name contains path separators (defense in depth).
 pub fn request_dir(vault: Option<&str>) -> std::path::PathBuf {
     let base = std::path::PathBuf::from(".dugout/requests");
     match vault {
         None | Some("default") => base.join("default"),
-        Some(name) => base.join(name),
+        Some(name) => {
+            assert!(is_safe_vault_name(name), "unsafe vault name: {}", name);
+            base.join(name)
+        }
     }
 }
 
