@@ -7,15 +7,16 @@ use crate::core::vault::Vault;
 use crate::error::Result;
 
 /// Sync secrets for the current recipient set.
-pub fn execute(dry_run: bool, force: bool) -> Result<()> {
+pub fn execute(dry_run: bool, force: bool, vault: Option<String>) -> Result<()> {
+    let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
     info!(dry_run, force, "running sync");
 
-    let mut vault = Vault::open()?;
+    let mut v = Vault::open_vault(vault_name.as_deref())?;
 
     if dry_run {
-        if vault.needs_sync() || force {
-            let secrets = vault.config().secrets.len();
-            let recipients = vault.config().recipients.len();
+        if v.needs_sync() || force {
+            let secrets = v.config().secrets.len();
+            let recipients = v.config().recipients.len();
             output::warn(&format!(
                 "would sync ({} secrets, {} recipients)",
                 secrets, recipients
@@ -26,7 +27,7 @@ pub fn execute(dry_run: bool, force: bool) -> Result<()> {
         return Ok(());
     }
 
-    let result = vault.sync(force)?;
+    let result = v.sync(force)?;
 
     if result.was_needed {
         output::success(&format!(

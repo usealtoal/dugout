@@ -4,8 +4,9 @@ use crate::cli::output;
 use crate::error::Result;
 
 /// Show diff/status between encrypted vault and local .env.
-pub fn execute() -> Result<()> {
-    let vault = crate::core::vault::Vault::open()?;
+pub fn execute(vault: Option<String>) -> Result<()> {
+    let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
+    let v = crate::core::vault::Vault::open_vault(vault_name.as_deref())?;
     let env_path = std::path::Path::new(".env");
 
     if !env_path.exists() {
@@ -13,7 +14,7 @@ pub fn execute() -> Result<()> {
         return Ok(());
     }
 
-    let diff = vault.diff(env_path)?;
+    let diff = v.diff(env_path)?;
 
     // Vault-only entries
     let vault_only = diff.vault_only();
