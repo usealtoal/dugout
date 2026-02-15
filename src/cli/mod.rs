@@ -19,6 +19,7 @@ pub mod whoami;
 
 // Subcommand groups
 pub mod check;
+pub mod vault;
 
 use clap::builder::styling::{AnsiColor, Effects, Styles};
 use clap::{Parser, Subcommand};
@@ -172,6 +173,10 @@ pub enum Command {
     #[command(subcommand)]
     Check(CheckCommand),
 
+    /// Vault management commands
+    #[command(subcommand)]
+    Vault(VaultCommand),
+
     /// Generate shell completions
     Completions {
         /// Shell to generate completions for
@@ -249,6 +254,17 @@ pub enum CheckCommand {
     Audit,
 }
 
+/// Vault management subcommands.
+#[derive(Subcommand)]
+pub enum VaultCommand {
+    /// List all vaults in the repository
+    List {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+}
+
 /// Execute a command.
 pub fn execute(command: Command) -> crate::error::Result<()> {
     use Command::*;
@@ -293,6 +309,9 @@ pub fn execute(command: Command) -> crate::error::Result<()> {
         Check(cmd) => match cmd {
             CheckCommand::Status => check::status(),
             CheckCommand::Audit => check::audit(),
+        },
+        Vault(cmd) => match cmd {
+            VaultCommand::List { json } => vault::list::execute(json),
         },
         Completions { shell } => completions::execute(shell),
     }

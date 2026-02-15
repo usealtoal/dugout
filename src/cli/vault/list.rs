@@ -1,0 +1,43 @@
+//! Vault list command - list all vaults in the repository.
+
+use crate::cli::output;
+use crate::core::vault::Vault;
+use crate::error::Result;
+
+/// List all vaults in the repository.
+pub fn execute(json: bool) -> Result<()> {
+    let vaults = Vault::list_vaults()?;
+
+    if vaults.is_empty() {
+        output::data("no vaults found");
+        output::hint("run: dugout init");
+        return Ok(());
+    }
+
+    if json {
+        let json_output: Vec<_> = vaults
+            .iter()
+            .map(|v| {
+                serde_json::json!({
+                    "name": v.name,
+                    "path": v.path.display().to_string(),
+                    "secrets": v.secret_count,
+                    "recipients": v.recipient_count,
+                    "access": v.has_access,
+                })
+            })
+            .collect();
+        println!("{}", serde_json::to_string_pretty(&json_output)?);
+    } else {
+        println!("{:<12} {:>8} {:>11} {:>7}", "VAULT", "SECRETS", "RECIPIENTS", "ACCESS");
+        for v in vaults {
+            let access = if v.has_access { "\u{2713}" } else { "\u{2717}" };
+            println!(
+                "{:<12} {:>8} {:>11} {:>7}",
+                v.name, v.secret_count, v.recipient_count, access
+            );
+        }
+    }
+
+    Ok(())
+}
