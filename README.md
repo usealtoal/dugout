@@ -17,6 +17,7 @@
 - **Git-native** — secrets live in your repo as encrypted values, access control is git commits
 - **No server required** — no SaaS, no cloud dependency, no infrastructure to manage
 - **Team-friendly** — `knock` / `admit` workflow for access requests, all through git
+- **Multi-vault** — separate secrets for dev, staging, prod in the same repo
 - **Encrypted at rest** — age encryption by default, optional AWS KMS, GCP KMS
 - **Zero config** — `dugout init` and start adding secrets
 - **Auto-detect** — `dugout .` detects your stack and runs with secrets injected
@@ -141,8 +142,37 @@ No Slack DMs. No shared password vaults. No `.env` files in git history. Access 
 | `dugout secrets rotate` | Rotate encryption keys |
 | `dugout secrets lock/unlock` | Lock or decrypt secrets |
 | `dugout secrets import/export` | Import or export .env files |
+| `dugout vault list` | List all vaults in repository |
 | `dugout check status` | Vault overview |
 | `dugout check audit` | Audit for leaked secrets |
+
+## Multi-Vault
+
+Manage separate secret sets for different environments (dev, staging, prod) in the same repository.
+
+```bash
+# Create vaults for different environments
+dugout init                         # Creates .dugout.toml (default)
+dugout init --vault dev             # Creates .dugout.dev.toml
+dugout init --vault prod            # Creates .dugout.prod.toml
+
+# Set secrets in specific vaults
+dugout --vault dev set API_KEY sk_test_xxx
+dugout --vault prod set API_KEY sk_live_xxx
+
+# List all vaults
+dugout vault list
+
+# Run with specific vault
+dugout --vault dev .
+dugout --vault prod run -- ./deploy.sh
+
+# Or use environment variable
+export DUGOUT_VAULT=dev
+dugout .
+```
+
+When only one vault exists, no flag is needed. With multiple vaults, use `--vault` or `DUGOUT_VAULT` to select one.
 
 ## Cipher Backends
 
