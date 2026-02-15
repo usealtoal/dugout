@@ -39,14 +39,20 @@ pub fn execute(json: bool) -> Result<()> {
 
         println!(
             "{:<width$} {:>8} {:>11} {:>7}",
-            "VAULT", "SECRETS", "RECIPIENTS", "ACCESS",
+            "VAULT",
+            "SECRETS",
+            "RECIPIENTS",
+            "ACCESS",
             width = name_width
         );
         for v in vaults {
             let access = if v.has_access { "yes" } else { "no" };
             println!(
                 "{:<width$} {:>8} {:>11} {:>7}",
-                v.name, v.secret_count, v.recipient_count, access,
+                v.name,
+                v.secret_count,
+                v.recipient_count,
+                access,
                 width = name_width
             );
         }

@@ -494,7 +494,8 @@ impl Vault {
 
         validate_member_name(name)?;
 
-        let request_path = constants::request_dir(self.vault_name.as_deref()).join(format!("{}.pub", name));
+        let request_path =
+            constants::request_dir(self.vault_name.as_deref()).join(format!("{}.pub", name));
 
         if !request_path.exists() {
             return Err(ConfigError::RecipientNotFound(format!(
@@ -714,7 +715,9 @@ impl Vault {
             let entry = entry?;
             let path = entry.path();
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if name == ".dugout.toml" || (name.starts_with(".dugout.") && name.ends_with(".toml")) {
+                if name == ".dugout.toml"
+                    || (name.starts_with(".dugout.") && name.ends_with(".toml"))
+                {
                     vaults.push(path);
                 }
             }

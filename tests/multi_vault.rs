@@ -108,7 +108,8 @@ fn test_env_var_selects_vault() {
     t.set_vault("dev", "DEV_KEY", "dev_value");
 
     // Use env var to select vault
-    let get = t.cmd()
+    let get = t
+        .cmd()
         .env("DUGOUT_VAULT", "dev")
         .args(["get", "DEV_KEY"])
         .output()
@@ -128,7 +129,8 @@ fn test_env_var_isolates_vault() {
     t.set_vault("dev", "DEV_KEY", "dev_value");
 
     // Env var selects dev vault, so DEFAULT_KEY (only in default) should not be found
-    let get = t.cmd()
+    let get = t
+        .cmd()
         .env("DUGOUT_VAULT", "dev")
         .args(["get", "DEFAULT_KEY"])
         .output()
@@ -148,7 +150,8 @@ fn test_flag_overrides_env_var() {
     t.set_vault("dev", "DEV_KEY", "dev_value");
 
     // Flag (--vault default) should override env var (DUGOUT_VAULT=dev)
-    let get = t.cmd()
+    let get = t
+        .cmd()
         .env("DUGOUT_VAULT", "dev")
         .args(["--vault", "default", "get", "DEFAULT_KEY"])
         .output()
@@ -167,7 +170,11 @@ fn test_dot_uses_default_vault() {
     t.init_vault("alice", "dev");
 
     // Create a package.json so dot command has something to detect
-    std::fs::write(t.dir.path().join("package.json"), r#"{"scripts":{"dev":"echo ok"}}"#).unwrap();
+    std::fs::write(
+        t.dir.path().join("package.json"),
+        r#"{"scripts":{"dev":"echo ok"}}"#,
+    )
+    .unwrap();
 
     t.set("SECRET", "value");
 
@@ -198,8 +205,14 @@ fn test_legacy_request_migration() {
 
     // Verify file was migrated to new location
     let new_file = t.dir.path().join(".dugout/requests/default/bob.pub");
-    assert!(new_file.exists(), "Request file should be migrated to new location");
+    assert!(
+        new_file.exists(),
+        "Request file should be migrated to new location"
+    );
 
     // Verify old file was removed
-    assert!(!legacy_file.exists(), "Legacy request file should be removed after migration");
+    assert!(
+        !legacy_file.exists(),
+        "Legacy request file should be removed after migration"
+    );
 }
