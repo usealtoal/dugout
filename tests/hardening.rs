@@ -581,6 +581,70 @@ mod proptest_tests {
 }
 
 // ============================================================================
+// Windows-Specific Tests
+// ============================================================================
+
+#[test]
+fn test_paths_no_backslash_in_output() {
+    // Verify user-facing output uses forward slashes consistently
+    let t = Test::init("alice");
+
+    // Setup global identity
+    let setup_output = t.cmd().arg("setup").output().unwrap();
+    assert_success(&setup_output);
+
+    // Knock creates a request file and shows path in output
+    let output = t.cmd().args(["knock", "bob"]).output().unwrap();
+    assert_success(&output);
+
+    let out = stdout(&output);
+    // On all platforms, the displayed path should use forward slashes
+    assert!(
+        !out.contains('\\') || !out.contains(".dugout"),
+        "User-facing paths should use forward slashes, got: {}",
+        out
+    );
+}
+
+#[test]
+fn test_windows_line_endings_in_env() {
+    // Verify we handle CRLF line endings
+    let t = Test::init("alice");
+
+    let env_content = "KEY1=value1\r\nKEY2=value2\r\nKEY3=value3\r\n";
+    let env_file = t.dir.path().join("crlf.env");
+    fs::write(&env_file, env_content).unwrap();
+
+    let output = t.secrets_import(env_file.to_str().unwrap());
+    assert_success(&output);
+
+    // Verify all keys imported correctly
+    for i in 1..=3 {
+        let output = t.get(&format!("KEY{}", i));
+        assert_success(&output);
+        assert_stdout_contains(&output, &format!("value{}", i));
+    }
+}
+
+#[test]
+fn test_mixed_line_endings() {
+    // Mix of LF and CRLF
+    let t = Test::init("alice");
+
+    let env_content = "KEY1=value1\nKEY2=value2\r\nKEY3=value3\n";
+    let env_file = t.dir.path().join("mixed.env");
+    fs::write(&env_file, env_content).unwrap();
+
+    let output = t.secrets_import(env_file.to_str().unwrap());
+    assert_success(&output);
+
+    for i in 1..=3 {
+        let output = t.get(&format!("KEY{}", i));
+        assert_success(&output);
+    }
+}
+
+// ============================================================================
 // Rotation Recovery Tests
 // ============================================================================
 
