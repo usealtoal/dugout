@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-02-15
+
 ### Added
 - **Multi-vault support** — manage separate secret sets (dev, staging, prod) in the same repository
   - `dugout init --vault <name>` creates named vaults (`.dugout.<name>.toml`)
@@ -61,5 +63,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Zeroizing for sensitive data in memory
 - Git history audit to detect leaked secrets
 
-[Unreleased]: https://github.com/usealtoal/dugout/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/usealtoal/dugout/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/usealtoal/dugout/compare/v0.1.0...v0.1.8
 [0.1.0]: https://github.com/usealtoal/dugout/releases/tag/v0.1.0
