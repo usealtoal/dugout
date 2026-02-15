@@ -31,7 +31,7 @@ pub fn execute(json: bool) -> Result<()> {
     } else {
         println!("{:<12} {:>8} {:>11} {:>7}", "VAULT", "SECRETS", "RECIPIENTS", "ACCESS");
         for v in vaults {
-            let access = if v.has_access { "\u{2713}" } else { "\u{2717}" };
+            let access = if v.has_access { "yes" } else { "no" };
             println!(
                 "{:<12} {:>8} {:>11} {:>7}",
                 v.name, v.secret_count, v.recipient_count, access

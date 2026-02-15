@@ -394,6 +394,54 @@ impl Vault {
             .collect()
     }
 
+    /// Migrate legacy request files to per-vault directories.
+    ///
+    /// Moves files from `.dugout/requests/*.pub` to `.dugout/requests/default/*.pub`.
+    /// This is called automatically when listing pending requests.
+    fn migrate_legacy_requests() -> Result<()> {
+        let legacy_dir = std::path::Path::new(".dugout/requests");
+        let new_dir = constants::request_dir(None); // .dugout/requests/default
+
+        if !legacy_dir.exists() {
+            return Ok(());
+        }
+
+        // Check for .pub files directly in .dugout/requests/ (legacy location)
+        let mut has_legacy_files = false;
+        for entry in std::fs::read_dir(legacy_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("pub") {
+                has_legacy_files = true;
+                break;
+            }
+        }
+
+        if !has_legacy_files {
+            return Ok(());
+        }
+
+        // Create new directory if needed
+        std::fs::create_dir_all(&new_dir)?;
+
+        // Move files
+        for entry in std::fs::read_dir(legacy_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("pub") {
+                if let Some(filename) = path.file_name() {
+                    let new_path = new_dir.join(filename);
+                    if !new_path.exists() {
+                        std::fs::rename(&path, &new_path)?;
+                        debug!(from = %path.display(), to = %new_path.display(), "migrated legacy request file");
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// List pending access requests
     ///
     /// Returns a vector of (name, public_key) pairs from `.dugout/requests/` directory.
@@ -402,6 +450,9 @@ impl Vault {
     ///
     /// Returns error if the directory cannot be read.
     pub fn pending_requests(&self) -> Result<Vec<(String, String)>> {
+        // Migrate legacy requests on first access
+        Self::migrate_legacy_requests()?;
+
         let requests_dir = constants::request_dir(self.vault_name.as_deref());
 
         if !requests_dir.exists() {

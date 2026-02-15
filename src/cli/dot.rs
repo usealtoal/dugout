@@ -9,7 +9,7 @@ use crate::error::Result;
 /// Auto-detect project and run with secrets.
 pub fn execute(vault: Option<String>) -> Result<()> {
     // dot always uses default vault unless explicit
-    let vault_name = crate::cli::resolve::resolve_vault_default(vault.as_deref());
+    let vault_name = crate::cli::resolve::resolve_vault_default(vault.as_deref())?;
 
     // Check if vault is initialized
     if !Config::exists_for(vault_name.as_deref()) {
