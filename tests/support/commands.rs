@@ -186,4 +186,44 @@ impl Test {
         }
         cmd.output().expect("failed to run dugout run")
     }
+
+    /// Shortcut for `dugout init -v <vault>` command.
+    pub fn init_vault(&self, name: &str, vault: &str) -> Output {
+        self.cmd()
+            .args(["init", "--no-banner", "--name", name, "-v", vault])
+            .output()
+            .expect("failed to run dugout init")
+    }
+
+    /// Shortcut for `dugout -v <vault> set` command.
+    pub fn set_vault(&self, vault: &str, key: &str, val: &str) -> Output {
+        self.cmd()
+            .args(["-v", vault, "set", key, val])
+            .output()
+            .expect("failed to run dugout set")
+    }
+
+    /// Shortcut for `dugout -v <vault> get` command.
+    pub fn get_vault(&self, vault: &str, key: &str) -> Output {
+        self.cmd()
+            .args(["-v", vault, "get", key])
+            .output()
+            .expect("failed to run dugout get")
+    }
+
+    /// Shortcut for `dugout vault list` command.
+    pub fn vault_list(&self) -> Output {
+        self.cmd()
+            .args(["vault", "list"])
+            .output()
+            .expect("failed to run dugout vault list")
+    }
+
+    /// Shortcut for `dugout vault list --json` command.
+    pub fn vault_list_json(&self) -> Output {
+        self.cmd()
+            .args(["vault", "list", "--json"])
+            .output()
+            .expect("failed to run dugout vault list --json")
+    }
 }

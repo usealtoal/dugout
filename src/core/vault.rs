@@ -4,6 +4,7 @@
 
 use crate::core::cipher;
 use crate::core::config::{self, Config};
+use crate::core::constants;
 use crate::core::domain::{Diff, Env, Identity, Recipient, Secret, SyncResult, VaultInfo};
 use crate::core::store;
 use crate::core::types::{MemberName, PublicKey, SecretKey};
@@ -120,9 +121,16 @@ impl Vault {
 
         let project_id = config.project_id();
 
-        // If a global identity exists, use it instead of generating a new one.
-        // This ensures `dugout .` works immediately after `dugout init`.
-        let (public_key, identity) = if Identity::has_global()? {
+        // Priority for identity:
+        // 1. Existing project key (for multi-vault in same directory)
+        // 2. Global identity (copy to project dir)
+        // 3. Generate new project key
+        let (public_key, identity) = if store::has_key(&project_id) {
+            // Reuse existing project key (multi-vault scenario)
+            let id = store::load_identity(&project_id)?;
+            let pk = id.public_key();
+            (pk, id)
+        } else if Identity::has_global()? {
             let global_pubkey = Identity::load_global_pubkey()?;
             let global_identity = Identity::load_global()?;
             // Copy global key into project key dir so open() can find it
@@ -394,7 +402,7 @@ impl Vault {
     ///
     /// Returns error if the directory cannot be read.
     pub fn pending_requests(&self) -> Result<Vec<(String, String)>> {
-        let requests_dir = std::path::Path::new(".dugout/requests");
+        let requests_dir = constants::request_dir(self.vault_name.as_deref());
 
         if !requests_dir.exists() {
             return Ok(Vec::new());
@@ -435,7 +443,7 @@ impl Vault {
 
         validate_member_name(name)?;
 
-        let request_path = std::path::PathBuf::from(format!(".dugout/requests/{}.pub", name));
+        let request_path = constants::request_dir(self.vault_name.as_deref()).join(format!("{}.pub", name));
 
         if !request_path.exists() {
             return Err(ConfigError::RecipientNotFound(format!(

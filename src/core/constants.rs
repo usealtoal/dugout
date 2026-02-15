@@ -20,10 +20,11 @@ pub const GITIGNORE_ENTRIES: &[&str] = &[".env", ".env.*", "!.env.example"];
 /// Get vault file path for given vault name.
 ///
 /// - `None` → `.dugout.toml` (default)
+/// - `Some("default")` → `.dugout.toml` (default is alias for None)
 /// - `Some("dev")` → `.dugout.dev.toml`
 pub fn vault_path(vault: Option<&str>) -> std::path::PathBuf {
     match vault {
-        None => std::path::PathBuf::from(CONFIG_FILE),
+        None | Some("default") => std::path::PathBuf::from(CONFIG_FILE),
         Some(name) => std::path::PathBuf::from(format!(".dugout.{}.toml", name)),
     }
 }
@@ -31,11 +32,12 @@ pub fn vault_path(vault: Option<&str>) -> std::path::PathBuf {
 /// Get request directory for given vault.
 ///
 /// - `None` → `.dugout/requests/default`
+/// - `Some("default")` → `.dugout/requests/default` (alias for None)
 /// - `Some("prod")` → `.dugout/requests/prod`
 pub fn request_dir(vault: Option<&str>) -> std::path::PathBuf {
     let base = std::path::PathBuf::from(".dugout/requests");
     match vault {
-        None => base.join("default"),
+        None | Some("default") => base.join("default"),
         Some(name) => base.join(name),
     }
 }

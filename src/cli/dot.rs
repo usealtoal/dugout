@@ -69,5 +69,5 @@ pub fn execute(vault: Option<String>) -> Result<()> {
         cmd_display
     ));
 
-    crate::cli::run::execute(&command, vault_name)
+    crate::cli::run::execute_with_vault(&command, vault_name)
 }
