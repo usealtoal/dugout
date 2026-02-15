@@ -3,7 +3,7 @@
 use crate::core::vault::Vault;
 use crate::error::{ConfigError, Result, ValidationError};
 
-/// Validate a vault name.
+/// Validate a vault name for selection.
 ///
 /// Vault names must be safe for use in file paths:
 /// - Not empty
@@ -11,6 +11,8 @@ use crate::error::{ConfigError, Result, ValidationError};
 /// - No path separators (/ or \)
 /// - Only alphanumeric, underscore, hyphen, and dot
 /// - Max 64 characters
+///
+/// Note: "default" is allowed as it's an alias for the default vault.
 pub fn validate_vault_name(name: &str) -> Result<()> {
     if name.is_empty() {
         return Err(ValidationError::InvalidVaultName {
@@ -59,6 +61,24 @@ pub fn validate_vault_name(name: &str) -> Result<()> {
             }
             .into());
         }
+    }
+
+    Ok(())
+}
+
+/// Validate a vault name for creation (init).
+///
+/// Same as `validate_vault_name` but also rejects "default" since
+/// it's reserved as an alias for the default vault (.dugout.toml).
+pub fn validate_vault_name_for_init(name: &str) -> Result<()> {
+    validate_vault_name(name)?;
+
+    if name == "default" {
+        return Err(ValidationError::InvalidVaultName {
+            name: name.to_string(),
+            reason: "'default' is reserved for the default vault (.dugout.toml)".to_string(),
+        }
+        .into());
     }
 
     Ok(())
@@ -157,5 +177,28 @@ mod tests {
         assert!(validate_vault_name("foo bar").is_err());
         assert!(validate_vault_name("foo@bar").is_err());
         assert!(validate_vault_name("foo:bar").is_err());
+    }
+
+    #[test]
+    fn test_validate_vault_name_allows_default_for_selection() {
+        // "default" is allowed for selection (alias for default vault)
+        assert!(validate_vault_name("default").is_ok());
+    }
+
+    #[test]
+    fn test_validate_vault_name_for_init_rejects_default() {
+        // "default" is rejected for init (reserved name)
+        assert!(super::validate_vault_name_for_init("default").is_err());
+    }
+
+    #[test]
+    fn test_validate_vault_name_boundary() {
+        // 64 chars should be ok
+        let name_64 = "a".repeat(64);
+        assert!(validate_vault_name(&name_64).is_ok());
+
+        // 65 chars should fail
+        let name_65 = "a".repeat(65);
+        assert!(validate_vault_name(&name_65).is_err());
     }
 }

@@ -5,6 +5,10 @@
 
 use std::io::{Read, Write};
 
+/// Maximum size for decrypted content (10 MB).
+/// Prevents memory exhaustion from maliciously crafted ciphertext.
+const MAX_DECRYPT_SIZE: u64 = 10 * 1024 * 1024;
+
 use ::age::x25519;
 use tracing::trace;
 
@@ -63,11 +67,22 @@ impl Cipher for Age {
             .map_err(|e| CipherError::DecryptionFailed(format!("{}", e)))?;
 
         let mut decrypted = Vec::new();
-        let mut reader = decryptor
+        let reader = decryptor
             .decrypt(std::iter::once(identity as &dyn age::Identity))
             .map_err(|e| CipherError::DecryptionFailed(format!("{}", e)))?;
 
-        reader.read_to_end(&mut decrypted)?;
+        // Limit read size to prevent memory exhaustion from malicious ciphertext
+        reader
+            .take(MAX_DECRYPT_SIZE + 1)
+            .read_to_end(&mut decrypted)?;
+
+        if decrypted.len() as u64 > MAX_DECRYPT_SIZE {
+            return Err(CipherError::DecryptionFailed(format!(
+                "decrypted content exceeds {} byte limit",
+                MAX_DECRYPT_SIZE
+            ))
+            .into());
+        }
 
         trace!(plaintext_len = decrypted.len(), "decrypted");
 

@@ -128,6 +128,11 @@ impl KmsBackend for StubKms {
         let hex = ciphertext.strip_prefix("stub-kms:").ok_or_else(|| {
             CipherError::DecryptionFailed("not a stub-kms ciphertext".to_string())
         })?;
+        if hex.len() % 2 != 0 {
+            return Err(
+                CipherError::DecryptionFailed("invalid hex: odd length".to_string()).into(),
+            );
+        }
         let bytes: std::result::Result<Vec<u8>, _> = (0..hex.len())
             .step_by(2)
             .map(|i| u8::from_str_radix(&hex[i..i + 2], 16))

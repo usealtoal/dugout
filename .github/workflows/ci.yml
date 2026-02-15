@@ -11,9 +11,10 @@ env:
 
 jobs:
   test:
-    name: Test Suite
+    name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
@@ -40,8 +41,20 @@ jobs:
       - name: Run clippy
         run: cargo clippy -- -D warnings
 
-      - name: Run tests
-        run: cargo test --features test-kms -- --test-threads=1
+      - name: Run unit tests
+        run: cargo test --lib --features test-kms -- --test-threads=1
+
+      - name: Run CLI tests
+        run: cargo test --test cli --features test-kms -- --test-threads=1
+
+      - name: Run multi-vault tests
+        run: cargo test --test multi_vault --features test-kms -- --test-threads=1
+
+      - name: Run hardening tests
+        run: cargo test --test hardening --features test-kms -- --test-threads=1
+
+      - name: Run stress tests
+        run: cargo test --test stress --features test-kms -- --test-threads=1
 
       - name: Build release
         run: cargo build --release

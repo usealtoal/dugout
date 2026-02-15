@@ -1,6 +1,7 @@
 //! Rotate command - rotate keypair and re-encrypt secrets.
 
 use tracing::info;
+use zeroize::Zeroizing;
 
 use crate::cli::output;
 use crate::core::vault::Vault;
@@ -17,13 +18,11 @@ fn archive_dir(project_id: &str) -> Result<PathBuf> {
 }
 
 /// Archive the old identity key with timestamp.
+///
+/// Uses atomic rename and handles missing files gracefully to avoid TOCTOU races.
 fn archive_old_key(project_id: &str) -> Result<()> {
     use crate::core::domain::Identity;
     let old_key_path = Identity::project_dir(project_id)?.join("identity.key");
-
-    if !old_key_path.exists() {
-        return Ok(());
-    }
 
     let archive_path = archive_dir(project_id)?;
     fs::create_dir_all(&archive_path)?;
@@ -31,9 +30,12 @@ fn archive_old_key(project_id: &str) -> Result<()> {
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let archive_file = archive_path.join(format!("identity.key.{}", timestamp));
 
-    fs::rename(&old_key_path, &archive_file)?;
-
-    Ok(())
+    // Try to rename directly - handles TOCTOU by checking error instead of exists()
+    match fs::rename(&old_key_path, &archive_file) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()), // No key to archive
+        Err(e) => Err(e.into()),
+    }
 }
 
 /// Execute key rotation.
@@ -55,11 +57,11 @@ pub fn execute(vault: Option<String>) -> Result<()> {
         return Err(crate::error::StoreError::NoPrivateKey(project_id.clone()).into());
     }
 
-    // Step 1: Decrypt all secrets
-    let mut decrypted_secrets = Vec::new();
+    // Step 1: Decrypt all secrets (wrapped in Zeroizing for secure memory cleanup)
+    let mut decrypted_secrets: Vec<(String, Zeroizing<String>)> = Vec::new();
     for (key, ciphertext) in &cfg.secrets {
         let plaintext = backend.decrypt(ciphertext, v.identity().as_age())?;
-        decrypted_secrets.push((key.clone(), plaintext));
+        decrypted_secrets.push((key.clone(), Zeroizing::new(plaintext)));
     }
 
     // Step 2: Archive old key
@@ -89,10 +91,11 @@ pub fn execute(vault: Option<String>) -> Result<()> {
     // Step 5: Re-encrypt all secrets
     let secret_count = decrypted_secrets.len();
     cfg.secrets.clear();
-    for (key, plaintext) in decrypted_secrets {
-        let ciphertext = backend.encrypt(&plaintext, &recipients)?;
-        cfg.secrets.insert(key, ciphertext);
+    for (key, plaintext) in &decrypted_secrets {
+        let ciphertext = backend.encrypt(plaintext.as_str(), &recipients)?;
+        cfg.secrets.insert(key.clone(), ciphertext);
     }
+    // decrypted_secrets dropped here, Zeroizing will securely clear memory
 
     // Step 6: Update config with new public key
     let owner_name = cfg
