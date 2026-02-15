@@ -336,7 +336,13 @@ mod tests {
 
     #[test]
     fn test_config_path_for_vault() {
-        assert_eq!(Config::config_path_for(None), std::path::PathBuf::from(".dugout.toml"));
-        assert_eq!(Config::config_path_for(Some("dev")), std::path::PathBuf::from(".dugout.dev.toml"));
+        assert_eq!(
+            Config::config_path_for(None),
+            std::path::PathBuf::from(".dugout.toml")
+        );
+        assert_eq!(
+            Config::config_path_for(Some("dev")),
+            std::path::PathBuf::from(".dugout.dev.toml")
+        );
     }
 }

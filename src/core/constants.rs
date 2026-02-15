@@ -53,9 +53,7 @@ pub fn vault_name_from_path(path: &std::path::Path) -> Option<String> {
     }
     // Pattern: .dugout.{name}.toml
     if filename.starts_with(".dugout.") && filename.ends_with(".toml") {
-        let name = filename
-            .strip_prefix(".dugout.")?
-            .strip_suffix(".toml")?;
+        let name = filename.strip_prefix(".dugout.")?.strip_suffix(".toml")?;
         if !name.is_empty() {
             return Some(name.to_string());
         }
@@ -74,18 +72,30 @@ mod tests {
 
     #[test]
     fn test_vault_path_named() {
-        assert_eq!(vault_path(Some("dev")), std::path::PathBuf::from(".dugout.dev.toml"));
-        assert_eq!(vault_path(Some("prod")), std::path::PathBuf::from(".dugout.prod.toml"));
+        assert_eq!(
+            vault_path(Some("dev")),
+            std::path::PathBuf::from(".dugout.dev.toml")
+        );
+        assert_eq!(
+            vault_path(Some("prod")),
+            std::path::PathBuf::from(".dugout.prod.toml")
+        );
     }
 
     #[test]
     fn test_request_dir_default() {
-        assert_eq!(request_dir(None), std::path::PathBuf::from(".dugout/requests/default"));
+        assert_eq!(
+            request_dir(None),
+            std::path::PathBuf::from(".dugout/requests/default")
+        );
     }
 
     #[test]
     fn test_request_dir_named() {
-        assert_eq!(request_dir(Some("prod")), std::path::PathBuf::from(".dugout/requests/prod"));
+        assert_eq!(
+            request_dir(Some("prod")),
+            std::path::PathBuf::from(".dugout/requests/prod")
+        );
     }
 
     #[test]

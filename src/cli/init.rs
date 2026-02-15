@@ -28,7 +28,10 @@ pub fn execute(
     let _vault = Vault::init_vault(vault_name.as_deref(), &name, kms.clone())?;
 
     if kms.is_some() {
-        output::success(&format!("initialized {} (hybrid: age + kms)", vault_display));
+        output::success(&format!(
+            "initialized {} (hybrid: age + kms)",
+            vault_display
+        ));
     } else {
         output::success(&format!("initialized {}", vault_display));
     }

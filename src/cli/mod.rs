@@ -271,9 +271,17 @@ pub fn execute(command: Command, vault: Option<String>) -> crate::error::Result<
     use Command::*;
 
     match command {
-        Setup { force, name, output } => setup::execute(force, name, output),
+        Setup {
+            force,
+            name,
+            output,
+        } => setup::execute(force, name, output),
         Whoami => whoami::execute(),
-        Init { name, no_banner, kms } => init::execute(name, no_banner, kms, vault),
+        Init {
+            name,
+            no_banner,
+            kms,
+        } => init::execute(name, no_banner, kms, vault),
         Add { key } => add::execute(&key, vault),
         Set { key, value, force } => secrets::set(&key, &value, force, vault),
         Get { key } => secrets::get(&key, vault),
