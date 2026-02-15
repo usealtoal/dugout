@@ -20,6 +20,7 @@ pub struct Vault {
     project_id: String,
     identity: Identity,
     backend: cipher::CipherBackend,
+    vault_name: Option<String>,
 }
 
 impl std::fmt::Debug for Vault {
@@ -29,20 +30,25 @@ impl std::fmt::Debug for Vault {
             .field("project_id", &self.project_id)
             .field("identity", &self.identity)
             .field("backend", &self.backend)
+            .field("vault_name", &self.vault_name)
             .finish()
     }
 }
 
 impl Vault {
     // --- Construction ---
-    /// Open an existing vault in the current directory
+    /// Open an existing vault.
+    ///
+    /// # Arguments
+    ///
+    /// * `vault` - Optional vault name (None = default `.dugout.toml`)
     ///
     /// # Errors
     ///
-    /// Returns `ConfigError::NotInitialized` if no `.dugout.toml` exists.
+    /// Returns `ConfigError::NotInitialized` if no vault config exists.
     /// Returns error if the configuration is invalid or cannot be read.
-    pub fn open() -> Result<Self> {
-        let config = Config::load()?;
+    pub fn open_vault(vault: Option<&str>) -> Result<Self> {
+        let config = Config::load_from(vault)?;
         let project_id = config.project_id();
 
         // Identity resolution order:
@@ -72,23 +78,37 @@ impl Vault {
             project_id,
             identity,
             backend,
+            vault_name: vault.map(|s| s.to_string()),
         })
     }
 
-    /// Initialize a new vault
+    /// Open the default vault (backward compat).
     ///
-    /// Creates a new `.dugout.toml` configuration file, generates a keypair,
-    /// and adds the specified user as the first recipient.
+    /// # Errors
+    ///
+    /// Returns `ConfigError::NotInitialized` if no `.dugout.toml` exists.
+    /// Returns error if the configuration is invalid or cannot be read.
+    pub fn open() -> Result<Self> {
+        Self::open_vault(None)
+    }
+
+    /// Initialize a new vault.
+    ///
+    /// # Arguments
+    ///
+    /// * `vault` - Optional vault name (None = default `.dugout.toml`)
+    /// * `name` - Name of the first recipient (the initializing user)
+    /// * `kms_key` - Optional KMS key for hybrid encryption
     ///
     /// # Errors
     ///
     /// Returns `ConfigError::AlreadyInitialized` if vault already exists.
     /// Returns error if keypair generation or file operations fail.
-    pub fn init(name: &str, kms_key: Option<String>) -> Result<Self> {
+    pub fn init_vault(vault: Option<&str>, name: &str, kms_key: Option<String>) -> Result<Self> {
         validate_member_name(name)?;
 
-        if Config::exists() {
-            return Err(crate::error::ConfigError::AlreadyInitialized.into());
+        if Config::exists_for(vault) {
+            return Err(ConfigError::AlreadyInitialized.into());
         }
 
         let mut config = Config::new();
@@ -130,7 +150,7 @@ impl Vault {
         config
             .recipients
             .insert(name.to_string(), public_key.clone());
-        config.save()?;
+        config.save_to(vault)?;
 
         config::ensure_gitignore()?;
         let backend = cipher::CipherBackend::from_config(&config)?;
@@ -140,7 +160,21 @@ impl Vault {
             project_id,
             identity,
             backend,
+            vault_name: vault.map(|s| s.to_string()),
         })
+    }
+
+    /// Initialize the default vault (backward compat).
+    ///
+    /// Creates a new `.dugout.toml` configuration file, generates a keypair,
+    /// and adds the specified user as the first recipient.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ConfigError::AlreadyInitialized` if vault already exists.
+    /// Returns error if keypair generation or file operations fail.
+    pub fn init(name: &str, kms_key: Option<String>) -> Result<Self> {
+        Self::init_vault(None, name, kms_key)
     }
 
     /// Config reference
@@ -188,7 +222,7 @@ impl Vault {
             .secrets
             .insert(key.to_string(), encrypted.clone());
         self.update_recipients_hash();
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
 
         debug!(key = %key, "secret set, saving config");
         Ok(Secret::new(key.to_string(), encrypted))
@@ -233,7 +267,7 @@ impl Vault {
                 SecretError::not_found_with_suggestions(key.to_string(), &available).into(),
             );
         }
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
         Ok(())
     }
 
@@ -287,7 +321,7 @@ impl Vault {
 
         self.config.secrets = updated;
         self.update_recipients_hash();
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
 
         Ok(())
     }
@@ -311,7 +345,7 @@ impl Vault {
         self.config
             .recipients
             .insert(name.to_string(), key.to_string());
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
 
         // Re-encrypt all secrets for the new recipient set
         if !self.config.secrets.is_empty() {
@@ -334,7 +368,7 @@ impl Vault {
         if self.config.recipients.remove(name).is_none() {
             return Err(ConfigError::RecipientNotFound(name.to_string()).into());
         }
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
 
         // Re-encrypt all secrets without the removed recipient
         if !self.config.secrets.is_empty() {
@@ -456,7 +490,7 @@ impl Vault {
         }
 
         self.update_recipients_hash();
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
         debug!(count = imported.len(), "import complete");
         Ok(imported)
     }
@@ -590,13 +624,18 @@ impl Vault {
 
         // Update fingerprint (reencrypt_all already saved, but we need the hash)
         self.config.dugout.recipients_hash = Some(self.recipients_fingerprint());
-        self.config.save()?;
+        self.config.save_to(self.vault_name.as_deref())?;
 
         Ok(SyncResult {
             secrets,
             recipients,
             was_needed: true,
         })
+    }
+
+    /// Get the vault name (None = default vault)
+    pub fn vault_name(&self) -> Option<&str> {
+        self.vault_name.as_deref()
     }
 
     /// Update the recipients hash in config.
