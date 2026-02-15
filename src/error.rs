@@ -136,6 +136,9 @@ pub enum ValidationError {
     #[error("invalid member name '{name}': {reason}")]
     InvalidMemberName { name: String, reason: String },
 
+    #[error("invalid vault name '{name}': {reason}")]
+    InvalidVaultName { name: String, reason: String },
+
     #[error("invalid file permissions on '{path}': expected {expected}, got {actual}")]
     InvalidPermissions {
         path: String,

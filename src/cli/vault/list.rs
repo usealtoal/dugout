@@ -29,12 +29,25 @@ pub fn execute(json: bool) -> Result<()> {
             .collect();
         println!("{}", serde_json::to_string_pretty(&json_output)?);
     } else {
-        println!("{:<12} {:>8} {:>11} {:>7}", "VAULT", "SECRETS", "RECIPIENTS", "ACCESS");
+        // Calculate column width based on longest vault name (min 7 for "default")
+        let name_width = vaults
+            .iter()
+            .map(|v| v.name.len())
+            .max()
+            .unwrap_or(7)
+            .max(7);
+
+        println!(
+            "{:<width$} {:>8} {:>11} {:>7}",
+            "VAULT", "SECRETS", "RECIPIENTS", "ACCESS",
+            width = name_width
+        );
         for v in vaults {
             let access = if v.has_access { "yes" } else { "no" };
             println!(
-                "{:<12} {:>8} {:>11} {:>7}",
-                v.name, v.secret_count, v.recipient_count, access
+                "{:<width$} {:>8} {:>11} {:>7}",
+                v.name, v.secret_count, v.recipient_count, access,
+                width = name_width
             );
         }
     }

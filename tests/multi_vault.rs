@@ -177,3 +177,29 @@ fn test_dot_uses_default_vault() {
     let stderr = String::from_utf8_lossy(&dot.stderr);
     assert!(!stderr.contains("multiple vaults"));
 }
+
+#[test]
+fn test_legacy_request_migration() {
+    let t = Test::new();
+    t.init_cmd("alice");
+
+    // Create a legacy request file in old location
+    let legacy_dir = t.dir.path().join(".dugout/requests");
+    std::fs::create_dir_all(&legacy_dir).unwrap();
+    let legacy_file = legacy_dir.join("bob.pub");
+    std::fs::write(&legacy_file, "age1testpubkey123").unwrap();
+
+    // Verify legacy file exists
+    assert!(legacy_file.exists());
+
+    // Run pending command - this triggers migration
+    let output = t.cmd().args(["pending"]).output().unwrap();
+    assert!(output.status.success());
+
+    // Verify file was migrated to new location
+    let new_file = t.dir.path().join(".dugout/requests/default/bob.pub");
+    assert!(new_file.exists(), "Request file should be migrated to new location");
+
+    // Verify old file was removed
+    assert!(!legacy_file.exists(), "Legacy request file should be removed after migration");
+}
