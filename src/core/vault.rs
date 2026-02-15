@@ -4,7 +4,7 @@
 
 use crate::core::cipher;
 use crate::core::config::{self, Config};
-use crate::core::domain::{Diff, Env, Identity, Recipient, Secret, SyncResult};
+use crate::core::domain::{Diff, Env, Identity, Recipient, Secret, SyncResult, VaultInfo};
 use crate::core::store;
 use crate::core::types::{MemberName, PublicKey, SecretKey};
 use crate::error::{ConfigError, Result, SecretError, ValidationError};
@@ -643,6 +643,73 @@ impl Vault {
     /// Call this after any operation that writes secrets.
     fn update_recipients_hash(&mut self) {
         self.config.dugout.recipients_hash = Some(self.recipients_fingerprint());
+    }
+
+    /// Find all vault files in the current directory.
+    ///
+    /// Returns paths to all `.dugout*.toml` files.
+    pub fn find_vault_files() -> Result<Vec<std::path::PathBuf>> {
+        let mut vaults = Vec::new();
+
+        for entry in std::fs::read_dir(".")? {
+            let entry = entry?;
+            let path = entry.path();
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                if name == ".dugout.toml" || (name.starts_with(".dugout.") && name.ends_with(".toml")) {
+                    vaults.push(path);
+                }
+            }
+        }
+
+        // Sort for consistent ordering
+        vaults.sort();
+        Ok(vaults)
+    }
+
+    /// List all vaults with their info.
+    ///
+    /// Returns info about each vault including access status.
+    pub fn list_vaults() -> Result<Vec<VaultInfo>> {
+        use crate::core::constants::vault_name_from_path;
+
+        let vault_files = Self::find_vault_files()?;
+        let mut infos = Vec::new();
+
+        // Try to get current identity for access check
+        let identity_pubkey = Identity::load_global_pubkey().ok();
+
+        for path in vault_files {
+            let vault_name = vault_name_from_path(&path);
+
+            // Load config without identity check (we just want metadata)
+            let config_path = &path;
+            if !config_path.exists() {
+                continue;
+            }
+
+            let contents = std::fs::read_to_string(config_path)?;
+            let config: Config = toml::from_str(&contents).map_err(ConfigError::Parse)?;
+
+            let has_access = identity_pubkey
+                .as_ref()
+                .map(|pk| config.recipients.values().any(|k| k == pk))
+                .unwrap_or(false);
+
+            infos.push(VaultInfo {
+                name: vault_name.unwrap_or_else(|| "default".to_string()),
+                path: path.clone(),
+                secret_count: config.secrets.len(),
+                recipient_count: config.recipients.len(),
+                has_access,
+            });
+        }
+
+        Ok(infos)
+    }
+
+    /// Check if multiple vaults exist.
+    pub fn has_multiple_vaults() -> Result<bool> {
+        Ok(Self::find_vault_files()?.len() > 1)
     }
 }
 
