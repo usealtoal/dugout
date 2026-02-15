@@ -17,7 +17,7 @@ fn test_knock_creates_request_file() {
     assert_stdout_contains(&output, "created access request");
 
     // Check that request file exists
-    let request_path = t.dir.path().join(".dugout/requests/bob.pub");
+    let request_path = t.dir.path().join(".dugout/requests/default/bob.pub");
     assert!(request_path.exists(), "request file should exist");
 
     // Verify request file contains a valid age public key
@@ -125,7 +125,7 @@ fn test_admit_approves_request() {
     assert_stdout_contains(&output, "admitted");
 
     // Request file should be deleted
-    let request_path = t.dir.path().join(".dugout/requests/bob.pub");
+    let request_path = t.dir.path().join(".dugout/requests/default/bob.pub");
     assert!(!request_path.exists(), "request file should be deleted");
 
     // Bob should now be in the team
@@ -265,7 +265,7 @@ fn test_full_onboarding_with_separate_identities() {
     assert_success(&output);
 
     // Verify the request file contains Bob's public key
-    let request_path = t.dir.path().join(".dugout/requests/bob.pub");
+    let request_path = t.dir.path().join(".dugout/requests/default/bob.pub");
     assert!(request_path.exists());
     let request_key = fs::read_to_string(&request_path).unwrap();
     assert_eq!(request_key.trim(), bob_pubkey);
@@ -330,7 +330,7 @@ fn test_knock_uses_global_identity_key() {
     let output = t.cmd().args(["knock", "bob"]).output().unwrap();
     assert_success(&output);
 
-    let request_key = fs::read_to_string(t.dir.path().join(".dugout/requests/bob.pub"))
+    let request_key = fs::read_to_string(t.dir.path().join(".dugout/requests/default/bob.pub"))
         .unwrap()
         .trim()
         .to_string();
@@ -353,7 +353,7 @@ fn test_knock_output_includes_instructions() {
 
     // Should show success and hint about sharing the request file
     assert_stdout_contains(&output, "created access request");
-    assert_stdout_contains(&output, ".dugout/requests/bob.pub");
+    assert_stdout_contains(&output, ".dugout/requests/default/bob.pub");
 }
 
 #[test]
@@ -367,7 +367,7 @@ fn test_knock_rejects_invalid_member_name() {
     assert_failure(&output);
     assert_stderr_contains(&output, "invalid member name");
 
-    let request_path = t.dir.path().join(".dugout/requests/../bob.pub");
+    let request_path = t.dir.path().join(".dugout/requests/default/../bob.pub");
     assert!(
         !request_path.exists(),
         "invalid names must not create request files"
