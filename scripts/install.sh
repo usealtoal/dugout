@@ -3,6 +3,7 @@ set -eu
 
 REPO="usealtoal/dugout"
 INSTALL_DIR="${DUGOUT_INSTALL_DIR:-$HOME/.dugout/bin}"
+NO_MODIFY_PATH="${DUGOUT_NO_MODIFY_PATH:-}"
 
 main() {
     os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -42,10 +43,49 @@ main() {
 
     echo "installed dugout to $INSTALL_DIR/dugout"
 
-    case ":$PATH:" in
-        *":$INSTALL_DIR:"*) ;;
-        *) echo "add $INSTALL_DIR to your PATH" ;;
-    esac
+    # Add to PATH if not already present
+    if [ -z "$NO_MODIFY_PATH" ]; then
+        case ":$PATH:" in
+            *":$INSTALL_DIR:"*) ;;
+            *)
+                shell_config=""
+                case "${SHELL:-}" in
+                    */zsh) shell_config="$HOME/.zshrc" ;;
+                    */bash)
+                        # Prefer .bashrc, fall back to .bash_profile
+                        if [ -f "$HOME/.bashrc" ]; then
+                            shell_config="$HOME/.bashrc"
+                        else
+                            shell_config="$HOME/.bash_profile"
+                        fi
+                        ;;
+                    */fish) shell_config="$HOME/.config/fish/config.fish" ;;
+                esac
+
+                if [ -n "$shell_config" ]; then
+                    # Only add if not already in the file
+                    if ! grep -q "/.dugout/bin" "$shell_config" 2>/dev/null; then
+                        mkdir -p "$(dirname "$shell_config")"
+                        case "${SHELL:-}" in
+                            */fish)
+                                printf '\n# Added by dugout installer\nfish_add_path "$HOME/.dugout/bin"\n' >> "$shell_config"
+                                ;;
+                            *)
+                                printf '\n# Added by dugout installer\nexport PATH="$HOME/.dugout/bin:$PATH"\n' >> "$shell_config"
+                                ;;
+                        esac
+                        echo "added $INSTALL_DIR to PATH in $shell_config"
+                    fi
+                    # Update current session
+                    export PATH="$INSTALL_DIR:$PATH"
+                else
+                    echo "add $INSTALL_DIR to your PATH"
+                fi
+                ;;
+        esac
+    fi
+
+    echo "run 'dugout setup' to get started"
 }
 
 main
