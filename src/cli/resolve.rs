@@ -13,24 +13,24 @@ use crate::error::{ConfigError, Result, ValidationError};
 /// - Max 64 characters
 pub fn validate_vault_name(name: &str) -> Result<()> {
     if name.is_empty() {
-        return Err(ValidationError::InvalidKey {
-            key: name.to_string(),
+        return Err(ValidationError::InvalidVaultName {
+            name: name.to_string(),
             reason: "vault name cannot be empty".to_string(),
         }
         .into());
     }
 
     if name == "." || name == ".." {
-        return Err(ValidationError::InvalidKey {
-            key: name.to_string(),
+        return Err(ValidationError::InvalidVaultName {
+            name: name.to_string(),
             reason: "vault name cannot be '.' or '..'".to_string(),
         }
         .into());
     }
 
     if name.len() > 64 {
-        return Err(ValidationError::InvalidKey {
-            key: name.to_string(),
+        return Err(ValidationError::InvalidVaultName {
+            name: name.to_string(),
             reason: "vault name must be at most 64 characters".to_string(),
         }
         .into());
@@ -38,8 +38,8 @@ pub fn validate_vault_name(name: &str) -> Result<()> {
 
     for (i, ch) in name.chars().enumerate() {
         if ch == '/' || ch == '\\' {
-            return Err(ValidationError::InvalidKey {
-                key: name.to_string(),
+            return Err(ValidationError::InvalidVaultName {
+                name: name.to_string(),
                 reason: format!(
                     "invalid character '{}' at position {}. Path separators are not allowed",
                     ch,
@@ -49,8 +49,8 @@ pub fn validate_vault_name(name: &str) -> Result<()> {
             .into());
         }
         if !ch.is_ascii_alphanumeric() && ch != '_' && ch != '-' && ch != '.' {
-            return Err(ValidationError::InvalidKey {
-                key: name.to_string(),
+            return Err(ValidationError::InvalidVaultName {
+                name: name.to_string(),
                 reason: format!(
                     "invalid character '{}' at position {}. Allowed: A-Z, a-z, 0-9, _, -, .",
                     ch,
