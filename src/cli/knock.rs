@@ -64,7 +64,10 @@ pub fn execute(name: Option<String>, vault: Option<String>) -> Result<()> {
             return Ok(());
         } else {
             // Different key - someone else requested with this name
-            output::error(&format!("request '{}' already exists with a different key", name));
+            output::error(&format!(
+                "request '{}' already exists with a different key",
+                name
+            ));
             output::hint("use a different name or contact an admin");
             return Err(crate::error::Error::Other(format!(
                 "request file '{}' already exists with different key",
