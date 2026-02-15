@@ -9,6 +9,7 @@ pub mod init;
 pub mod knock;
 pub mod output;
 pub mod pending;
+pub mod resolve;
 pub mod run;
 pub mod secrets;
 pub mod setup;
