@@ -83,6 +83,17 @@ pub enum StoreError {
 
     #[error("invalid key format: {0}")]
     InvalidFormat(String),
+
+    #[cfg(target_os = "macos")]
+    #[error("Keychain error: {0}")]
+    KeychainError(String),
+
+    #[cfg(target_os = "macos")]
+    #[error("Keychain access denied (user cancelled or locked)")]
+    KeychainAccessDenied,
+
+    #[error("Migration failed: {0}")]
+    MigrationFailed(String),
 }
 
 /// Secret operation errors

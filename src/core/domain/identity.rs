@@ -2,6 +2,7 @@
 //!
 //! Wraps an age private key with secure memory handling.
 
+use std::borrow::Cow;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -14,13 +15,32 @@ use crate::core::types::PublicKey;
 use crate::error::ValidationError;
 use crate::error::{Result, StoreError};
 
+/// Source of an identity
+#[derive(Debug, Clone)]
+pub enum IdentitySource {
+    /// Identity loaded from filesystem
+    Filesystem(PathBuf),
+    /// Identity loaded from macOS Keychain
+    #[cfg(target_os = "macos")]
+    Keychain { account: String },
+    /// Identity loaded from environment variable
+    Environment { name: String },
+}
+
 /// A private key identity for decrypting secrets
 pub struct Identity {
     inner: x25519::Identity,
-    path: PathBuf,
+    source: IdentitySource,
 }
 
 impl Identity {
+    /// Create a new Identity from components
+    ///
+    /// This constructor is primarily for use by storage backends (e.g., Keychain)
+    pub fn from_parts(inner: x25519::Identity, source: IdentitySource) -> Self {
+        Self { inner, source }
+    }
+
     /// Load an identity from the key directory
     pub fn load(key_dir: &Path) -> Result<Self> {
         let key_path = key_dir.join("identity.key");
@@ -47,7 +67,7 @@ impl Identity {
 
         Ok(Self {
             inner,
-            path: key_path,
+            source: IdentitySource::Filesystem(key_path),
         })
     }
 
@@ -79,7 +99,7 @@ impl Identity {
 
         Ok(Self {
             inner,
-            path: key_path,
+            source: IdentitySource::Filesystem(key_path),
         })
     }
 
@@ -93,9 +113,23 @@ impl Identity {
         &self.inner
     }
 
-    /// Key file path
-    pub fn path(&self) -> &Path {
-        &self.path
+    /// Key file path or virtual path for non-filesystem sources
+    pub fn path(&self) -> Cow<'_, Path> {
+        match &self.source {
+            IdentitySource::Filesystem(p) => Cow::Borrowed(p),
+            #[cfg(target_os = "macos")]
+            IdentitySource::Keychain { account } => {
+                Cow::Owned(PathBuf::from(format!("<keychain:{}>", account)))
+            }
+            IdentitySource::Environment { name } => {
+                Cow::Owned(PathBuf::from(format!("<env:{}>", name)))
+            }
+        }
+    }
+
+    /// Get the source of this identity
+    pub fn source(&self) -> &IdentitySource {
+        &self.source
     }
 
     /// Resolve the user's home directory.
@@ -115,7 +149,7 @@ impl Identity {
     }
 
     /// Base directory for all dugout keys (`~/.dugout/keys`)
-    fn base_dir() -> Result<PathBuf> {
+    pub fn base_dir() -> Result<PathBuf> {
         Ok(Self::resolve_home()?.join(constants::KEY_DIR))
     }
 
@@ -125,7 +159,7 @@ impl Identity {
     }
 
     /// Global identity directory (`~/.dugout/`)
-    pub fn global_dir() -> Result<PathBuf> {
+    fn global_dir() -> Result<PathBuf> {
         Ok(Self::resolve_home()?.join(".dugout"))
     }
 
@@ -135,17 +169,45 @@ impl Identity {
     }
 
     /// Global public key path (`~/.dugout/identity.pub`)
-    pub fn global_pubkey_path() -> Result<PathBuf> {
+    fn global_pubkey_path() -> Result<PathBuf> {
         Ok(Self::global_dir()?.join("identity.pub"))
     }
 
     /// Check if a global identity exists
+    ///
+    /// Checks both the store backend (Keychain on macOS) and filesystem
+    /// for backward compatibility.
     pub fn has_global() -> Result<bool> {
+        // Check store backend first (Keychain on macOS)
+        use crate::core::store;
+        if store::has_key("global") {
+            return Ok(true);
+        }
+
+        // Fall back to filesystem for backward compatibility
         Ok(Self::global_path()?.exists())
     }
 
     /// Load the global identity
+    ///
+    /// Tries store backend (Keychain on macOS) first, then falls back to
+    /// filesystem for backward compatibility.
     pub fn load_global() -> Result<Self> {
+        use crate::core::store;
+
+        // Try store backend first (Keychain on macOS)
+        match store::load_identity("global") {
+            Ok(identity) => {
+                debug!("global identity loaded from store backend");
+                return Ok(identity);
+            }
+            Err(_) => {
+                // Fall through to filesystem fallback
+                debug!("store backend failed, trying filesystem");
+            }
+        }
+
+        // Fall back to filesystem for backward compatibility
         let global_dir = Self::global_dir()?;
         let key_path = Self::global_path()?;
 
@@ -166,18 +228,54 @@ impl Identity {
             .parse()
             .map_err(|e: &str| StoreError::InvalidFormat(e.to_string()))?;
 
-        debug!("global identity loaded");
+        debug!("global identity loaded from filesystem");
 
         Ok(Self {
             inner,
-            path: key_path,
+            source: IdentitySource::Filesystem(key_path),
         })
     }
 
     /// Generate and save a global identity
+    ///
+    /// Uses the store backend (Keychain on macOS, filesystem otherwise).
+    /// Always writes the public key to filesystem for `dugout whoami` compatibility.
     pub fn generate_global() -> Result<Self> {
+        use crate::core::store;
+
         let global_dir = Self::global_dir()?;
         debug!(path = %global_dir.display(), "generating global identity");
+
+        fs::create_dir_all(&global_dir).map_err(StoreError::WriteFailed)?;
+
+        // Generate keypair using store backend (Keychain on macOS)
+        let pubkey = store::generate_keypair("global")?;
+
+        // Load the identity back to get the source information
+        let identity = store::load_identity("global")?;
+
+        // Always write public key to filesystem for `dugout whoami`
+        let pubkey_path = Self::global_pubkey_path()?;
+        fs::write(&pubkey_path, format!("{}\n", pubkey)).map_err(StoreError::WriteFailed)?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&pubkey_path, fs::Permissions::from_mode(0o644))
+                .map_err(StoreError::WriteFailed)?;
+        }
+
+        debug!("global identity saved via store backend");
+
+        Ok(identity)
+    }
+
+    /// Generate global identity directly to filesystem (for Filesystem store backend)
+    ///
+    /// This is used by the Filesystem store to avoid infinite recursion.
+    pub(crate) fn generate_global_filesystem_only() -> Result<Self> {
+        let global_dir = Self::global_dir()?;
+        debug!(path = %global_dir.display(), "generating global identity (filesystem only)");
 
         let inner = x25519::Identity::generate();
 
@@ -206,11 +304,43 @@ impl Identity {
                 .map_err(StoreError::WriteFailed)?;
         }
 
-        debug!(path = %key_path.display(), "global identity saved");
+        debug!(path = %key_path.display(), "global identity saved to filesystem");
 
         Ok(Self {
             inner,
-            path: key_path,
+            source: IdentitySource::Filesystem(key_path),
+        })
+    }
+
+    /// Load global identity directly from filesystem (for Filesystem store backend)
+    ///
+    /// This is used by the Filesystem store to avoid infinite recursion.
+    pub(crate) fn load_global_filesystem_only() -> Result<Self> {
+        let global_dir = Self::global_dir()?;
+        let key_path = Self::global_path()?;
+
+        if !key_path.exists() {
+            return Err(StoreError::NoPrivateKey(global_dir.display().to_string()).into());
+        }
+
+        // Verify permissions on Unix
+        #[cfg(unix)]
+        {
+            Self::validate_file_permissions(&key_path, 0o600)?;
+        }
+
+        let contents = fs::read_to_string(&key_path).map_err(StoreError::ReadFailed)?;
+
+        let inner: x25519::Identity = contents
+            .trim()
+            .parse()
+            .map_err(|e: &str| StoreError::InvalidFormat(e.to_string()))?;
+
+        debug!("global identity loaded from filesystem");
+
+        Ok(Self {
+            inner,
+            source: IdentitySource::Filesystem(key_path),
         })
     }
 
@@ -228,7 +358,9 @@ impl Identity {
             if let Ok(inner) = key.trim().parse::<x25519::Identity>() {
                 return Some(Self {
                     inner,
-                    path: PathBuf::from("<env:DUGOUT_IDENTITY>"),
+                    source: IdentitySource::Environment {
+                        name: "DUGOUT_IDENTITY".to_string(),
+                    },
                 });
             }
             debug!("DUGOUT_IDENTITY value is not a valid age key");
@@ -251,7 +383,12 @@ impl Identity {
 
             if let Ok(contents) = fs::read_to_string(&path) {
                 if let Ok(inner) = contents.trim().parse::<x25519::Identity>() {
-                    return Some(Self { inner, path });
+                    return Some(Self {
+                        inner,
+                        source: IdentitySource::Environment {
+                            name: "DUGOUT_IDENTITY_FILE".to_string(),
+                        },
+                    });
                 }
             }
             debug!("DUGOUT_IDENTITY_FILE contents are not a valid age key");
@@ -296,7 +433,7 @@ impl Identity {
 impl std::fmt::Debug for Identity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Identity")
-            .field("path", &self.path)
+            .field("source", &self.source)
             .field("public_key", &self.public_key())
             .finish()
     }

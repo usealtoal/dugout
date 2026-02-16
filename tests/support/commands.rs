@@ -10,6 +10,7 @@ impl Test {
     /// Returns a Command configured with:
     /// - HOME set to the temporary home directory
     /// - Current directory set to the test project directory
+    /// - DUGOUT_NO_KEYCHAIN=1 to force filesystem storage (isolated test state)
     pub fn cmd(&self) -> Command {
         #[allow(deprecated)]
         let mut cmd = Command::cargo_bin("dugout").expect("failed to find dugout binary");
@@ -17,6 +18,12 @@ impl Test {
         // Windows uses USERPROFILE instead of HOME for home directory
         cmd.env("USERPROFILE", self.home.path());
         cmd.current_dir(self.dir.path());
+
+        // Force filesystem storage in tests to avoid shared keychain state
+        // Keychain is process-global and not isolated per test, which causes
+        // test interference when running in parallel
+        cmd.env("DUGOUT_NO_KEYCHAIN", "1");
+
         cmd
     }
 

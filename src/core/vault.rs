@@ -133,12 +133,24 @@ impl Vault {
         } else if Identity::has_global()? {
             let global_pubkey = Identity::load_global_pubkey()?;
             let global_identity = Identity::load_global()?;
-            // Copy global key into project key dir so open() can find it
+
+            // Copy/write global key into project key dir so open() can find it
             let key_dir = Identity::project_dir(&project_id)?;
             std::fs::create_dir_all(&key_dir)?;
             let project_key_path = key_dir.join("identity.key");
+
             if !project_key_path.exists() {
-                std::fs::copy(Identity::global_path()?, &project_key_path)?;
+                // If global identity is in filesystem, copy it
+                let global_path = Identity::global_path()?;
+                if global_path.exists() {
+                    std::fs::copy(&global_path, &project_key_path)?;
+                } else {
+                    // Global identity is in Keychain/store backend - write it out
+                    use age::secrecy::ExposeSecret;
+                    let secret = global_identity.as_age().to_string();
+                    std::fs::write(&project_key_path, format!("{}\n", secret.expose_secret()))?;
+                }
+
                 #[cfg(unix)]
                 {
                     use std::os::unix::fs::PermissionsExt;
@@ -917,6 +929,8 @@ mod tests {
         fn drop(&mut self) {
             // Restore original directory before tempdir is cleaned up
             let _ = std::env::set_current_dir(&self._original_dir);
+            // Clean up DUGOUT_HOME environment variable
+            std::env::remove_var("DUGOUT_HOME");
         }
     }
 
@@ -924,6 +938,9 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(tmp.path()).unwrap();
+        // Set DUGOUT_HOME to temp directory to avoid using real home directory
+        // Note: resolve_home() will join with constants::KEY_DIR which already contains ".dugout/keys"
+        std::env::set_var("DUGOUT_HOME", tmp.path());
         let vault = Vault::init("alice", None).unwrap();
         let ctx = TestContext {
             _tmp: tmp,

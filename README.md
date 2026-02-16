@@ -19,6 +19,7 @@
 - **Team-friendly** — `knock` / `admit` workflow for access requests, all through git
 - **Multi-vault** — separate secrets for dev, staging, prod in the same repo
 - **Encrypted at rest** — age encryption by default, optional AWS KMS, GCP KMS
+- **Hardware-backed security** — automatic macOS Keychain integration with Secure Enclave & TouchID
 - **Zero config** — `dugout init` and start adding secrets
 - **Auto-detect** — `dugout .` detects your stack and runs with secrets injected
 - **Fast** — encrypts in ~100µs, single binary, no runtime dependencies
@@ -145,6 +146,69 @@ No Slack DMs. No shared password vaults. No `.env` files in git history. Access 
 | `dugout vault list` | List all vaults in repository |
 | `dugout check status` | Vault overview |
 | `dugout check audit` | Audit for leaked secrets |
+| `dugout migrate-keychain` | Migrate keys to macOS Keychain (macOS only) |
+| `dugout reset-keychain` | Remove identities from macOS Keychain (macOS only) |
+
+## macOS Keychain Integration
+
+Keychain integration is **default** on macOS:
+
+If Keychain is unavailable or you're in a headless environment (CI, SSH, Docker), **you must explicitly enable filesystem storage**:
+
+```bash
+# Use filesystem storage instead of Keychain
+DUGOUT_NO_KEYCHAIN=1 dugout setup
+DUGOUT_NO_KEYCHAIN=1 dugout init
+```
+
+### Migrating Existing Keys
+
+If you have existing file-based keys, migrate them to Keychain:
+
+```bash
+# Migrate all identities (global + project keys)
+dugout migrate-keychain
+
+# Migrate and delete files after successful migration
+dugout migrate-keychain --delete
+
+# Skip confirmation prompts
+dugout migrate-keychain --delete --force
+```
+
+### Verifying Keychain Storage
+
+Check if your identity is stored in Keychain:
+
+```bash
+# Open Keychain Access app
+open /System/Applications/Utilities/Keychain\ Access.app
+
+# Search for "dugout" in the search box
+# Look for items with:
+#   - Service: "com.usealtoal.dugout"
+#   - Account: "global" or your project ID
+```
+
+Or use the command line:
+
+```bash
+# Check for global identity in Keychain
+security find-generic-password -s "com.usealtoal.dugout" -a "global"
+
+# Check for project-specific identity
+security find-generic-password -s "com.usealtoal.dugout" -a "<project-id>"
+```
+
+If the key exists in Keychain, you'll see output like:
+```
+keychain: "/Users/you/Library/Keychains/login.keychain-db"
+class: "genp"
+attributes:
+    "acct"<blob>="global"
+    "svce"<blob>="com.usealtoal.dugout"
+    ...
+```
 
 ## Multi-Vault
 
@@ -200,8 +264,12 @@ See the full [KMS Integration Guide](KMS.md) for AWS, GCP, IAM setup, and multi-
 - uses: usealtoal/setup-dugout@v1
   with:
     identity: ${{ secrets.DUGOUT_IDENTITY }}
+  env:
+    DUGOUT_NO_KEYCHAIN: "1"  # Required on macOS runners
 
 - run: dugout run -- npm test
+  env:
+    DUGOUT_NO_KEYCHAIN: "1"  # Required on macOS runners
 ```
 
 See [`usealtoal/setup-dugout`](https://github.com/usealtoal/setup-dugout) for version pinning, KMS-only mode, and more examples.
@@ -209,12 +277,16 @@ See [`usealtoal/setup-dugout`](https://github.com/usealtoal/setup-dugout) for ve
 ### Other environments
 
 ```bash
-# Any CI — just set the env var
+# Any CI — set both DUGOUT_IDENTITY and DUGOUT_NO_KEYCHAIN
 export DUGOUT_IDENTITY="AGE-SECRET-KEY-1..."
+export DUGOUT_NO_KEYCHAIN=1  # Disable Keychain in CI
 dugout run -- ./deploy.sh
 
-# Docker
-docker run -e DUGOUT_IDENTITY="$KEY" myapp
+# Docker (macOS host)
+docker run \
+  -e DUGOUT_IDENTITY="$KEY" \
+  -e DUGOUT_NO_KEYCHAIN=1 \
+  myapp
 ```
 
 See the full [Deployment Guide](DEPLOY.md) for GitLab, Kubernetes, and more.

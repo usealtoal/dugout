@@ -22,6 +22,13 @@ pub mod whoami;
 pub mod check;
 pub mod vault;
 
+// Platform-specific commands
+#[cfg(target_os = "macos")]
+pub mod migrate_keychain;
+
+#[cfg(target_os = "macos")]
+pub mod reset_keychain;
+
 use clap::builder::styling::{AnsiColor, Effects, Styles};
 use clap::{Parser, Subcommand};
 
@@ -184,6 +191,30 @@ pub enum Command {
         #[arg(value_enum)]
         shell: Shell,
     },
+
+    /// Migrate file-based identities to macOS Keychain (macOS only)
+    #[cfg(target_os = "macos")]
+    MigrateKeychain {
+        /// Delete files after successful migration
+        #[arg(long)]
+        delete: bool,
+        /// Skip confirmation prompts
+        #[arg(short, long)]
+        force: bool,
+    },
+
+    /// Remove identities from macOS Keychain (macOS only)
+    #[cfg(target_os = "macos")]
+    ResetKeychain {
+        /// Account name to remove (e.g., "global", "project-id"), or omit to specify --all
+        account: Option<String>,
+        /// Remove all dugout identities from Keychain
+        #[arg(long)]
+        all: bool,
+        /// Skip confirmation prompt
+        #[arg(short, long)]
+        force: bool,
+    },
 }
 
 /// Supported shells for completions.
@@ -315,5 +346,9 @@ pub fn execute(command: Command, vault: Option<String>) -> crate::error::Result<
             VaultCommand::List { json } => vault::list::execute(json),
         },
         Completions { shell } => completions::execute(shell),
+        #[cfg(target_os = "macos")]
+        MigrateKeychain { delete, force } => migrate_keychain::execute(delete, force),
+        #[cfg(target_os = "macos")]
+        ResetKeychain { account, all, force } => reset_keychain::execute(account, all, force),
     }
 }
