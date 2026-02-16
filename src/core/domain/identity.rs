@@ -154,7 +154,14 @@ impl Identity {
     }
 
     /// Directory for a specific project's keys
+    ///
+    /// Special case: "global" returns `~/.dugout/` (legacy path)
+    /// Other projects return `~/.dugout/keys/<project_id>/`
     pub fn project_dir(project_id: &str) -> Result<PathBuf> {
+        if project_id == "global" {
+            // Global identity uses legacy path at ~/.dugout/ (not ~/.dugout/keys/global/)
+            return Self::global_dir();
+        }
         Ok(Self::base_dir()?.join(project_id))
     }
 
@@ -270,79 +277,6 @@ impl Identity {
         Ok(identity)
     }
 
-    /// Generate global identity directly to filesystem (for Filesystem store backend)
-    ///
-    /// This is used by the Filesystem store to avoid infinite recursion.
-    pub(crate) fn generate_global_filesystem_only() -> Result<Self> {
-        let global_dir = Self::global_dir()?;
-        debug!(path = %global_dir.display(), "generating global identity (filesystem only)");
-
-        let inner = x25519::Identity::generate();
-
-        fs::create_dir_all(&global_dir).map_err(StoreError::WriteFailed)?;
-
-        let key_path = Self::global_path()?;
-        let pubkey_path = Self::global_pubkey_path()?;
-
-        // Write private key
-        use age::secrecy::ExposeSecret;
-        let secret_str = inner.to_string();
-        fs::write(&key_path, format!("{}\n", secret_str.expose_secret()))
-            .map_err(StoreError::WriteFailed)?;
-
-        // Write public key
-        let pubkey = inner.to_public().to_string();
-        fs::write(&pubkey_path, format!("{}\n", pubkey)).map_err(StoreError::WriteFailed)?;
-
-        // Restrict permissions on key files (Unix only)
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(&key_path, fs::Permissions::from_mode(0o600))
-                .map_err(StoreError::WriteFailed)?;
-            fs::set_permissions(&pubkey_path, fs::Permissions::from_mode(0o644))
-                .map_err(StoreError::WriteFailed)?;
-        }
-
-        debug!(path = %key_path.display(), "global identity saved to filesystem");
-
-        Ok(Self {
-            inner,
-            source: IdentitySource::Filesystem(key_path),
-        })
-    }
-
-    /// Load global identity directly from filesystem (for Filesystem store backend)
-    ///
-    /// This is used by the Filesystem store to avoid infinite recursion.
-    pub(crate) fn load_global_filesystem_only() -> Result<Self> {
-        let global_dir = Self::global_dir()?;
-        let key_path = Self::global_path()?;
-
-        if !key_path.exists() {
-            return Err(StoreError::NoPrivateKey(global_dir.display().to_string()).into());
-        }
-
-        // Verify permissions on Unix
-        #[cfg(unix)]
-        {
-            Self::validate_file_permissions(&key_path, 0o600)?;
-        }
-
-        let contents = fs::read_to_string(&key_path).map_err(StoreError::ReadFailed)?;
-
-        let inner: x25519::Identity = contents
-            .trim()
-            .parse()
-            .map_err(|e: &str| StoreError::InvalidFormat(e.to_string()))?;
-
-        debug!("global identity loaded from filesystem");
-
-        Ok(Self {
-            inner,
-            source: IdentitySource::Filesystem(key_path),
-        })
-    }
 
     /// Load identity from environment variables.
     ///
