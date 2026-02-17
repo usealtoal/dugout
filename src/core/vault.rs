@@ -64,10 +64,10 @@ impl Vault {
                     .filter(|id| identity_has_access(&config, id))
             })
             .or_else(|| {
-                Identity::has_global()
+                store::has_global()
                     .ok()
                     .filter(|has| *has)
-                    .and_then(|_| Identity::load_global().ok())
+                    .and_then(|_| store::load_global_identity().ok())
                     .filter(|id| identity_has_access(&config, id))
             })
             .ok_or(ConfigError::AccessDenied)?;
@@ -130,9 +130,9 @@ impl Vault {
             let id = store::load_identity(&project_id)?;
             let pk = id.public_key();
             (pk, id)
-        } else if Identity::has_global()? {
+        } else if store::has_global()? {
             let global_pubkey = Identity::load_global_pubkey()?;
-            let global_identity = Identity::load_global()?;
+            let global_identity = store::load_global_identity()?;
 
             // Copy/write global key into project key dir so open() can find it
             let key_dir = Identity::project_dir(&project_id)?;
@@ -918,33 +918,39 @@ fn identity_has_access(config: &Config, identity: &Identity) -> bool {
 mod tests {
     use super::*;
     use std::fs;
+    use std::sync::{Mutex, MutexGuard, Once};
     use tempfile::TempDir;
 
     struct TestContext {
         _tmp: TempDir,
         _original_dir: std::path::PathBuf,
+        _cwd_guard: MutexGuard<'static, ()>,
     }
+
+    static FORCE_FILESYSTEM_BACKEND: Once = Once::new();
+    static CWD_LOCK: Mutex<()> = Mutex::new(());
 
     impl Drop for TestContext {
         fn drop(&mut self) {
             // Restore original directory before tempdir is cleaned up
             let _ = std::env::set_current_dir(&self._original_dir);
-            // Clean up DUGOUT_HOME environment variable
-            std::env::remove_var("DUGOUT_HOME");
         }
     }
 
     fn setup_test_vault() -> (TestContext, Vault) {
+        FORCE_FILESYSTEM_BACKEND.call_once(|| {
+            std::env::set_var("DUGOUT_NO_KEYCHAIN", "1");
+        });
+        let cwd_guard = CWD_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let tmp = TempDir::new().unwrap();
-        let original_dir = std::env::current_dir().unwrap();
+        let original_dir =
+            std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("/"));
         std::env::set_current_dir(tmp.path()).unwrap();
-        // Set DUGOUT_HOME to temp directory to avoid using real home directory
-        // Note: resolve_home() will join with constants::KEY_DIR which already contains ".dugout/keys"
-        std::env::set_var("DUGOUT_HOME", tmp.path());
         let vault = Vault::init("alice", None).unwrap();
         let ctx = TestContext {
             _tmp: tmp,
             _original_dir: original_dir,
+            _cwd_guard: cwd_guard,
         };
         (ctx, vault)
     }

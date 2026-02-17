@@ -154,14 +154,7 @@ impl Identity {
     }
 
     /// Directory for a specific project's keys
-    ///
-    /// Special case: "global" returns `~/.dugout/` (legacy path)
-    /// Other projects return `~/.dugout/keys/<project_id>/`
     pub fn project_dir(project_id: &str) -> Result<PathBuf> {
-        if project_id == "global" {
-            // Global identity uses path at ~/.dugout/ (not ~/.dugout/keys/global/)
-            return Self::global_dir();
-        }
         Ok(Self::base_dir()?.join(project_id))
     }
 
@@ -181,40 +174,12 @@ impl Identity {
     }
 
     /// Check if a global identity exists
-    ///
-    /// Checks both the store backend (Keychain on macOS) and filesystem
-    /// for backward compatibility.
     pub fn has_global() -> Result<bool> {
-        // Check store backend first (Keychain on macOS)
-        use crate::core::store;
-        if store::has_key("global") {
-            return Ok(true);
-        }
-
-        // Fall back to filesystem for backward compatibility
         Ok(Self::global_path()?.exists())
     }
 
     /// Load the global identity
-    ///
-    /// Tries store backend (Keychain on macOS) first, then falls back to
-    /// filesystem for backward compatibility.
     pub fn load_global() -> Result<Self> {
-        use crate::core::store;
-
-        // Try store backend first (Keychain on macOS)
-        match store::load_identity("global") {
-            Ok(identity) => {
-                debug!("global identity loaded from store backend");
-                return Ok(identity);
-            }
-            Err(_) => {
-                // Fall through to filesystem fallback
-                debug!("store backend failed, trying filesystem");
-            }
-        }
-
-        // Fall back to filesystem for backward compatibility
         let global_dir = Self::global_dir()?;
         let key_path = Self::global_path()?;
 
@@ -235,7 +200,7 @@ impl Identity {
             .parse()
             .map_err(|e: &str| StoreError::InvalidFormat(e.to_string()))?;
 
-        debug!("global identity loaded from filesystem");
+        debug!("global identity loaded");
 
         Ok(Self {
             inner,
@@ -244,37 +209,42 @@ impl Identity {
     }
 
     /// Generate and save a global identity
-    ///
-    /// Uses the store backend (Keychain on macOS, filesystem otherwise).
-    /// Always writes the public key to filesystem for `dugout whoami` compatibility.
     pub fn generate_global() -> Result<Self> {
-        use crate::core::store;
-
         let global_dir = Self::global_dir()?;
         debug!(path = %global_dir.display(), "generating global identity");
 
+        let inner = x25519::Identity::generate();
+
         fs::create_dir_all(&global_dir).map_err(StoreError::WriteFailed)?;
 
-        // Generate keypair using store backend (Keychain on macOS)
-        let pubkey = store::generate_keypair("global")?;
-
-        // Load the identity back to get the source information
-        let identity = store::load_identity("global")?;
-
-        // Always write public key to filesystem for `dugout whoami`
+        let key_path = Self::global_path()?;
         let pubkey_path = Self::global_pubkey_path()?;
+
+        // Write private key
+        use age::secrecy::ExposeSecret;
+        let secret_str = inner.to_string();
+        fs::write(&key_path, format!("{}\n", secret_str.expose_secret()))
+            .map_err(StoreError::WriteFailed)?;
+
+        // Write public key
+        let pubkey = inner.to_public().to_string();
         fs::write(&pubkey_path, format!("{}\n", pubkey)).map_err(StoreError::WriteFailed)?;
 
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&key_path, fs::Permissions::from_mode(0o600))
+                .map_err(StoreError::WriteFailed)?;
             fs::set_permissions(&pubkey_path, fs::Permissions::from_mode(0o644))
                 .map_err(StoreError::WriteFailed)?;
         }
 
-        debug!("global identity saved via store backend");
+        debug!(path = %key_path.display(), "global identity saved");
 
-        Ok(identity)
+        Ok(Self {
+            inner,
+            source: IdentitySource::Filesystem(key_path),
+        })
     }
 
     /// Load identity from environment variables.

@@ -10,6 +10,10 @@ use tracing::warn;
 
 #[cfg(target_os = "macos")]
 use super::keychain::Keychain;
+#[cfg(target_os = "macos")]
+use crate::core::domain::Identity;
+#[cfg(target_os = "macos")]
+use crate::error::Result;
 
 /// Default backend selection
 ///
@@ -23,7 +27,10 @@ pub fn default_backend() -> Box<dyn Store> {
         if should_use_keychain() {
             info!("Using macOS Keychain backend (hardware-backed security)");
             if let Ok(keychain) = Keychain::new() {
-                return Box::new(keychain);
+                return Box::new(KeychainThenFilesystem {
+                    keychain,
+                    filesystem: Filesystem,
+                });
             } else {
                 warn!("Failed to initialize Keychain backend");
             }
@@ -46,6 +53,29 @@ fn should_use_keychain() -> bool {
     std::env::var("DUGOUT_NO_KEYCHAIN").is_err()
 }
 
+#[cfg(target_os = "macos")]
+struct KeychainThenFilesystem {
+    keychain: Keychain,
+    filesystem: Filesystem,
+}
+
+#[cfg(target_os = "macos")]
+impl Store for KeychainThenFilesystem {
+    fn generate_keypair(&self, project_id: &str) -> Result<String> {
+        self.keychain.generate_keypair(project_id)
+    }
+
+    fn load_identity(&self, project_id: &str) -> Result<Identity> {
+        self.keychain
+            .load_identity(project_id)
+            .or_else(|_| self.filesystem.load_identity(project_id))
+    }
+
+    fn has_key(&self, project_id: &str) -> bool {
+        self.keychain.has_key(project_id) || self.filesystem.has_key(project_id)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -55,21 +85,5 @@ mod tests {
         let backend = default_backend();
         // Just verify we can create a backend and call methods on it
         assert!(!backend.has_key("nonexistent")); // Should return false for non-existent key
-    }
-
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn test_should_use_keychain_by_default() {
-        // Remove env var if it exists
-        std::env::remove_var("DUGOUT_NO_KEYCHAIN");
-        assert!(should_use_keychain());
-    }
-
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn test_should_use_keychain_disabled_by_env() {
-        std::env::set_var("DUGOUT_NO_KEYCHAIN", "1");
-        assert!(!should_use_keychain());
-        std::env::remove_var("DUGOUT_NO_KEYCHAIN");
     }
 }

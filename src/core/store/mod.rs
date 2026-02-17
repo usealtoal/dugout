@@ -91,8 +91,8 @@ pub trait Store {
 /// Creates the key directory if it doesn't exist and stores the private
 /// key with restricted permissions (0600 on Unix).
 ///
-/// On macOS, stores in both Keychain (if available) and filesystem (as backup).
-/// On other platforms, stores in filesystem only.
+/// On macOS, stores in Keychain by default (or filesystem if Keychain is disabled).
+/// On other platforms, stores in filesystem.
 ///
 /// # Arguments
 ///
@@ -112,7 +112,7 @@ pub fn generate_keypair(project_id: &str) -> Result<String> {
 /// Load the private key (identity) for a project.
 ///
 /// On macOS, tries Keychain first, then falls back to filesystem.
-/// On other platforms, loads from filesystem only.
+/// On other platforms, loads from filesystem.
 ///
 /// # Arguments
 ///
@@ -132,8 +132,8 @@ pub fn load_identity(project_id: &str) -> Result<Identity> {
 
 /// Check if a keypair exists for a project.
 ///
-/// On macOS, checks both Keychain and filesystem.
-/// On other platforms, checks filesystem only.
+/// On macOS, checks Keychain then filesystem.
+/// On other platforms, checks filesystem.
 ///
 /// # Arguments
 ///
@@ -144,4 +144,17 @@ pub fn load_identity(project_id: &str) -> Result<Identity> {
 /// `true` if an identity key exists, `false` otherwise.
 pub fn has_key(project_id: &str) -> bool {
     default_backend().has_key(project_id)
+}
+
+/// Check if the global identity exists in the active backend or filesystem.
+pub fn has_global() -> Result<bool> {
+    if has_key("global") {
+        return Ok(true);
+    }
+    Ok(Identity::has_global()?)
+}
+
+/// Load global identity from active backend, then filesystem fallback.
+pub fn load_global_identity() -> Result<Identity> {
+    load_identity("global").or_else(|_| Identity::load_global())
 }

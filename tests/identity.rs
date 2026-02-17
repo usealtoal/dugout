@@ -5,7 +5,10 @@
 mod support;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use support::*;
+
+static CWD_LOCK: Mutex<()> = Mutex::new(());
 
 #[test]
 fn test_identity_generate_creates_file() {
@@ -13,11 +16,13 @@ fn test_identity_generate_creates_file() {
     use std::env;
     use tempfile::TempDir;
 
-    let original_dir = env::current_dir().unwrap();
+    let _cwd_guard = CWD_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let original_dir = env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
     let temp_dir = TempDir::new().unwrap();
     let home_dir = TempDir::new().unwrap();
 
     env::set_var("HOME", home_dir.path());
+    env::set_var("DUGOUT_NO_KEYCHAIN", "1");
     env::set_current_dir(&temp_dir).unwrap();
 
     // Init vault
@@ -102,11 +107,13 @@ fn test_identity_roundtrip() {
     use std::env;
     use tempfile::TempDir;
 
-    let original_dir = env::current_dir().unwrap();
+    let _cwd_guard = CWD_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let original_dir = env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
     let temp_dir = TempDir::new().unwrap();
     let home_dir = TempDir::new().unwrap();
 
     env::set_var("HOME", home_dir.path());
+    env::set_var("DUGOUT_NO_KEYCHAIN", "1");
     env::set_current_dir(&temp_dir).unwrap();
 
     // Generate identity via init
@@ -135,11 +142,13 @@ fn test_identity_insecure_permissions_fail_closed() {
     use std::os::unix::fs::PermissionsExt;
     use tempfile::TempDir;
 
-    let original_dir = env::current_dir().unwrap();
+    let _cwd_guard = CWD_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let original_dir = env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
     let temp_dir = TempDir::new().unwrap();
     let home_dir = TempDir::new().unwrap();
 
     env::set_var("HOME", home_dir.path());
+    env::set_var("DUGOUT_NO_KEYCHAIN", "1");
     env::set_current_dir(&temp_dir).unwrap();
 
     // Init vault

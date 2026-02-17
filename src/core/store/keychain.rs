@@ -16,7 +16,7 @@ pub struct Keychain {
 
 impl Keychain {
     /// Service name for all dugout identities in Keychain
-    const SERVICE_NAME: &'static str = "com.dugout";
+    const SERVICE_NAME: &'static str = "com.usealtoal.dugout";
 
     /// Create a new Keychain backend
     pub fn new() -> Result<Self> {
@@ -74,7 +74,7 @@ impl Keychain {
                     Err(StoreError::KeychainAccessDenied.into())
                 } else {
                     Err(StoreError::KeychainError(format!(
-                        "Keychain storage failed: {}. Use --filesystem flag to store locally instead.",
+                        "Keychain storage failed: {}. Set DUGOUT_NO_KEYCHAIN=1 to store locally instead.",
                         e
                     )).into())
                 }

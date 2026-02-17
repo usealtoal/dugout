@@ -249,12 +249,16 @@ pub fn ensure_gitignore() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Mutex, MutexGuard};
     use tempfile::TempDir;
 
     struct TestContext {
         _tmp: TempDir,
         _original_dir: std::path::PathBuf,
+        _cwd_guard: MutexGuard<'static, ()>,
     }
+
+    static CWD_LOCK: Mutex<()> = Mutex::new(());
 
     impl Drop for TestContext {
         fn drop(&mut self) {
@@ -264,12 +268,15 @@ mod tests {
     }
 
     fn setup_test_dir() -> TestContext {
+        let cwd_guard = CWD_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let tmp = TempDir::new().unwrap();
-        let original_dir = std::env::current_dir().unwrap();
+        let original_dir =
+            std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("/"));
         std::env::set_current_dir(tmp.path()).unwrap();
         TestContext {
             _tmp: tmp,
             _original_dir: original_dir,
+            _cwd_guard: cwd_guard,
         }
     }
 
