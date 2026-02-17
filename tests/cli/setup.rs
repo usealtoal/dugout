@@ -11,9 +11,12 @@ fn test_setup_creates_global_identity() {
     assert_success(&output);
     assert_stdout_contains(&output, "generated identity");
 
-    // Check that ~/.dugout/identity exists
-    let identity_path = t.home.path().join(".dugout/identity");
-    assert!(identity_path.exists(), "~/.dugout/identity should exist");
+    // Check that ~/.dugout/identity.key exists
+    let identity_path = t.home.path().join(".dugout/identity.key");
+    assert!(
+        identity_path.exists(),
+        "~/.dugout/identity.key should exist"
+    );
 
     // Check that ~/.dugout/identity.pub exists
     let pubkey_path = t.home.path().join(".dugout/identity.pub");

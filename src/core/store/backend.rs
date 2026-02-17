@@ -31,8 +31,6 @@ pub fn default_backend() -> Box<dyn Store> {
             info!("Using Filesystem backend (DUGOUT_NO_KEYCHAIN=1)");
         }
     }
-
-    #[cfg(not(target_os = "macos"))]
     info!("Using Filesystem backend");
 
     Box::new(Filesystem)

@@ -159,7 +159,7 @@ impl Identity {
     /// Other projects return `~/.dugout/keys/<project_id>/`
     pub fn project_dir(project_id: &str) -> Result<PathBuf> {
         if project_id == "global" {
-            // Global identity uses legacy path at ~/.dugout/ (not ~/.dugout/keys/global/)
+            // Global identity uses path at ~/.dugout/ (not ~/.dugout/keys/global/)
             return Self::global_dir();
         }
         Ok(Self::base_dir()?.join(project_id))
@@ -170,9 +170,9 @@ impl Identity {
         Ok(Self::resolve_home()?.join(".dugout"))
     }
 
-    /// Global identity file path (`~/.dugout/identity`)
+    /// Global identity file path (`~/.dugout/identity.key`)
     pub fn global_path() -> Result<PathBuf> {
-        Ok(Self::global_dir()?.join("identity"))
+        Ok(Self::global_dir()?.join("identity.key"))
     }
 
     /// Global public key path (`~/.dugout/identity.pub`)
@@ -335,7 +335,7 @@ impl Identity {
         let pubkey_path = Self::global_pubkey_path()?;
 
         if !pubkey_path.exists() {
-            return Err(StoreError::NoPrivateKey("~/.dugout/identity".to_string()).into());
+            return Err(StoreError::NoPrivateKey("~/.dugout/identity.key".to_string()).into());
         }
 
         let contents = fs::read_to_string(&pubkey_path).map_err(StoreError::ReadFailed)?;
