@@ -3,8 +3,6 @@
 //! This module provides a Store implementation that uses the macOS Keychain
 //! to store age identities with hardware-backed security.
 
-#![cfg(target_os = "macos")]
-
 use tracing::{debug, error, info};
 
 use crate::core::domain::identity::{Identity, IdentitySource};

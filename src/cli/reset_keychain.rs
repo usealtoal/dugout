@@ -2,8 +2,6 @@
 //!
 //! This command removes dugout identities from the macOS Keychain.
 
-#![cfg(target_os = "macos")]
-
 use crate::cli::output;
 use crate::core::domain::identity::Identity;
 use crate::core::store::keychain::Keychain;

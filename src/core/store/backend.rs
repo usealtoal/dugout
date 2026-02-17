@@ -4,7 +4,9 @@
 //! based on platform and explicit user configuration.
 
 use super::{Filesystem, Store};
-use tracing::{info, warn};
+use tracing::info;
+#[cfg(target_os = "macos")]
+use tracing::warn;
 
 #[cfg(target_os = "macos")]
 use super::keychain::Keychain;
@@ -44,12 +46,6 @@ pub fn default_backend() -> Box<dyn Store> {
 fn should_use_keychain() -> bool {
     // Use keychain unless explicitly disabled
     std::env::var("DUGOUT_NO_KEYCHAIN").is_err()
-}
-
-#[cfg(not(target_os = "macos"))]
-fn should_use_keychain() -> bool {
-    // Non-macOS platforms don't have keychain
-    false
 }
 
 #[cfg(test)]

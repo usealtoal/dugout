@@ -3,8 +3,6 @@
 //! This command migrates existing file-based age identities to the macOS Keychain
 //! for enhanced security with hardware-backed storage and biometric authentication.
 
-#![cfg(target_os = "macos")]
-
 use std::path::{Path, PathBuf};
 
 use crate::cli::output;
