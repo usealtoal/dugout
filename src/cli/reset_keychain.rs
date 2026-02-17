@@ -4,10 +4,10 @@
 
 #![cfg(target_os = "macos")]
 
+use crate::cli::output;
 use crate::core::domain::identity::Identity;
 use crate::core::store::keychain::Keychain;
 use crate::error::Result;
-use crate::cli::output;
 
 /// Execute the Keychain reset
 pub fn execute(account: Option<String>, all: bool, force: bool) -> Result<()> {
@@ -137,7 +137,8 @@ fn confirm_all(accounts: &[String]) -> Result<bool> {
     println!();
 
     Confirm::new()
-        .with_prompt(format!("Remove {} identit{} from Keychain?",
+        .with_prompt(format!(
+            "Remove {} identit{} from Keychain?",
             accounts.len(),
             if accounts.len() == 1 { "y" } else { "ies" }
         ))

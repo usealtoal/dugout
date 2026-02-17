@@ -349,6 +349,10 @@ pub fn execute(command: Command, vault: Option<String>) -> crate::error::Result<
         #[cfg(target_os = "macos")]
         MigrateKeychain { delete, force } => migrate_keychain::execute(delete, force),
         #[cfg(target_os = "macos")]
-        ResetKeychain { account, all, force } => reset_keychain::execute(account, all, force),
+        ResetKeychain {
+            account,
+            all,
+            force,
+        } => reset_keychain::execute(account, all, force),
     }
 }

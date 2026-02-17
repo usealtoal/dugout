@@ -40,9 +40,11 @@ impl Keychain {
         // Check if key already exists
         if !force && self.keychain_has_key(account) {
             error!(account = %account, "Identity already exists in Keychain");
-            return Err(StoreError::KeychainError(
-                format!("Identity '{}' already exists in Keychain. Use --force to overwrite.", account)
-            ).into());
+            return Err(StoreError::KeychainError(format!(
+                "Identity '{}' already exists in Keychain. Use --force to overwrite.",
+                account
+            ))
+            .into());
         }
 
         // Delete existing entry if force=true
@@ -92,20 +94,16 @@ impl Keychain {
         match get_generic_password(&self.service, account) {
             Ok(password_bytes) => {
                 // Convert bytes to string
-                let secret_str = String::from_utf8(password_bytes.to_vec())
-                    .map_err(|e| {
-                        error!(error = %e, "Invalid UTF-8 in Keychain data");
-                        StoreError::InvalidFormat(format!("Invalid UTF-8 in Keychain data: {}", e))
-                    })?;
+                let secret_str = String::from_utf8(password_bytes.to_vec()).map_err(|e| {
+                    error!(error = %e, "Invalid UTF-8 in Keychain data");
+                    StoreError::InvalidFormat(format!("Invalid UTF-8 in Keychain data: {}", e))
+                })?;
 
                 // Parse as age identity
-                let inner: x25519::Identity = secret_str
-                    .trim()
-                    .parse()
-                    .map_err(|e: &str| {
-                        error!(error = %e, "Invalid age identity format in Keychain");
-                        StoreError::InvalidFormat(e.to_string())
-                    })?;
+                let inner: x25519::Identity = secret_str.trim().parse().map_err(|e: &str| {
+                    error!(error = %e, "Invalid age identity format in Keychain");
+                    StoreError::InvalidFormat(e.to_string())
+                })?;
 
                 info!(account = %account, "✓ Loaded identity from Keychain");
 
@@ -163,7 +161,10 @@ impl Keychain {
                     Err(StoreError::KeychainAccessDenied.into())
                 } else {
                     error!(account = %account, error = %e, "Failed to delete from Keychain");
-                    Err(StoreError::KeychainError(format!("Failed to delete from Keychain: {}", e)).into())
+                    Err(
+                        StoreError::KeychainError(format!("Failed to delete from Keychain: {}", e))
+                            .into(),
+                    )
                 }
             }
         }
@@ -237,8 +238,8 @@ impl super::Store for Keychain {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::super::Store;  // Bring Store trait into scope
+    use super::super::Store;
+    use super::*; // Bring Store trait into scope
 
     #[test]
     fn test_keychain_backend_creation() {

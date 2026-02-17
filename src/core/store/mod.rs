@@ -30,14 +30,14 @@
 use crate::core::domain::Identity;
 use crate::error::Result;
 
-mod fs;
 mod backend;
+mod fs;
 
 #[cfg(target_os = "macos")]
 pub mod keychain;
 
-pub use fs::Filesystem;
 pub use backend::default_backend;
+pub use fs::Filesystem;
 
 /// Key storage trait.
 ///

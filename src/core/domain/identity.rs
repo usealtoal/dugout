@@ -277,7 +277,6 @@ impl Identity {
         Ok(identity)
     }
 
-
     /// Load identity from environment variables.
     ///
     /// Checks in order:

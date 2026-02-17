@@ -7,10 +7,10 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::cli::output;
 use crate::core::domain::identity::Identity;
 use crate::core::store::keychain::Keychain;
 use crate::error::{Result, StoreError};
-use crate::cli::output;
 
 /// Execute the Keychain migration
 pub fn execute(delete: bool, force: bool) -> Result<()> {
@@ -112,12 +112,7 @@ pub fn execute(delete: bool, force: bool) -> Result<()> {
 }
 
 /// Migrate a single identity to Keychain
-fn migrate_identity(
-    keychain: &Keychain,
-    path: &Path,
-    account: &str,
-    force: bool,
-) -> Result<()> {
+fn migrate_identity(keychain: &Keychain, path: &Path, account: &str, force: bool) -> Result<()> {
     // Read the identity file
     let contents = std::fs::read_to_string(path).map_err(StoreError::ReadFailed)?;
 
@@ -142,9 +137,10 @@ fn migrate_identity(
         }
         Err(e) => {
             // Verification failed - this is an error
-            return Err(StoreError::MigrationFailed(
-                format!("Failed to verify Keychain storage: {}", e),
-            )
+            return Err(StoreError::MigrationFailed(format!(
+                "Failed to verify Keychain storage: {}",
+                e
+            ))
             .into());
         }
     }

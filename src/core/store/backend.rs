@@ -60,7 +60,7 @@ mod tests {
     fn test_default_backend_returns_store() {
         let backend = default_backend();
         // Just verify we can create a backend and call methods on it
-        assert!(!backend.has_key("nonexistent"));  // Should return false for non-existent key
+        assert!(!backend.has_key("nonexistent")); // Should return false for non-existent key
     }
 
     #[cfg(target_os = "macos")]
