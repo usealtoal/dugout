@@ -7,13 +7,17 @@ use dugout::Vault;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Mutex, MutexGuard};
 use tempfile::TempDir;
 
 struct TestEnv {
     _dir: TempDir,
     _home: TempDir,
     original_dir: PathBuf,
+    _cwd_guard: MutexGuard<'static, ()>,
 }
+
+static CWD_LOCK: Mutex<()> = Mutex::new(());
 
 impl Drop for TestEnv {
     fn drop(&mut self) {
@@ -22,17 +26,20 @@ impl Drop for TestEnv {
 }
 
 fn setup() -> TestEnv {
-    let original_dir = env::current_dir().unwrap();
+    let cwd_guard = CWD_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let original_dir = env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
     let temp_dir = TempDir::new().unwrap();
     let home_dir = TempDir::new().unwrap();
 
     env::set_var("HOME", home_dir.path());
+    env::set_var("DUGOUT_NO_KEYCHAIN", "1");
     env::set_current_dir(&temp_dir).unwrap();
 
     TestEnv {
         _dir: temp_dir,
         _home: home_dir,
         original_dir,
+        _cwd_guard: cwd_guard,
     }
 }
 

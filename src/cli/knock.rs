@@ -6,6 +6,7 @@ use std::io::{self, IsTerminal};
 use crate::cli::output;
 use crate::core::config::Config;
 use crate::core::domain::Identity;
+use crate::core::store;
 use crate::core::vault::validate_member_name;
 use crate::error::Result;
 
@@ -14,7 +15,7 @@ pub fn execute(name: Option<String>, vault: Option<String>) -> Result<()> {
     let vault_name = crate::cli::resolve::resolve_vault(vault.as_deref())?;
 
     // Check if global identity exists
-    if !Identity::has_global()? {
+    if !store::has_global()? {
         output::error("no identity found");
         output::hint("run: dugout setup");
         return Err(

@@ -2,6 +2,7 @@
 //!
 //! Wraps an age private key with secure memory handling.
 
+use std::borrow::Cow;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -14,13 +15,32 @@ use crate::core::types::PublicKey;
 use crate::error::ValidationError;
 use crate::error::{Result, StoreError};
 
+/// Source of an identity
+#[derive(Debug, Clone)]
+pub enum IdentitySource {
+    /// Identity loaded from filesystem
+    Filesystem(PathBuf),
+    /// Identity loaded from macOS Keychain
+    #[cfg(target_os = "macos")]
+    Keychain { account: String },
+    /// Identity loaded from environment variable
+    Environment { name: String },
+}
+
 /// A private key identity for decrypting secrets
 pub struct Identity {
     inner: x25519::Identity,
-    path: PathBuf,
+    source: IdentitySource,
 }
 
 impl Identity {
+    /// Create a new Identity from components
+    ///
+    /// This constructor is primarily for use by storage backends (e.g., Keychain)
+    pub fn from_parts(inner: x25519::Identity, source: IdentitySource) -> Self {
+        Self { inner, source }
+    }
+
     /// Load an identity from the key directory
     pub fn load(key_dir: &Path) -> Result<Self> {
         let key_path = key_dir.join("identity.key");
@@ -47,7 +67,7 @@ impl Identity {
 
         Ok(Self {
             inner,
-            path: key_path,
+            source: IdentitySource::Filesystem(key_path),
         })
     }
 
@@ -79,7 +99,7 @@ impl Identity {
 
         Ok(Self {
             inner,
-            path: key_path,
+            source: IdentitySource::Filesystem(key_path),
         })
     }
 
@@ -93,9 +113,23 @@ impl Identity {
         &self.inner
     }
 
-    /// Key file path
-    pub fn path(&self) -> &Path {
-        &self.path
+    /// Key file path or virtual path for non-filesystem sources
+    pub fn path(&self) -> Cow<'_, Path> {
+        match &self.source {
+            IdentitySource::Filesystem(p) => Cow::Borrowed(p),
+            #[cfg(target_os = "macos")]
+            IdentitySource::Keychain { account } => {
+                Cow::Owned(PathBuf::from(format!("<keychain:{}>", account)))
+            }
+            IdentitySource::Environment { name } => {
+                Cow::Owned(PathBuf::from(format!("<env:{}>", name)))
+            }
+        }
+    }
+
+    /// Get the source of this identity
+    pub fn source(&self) -> &IdentitySource {
+        &self.source
     }
 
     /// Resolve the user's home directory.
@@ -115,7 +149,7 @@ impl Identity {
     }
 
     /// Base directory for all dugout keys (`~/.dugout/keys`)
-    fn base_dir() -> Result<PathBuf> {
+    pub fn base_dir() -> Result<PathBuf> {
         Ok(Self::resolve_home()?.join(constants::KEY_DIR))
     }
 
@@ -125,17 +159,17 @@ impl Identity {
     }
 
     /// Global identity directory (`~/.dugout/`)
-    pub fn global_dir() -> Result<PathBuf> {
+    fn global_dir() -> Result<PathBuf> {
         Ok(Self::resolve_home()?.join(".dugout"))
     }
 
-    /// Global identity file path (`~/.dugout/identity`)
+    /// Global identity file path (`~/.dugout/identity.key`)
     pub fn global_path() -> Result<PathBuf> {
-        Ok(Self::global_dir()?.join("identity"))
+        Ok(Self::global_dir()?.join("identity.key"))
     }
 
     /// Global public key path (`~/.dugout/identity.pub`)
-    pub fn global_pubkey_path() -> Result<PathBuf> {
+    fn global_pubkey_path() -> Result<PathBuf> {
         Ok(Self::global_dir()?.join("identity.pub"))
     }
 
@@ -170,7 +204,7 @@ impl Identity {
 
         Ok(Self {
             inner,
-            path: key_path,
+            source: IdentitySource::Filesystem(key_path),
         })
     }
 
@@ -196,7 +230,6 @@ impl Identity {
         let pubkey = inner.to_public().to_string();
         fs::write(&pubkey_path, format!("{}\n", pubkey)).map_err(StoreError::WriteFailed)?;
 
-        // Restrict permissions on key files (Unix only)
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
@@ -210,7 +243,7 @@ impl Identity {
 
         Ok(Self {
             inner,
-            path: key_path,
+            source: IdentitySource::Filesystem(key_path),
         })
     }
 
@@ -228,7 +261,9 @@ impl Identity {
             if let Ok(inner) = key.trim().parse::<x25519::Identity>() {
                 return Some(Self {
                     inner,
-                    path: PathBuf::from("<env:DUGOUT_IDENTITY>"),
+                    source: IdentitySource::Environment {
+                        name: "DUGOUT_IDENTITY".to_string(),
+                    },
                 });
             }
             debug!("DUGOUT_IDENTITY value is not a valid age key");
@@ -251,7 +286,12 @@ impl Identity {
 
             if let Ok(contents) = fs::read_to_string(&path) {
                 if let Ok(inner) = contents.trim().parse::<x25519::Identity>() {
-                    return Some(Self { inner, path });
+                    return Some(Self {
+                        inner,
+                        source: IdentitySource::Environment {
+                            name: "DUGOUT_IDENTITY_FILE".to_string(),
+                        },
+                    });
                 }
             }
             debug!("DUGOUT_IDENTITY_FILE contents are not a valid age key");
@@ -265,7 +305,7 @@ impl Identity {
         let pubkey_path = Self::global_pubkey_path()?;
 
         if !pubkey_path.exists() {
-            return Err(StoreError::NoPrivateKey("~/.dugout/identity".to_string()).into());
+            return Err(StoreError::NoPrivateKey("~/.dugout/identity.key".to_string()).into());
         }
 
         let contents = fs::read_to_string(&pubkey_path).map_err(StoreError::ReadFailed)?;
@@ -296,7 +336,7 @@ impl Identity {
 impl std::fmt::Debug for Identity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Identity")
-            .field("path", &self.path)
+            .field("source", &self.source)
             .field("public_key", &self.public_key())
             .finish()
     }

@@ -4,6 +4,7 @@ use crate::cli::output;
 use crate::core::config::Config;
 use crate::core::detect::ProjectKind;
 use crate::core::domain::Identity;
+use crate::core::store;
 use crate::error::Result;
 
 /// Auto-detect project and run with secrets.
@@ -21,7 +22,7 @@ pub fn execute(vault: Option<String>) -> Result<()> {
     // Check if user has access
     let config = Config::load_from(vault_name.as_deref())?;
 
-    if Identity::has_global()? {
+    if store::has_global()? {
         let pubkey = Identity::load_global_pubkey()?;
 
         if !config.recipients.values().any(|k| k == &pubkey) {

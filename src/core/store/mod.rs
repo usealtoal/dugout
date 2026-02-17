@@ -30,8 +30,13 @@
 use crate::core::domain::Identity;
 use crate::error::Result;
 
+mod backend;
 mod fs;
 
+#[cfg(target_os = "macos")]
+pub mod keychain;
+
+pub use backend::default_backend;
 pub use fs::Filesystem;
 
 /// Key storage trait.
@@ -86,6 +91,9 @@ pub trait Store {
 /// Creates the key directory if it doesn't exist and stores the private
 /// key with restricted permissions (0600 on Unix).
 ///
+/// On macOS, stores in Keychain by default (or filesystem if Keychain is disabled).
+/// On other platforms, stores in filesystem.
+///
 /// # Arguments
 ///
 /// * `project_id` - Unique identifier for the project
@@ -98,10 +106,13 @@ pub trait Store {
 ///
 /// Returns `StoreError` if key generation or file operations fail.
 pub fn generate_keypair(project_id: &str) -> Result<String> {
-    Filesystem.generate_keypair(project_id)
+    default_backend().generate_keypair(project_id)
 }
 
 /// Load the private key (identity) for a project.
+///
+/// On macOS, tries Keychain first, then falls back to filesystem.
+/// On other platforms, loads from filesystem.
 ///
 /// # Arguments
 ///
@@ -116,10 +127,13 @@ pub fn generate_keypair(project_id: &str) -> Result<String> {
 /// Returns `StoreError::NoPrivateKey` if the key doesn't exist,
 /// or `StoreError::InvalidFormat` if the key is malformed.
 pub fn load_identity(project_id: &str) -> Result<Identity> {
-    Filesystem.load_identity(project_id)
+    default_backend().load_identity(project_id)
 }
 
 /// Check if a keypair exists for a project.
+///
+/// On macOS, checks Keychain then filesystem.
+/// On other platforms, checks filesystem.
 ///
 /// # Arguments
 ///
@@ -127,7 +141,20 @@ pub fn load_identity(project_id: &str) -> Result<Identity> {
 ///
 /// # Returns
 ///
-/// `true` if an identity key file exists, `false` otherwise.
+/// `true` if an identity key exists, `false` otherwise.
 pub fn has_key(project_id: &str) -> bool {
-    Filesystem.has_key(project_id)
+    default_backend().has_key(project_id)
+}
+
+/// Check if the global identity exists in the active backend or filesystem.
+pub fn has_global() -> Result<bool> {
+    if has_key("global") {
+        return Ok(true);
+    }
+    Identity::has_global()
+}
+
+/// Load global identity from active backend, then filesystem fallback.
+pub fn load_global_identity() -> Result<Identity> {
+    load_identity("global").or_else(|_| Identity::load_global())
 }

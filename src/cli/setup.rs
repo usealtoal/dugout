@@ -2,12 +2,13 @@
 
 use crate::cli::output;
 use crate::core::domain::Identity;
+use crate::core::store;
 use crate::error::Result;
 
 /// Generate global identity.
 pub fn execute(force: bool, _name: Option<String>, output_path: Option<String>) -> Result<()> {
     // Check if identity already exists
-    if Identity::has_global()? && !force {
+    if store::has_global()? && !force {
         let pubkey = Identity::load_global_pubkey()?;
         output::warn("identity already exists");
         output::hint(&format!("public key: {}", pubkey));

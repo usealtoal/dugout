@@ -34,6 +34,7 @@ fn test_concurrent_reads() {
                     .args(["get", key])
                     .env("HOME", &home)
                     .env("USERPROFILE", &home)
+                    .env("DUGOUT_NO_KEYCHAIN", "1")
                     .current_dir(&dir)
                     .output()
                     .expect("failed to run dugout");
@@ -70,6 +71,7 @@ fn test_concurrent_writes_different_keys() {
                     .args(["set", &key, &value])
                     .env("HOME", &home)
                     .env("USERPROFILE", &home)
+                    .env("DUGOUT_NO_KEYCHAIN", "1")
                     .current_dir(&dir)
                     .output()
                     .expect("failed to run dugout");
@@ -120,6 +122,7 @@ fn test_concurrent_read_write() {
                 .args(["get", "SHARED_KEY"])
                 .env("HOME", &home)
                 .env("USERPROFILE", &home)
+                .env("DUGOUT_NO_KEYCHAIN", "1")
                 .current_dir(&dir)
                 .output()
                 .expect("failed to run dugout");
@@ -137,6 +140,7 @@ fn test_concurrent_read_write() {
                 .args(["set", "SHARED_KEY", "updated_value", "--force"])
                 .env("HOME", &home)
                 .env("USERPROFILE", &home)
+                .env("DUGOUT_NO_KEYCHAIN", "1")
                 .current_dir(&dir)
                 .output()
                 .expect("failed to run dugout");
@@ -372,6 +376,7 @@ fn test_atomic_config_survives_concurrent_reads() {
                         .args(["list"])
                         .env("HOME", &home)
                         .env("USERPROFILE", &home)
+                        .env("DUGOUT_NO_KEYCHAIN", "1")
                         .current_dir(&dir)
                         .output()
                         .expect("failed to run dugout");
@@ -752,6 +757,7 @@ fn test_list_during_modifications() {
                 .args(["list"])
                 .env("HOME", &home)
                 .env("USERPROFILE", &home)
+                .env("DUGOUT_NO_KEYCHAIN", "1")
                 .current_dir(&dir)
                 .output()
                 .expect("failed to run dugout");
