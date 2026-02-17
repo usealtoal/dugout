@@ -151,7 +151,7 @@ pub fn has_global() -> Result<bool> {
     if has_key("global") {
         return Ok(true);
     }
-    Ok(Identity::has_global()?)
+    Identity::has_global()
 }
 
 /// Load global identity from active backend, then filesystem fallback.
