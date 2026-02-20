@@ -16,7 +16,7 @@ pub struct Keychain {
 
 impl Keychain {
     /// Service name for all dugout identities in Keychain
-    const SERVICE_NAME: &'static str = "com.usealtoal.dugout";
+    const SERVICE_NAME: &'static str = "com.usemantle.dugout";
 
     /// Create a new Keychain backend
     pub fn new() -> Result<Self> {

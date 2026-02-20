@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dugout
-        run: curl -LsSf https://raw.githubusercontent.com/usealtoal/dugout/main/scripts/install.sh | sh
+        run: curl -LsSf https://raw.githubusercontent.com/usemantle/dugout/main/scripts/install.sh | sh
 
       - name: Deploy
         env:
@@ -68,7 +68,7 @@ jobs:
 ```yaml
 deploy:
   script:
-    - curl -LsSf https://raw.githubusercontent.com/usealtoal/dugout/main/scripts/install.sh | sh
+    - curl -LsSf https://raw.githubusercontent.com/usemantle/dugout/main/scripts/install.sh | sh
     - dugout run -- ./deploy.sh
   variables:
     DUGOUT_IDENTITY: $DUGOUT_IDENTITY
@@ -78,7 +78,7 @@ deploy:
 
 ```dockerfile
 FROM debian:bookworm-slim
-RUN curl -LsSf https://raw.githubusercontent.com/usealtoal/dugout/main/scripts/install.sh | sh
+RUN curl -LsSf https://raw.githubusercontent.com/usemantle/dugout/main/scripts/install.sh | sh
 COPY . /app
 WORKDIR /app
 CMD ["dugout", "run", "--", "./start.sh"]

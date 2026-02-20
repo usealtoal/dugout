@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-REPO="usealtoal/dugout"
+REPO="usemantle/dugout"
 INSTALL_DIR="${DUGOUT_INSTALL_DIR:-$HOME/.dugout/bin}"
 NO_MODIFY_PATH="${DUGOUT_NO_MODIFY_PATH:-}"
 

@@ -150,7 +150,7 @@ EOF
     echo
     echo -e "${BOLD}${GREEN}✨ Demo complete!${RESET}"
     echo
-    echo -e "${DIM}Learn more: https://github.com/usealtoal/dugout${RESET}"
+    echo -e "${DIM}Learn more: https://github.com/usemantle/dugout${RESET}"
     sleep 2
 }
 

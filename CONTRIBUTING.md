@@ -5,7 +5,7 @@
 [Rust](https://rustup.rs/) is required to build dugout.
 
 ```bash
-git clone https://github.com/usealtoal/dugout
+git clone https://github.com/usemantle/dugout
 cd dugout
 cargo build
 ```
@@ -38,7 +38,7 @@ cargo bench
 
 ## Reporting Issues
 
-Use [GitHub Issues](https://github.com/usealtoal/dugout/issues). Include:
+Use [GitHub Issues](https://github.com/usemantle/dugout/issues). Include:
 
 - dugout version (`dugout --version`)
 - OS and architecture

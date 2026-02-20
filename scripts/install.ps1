@@ -28,7 +28,7 @@ param (
 
 $ErrorActionPreference = "Stop"
 
-$repo = "usealtoal/dugout"
+$repo = "usemantle/dugout"
 
 if ($Help) {
     Get-Help $PSCommandPath -Detailed

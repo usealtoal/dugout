@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/usealtoal/dugout/actions"><img src="https://github.com/usealtoal/dugout/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/usemantle/dugout/actions"><img src="https://github.com/usemantle/dugout/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://crates.io/crates/dugout"><img src="https://img.shields.io/crates/v/dugout.svg" alt="Crates.io"></a>
   <a href="LICENSE-MIT"><img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg" alt="License"></a>
 </p>
@@ -47,18 +47,18 @@ Install dugout with our standalone installers:
 
 ```bash
 # On macOS and Linux.
-curl -LsSf https://raw.githubusercontent.com/usealtoal/dugout/main/scripts/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/usemantle/dugout/main/scripts/install.sh | sh
 ```
 
 ```bash
 # On Windows.
-powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/usealtoal/dugout/main/scripts/install.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/usemantle/dugout/main/scripts/install.ps1 | iex"
 ```
 
 Or, with [Homebrew](https://brew.sh):
 
 ```bash
-brew install usealtoal/tap/dugout
+brew install usemantle/tap/dugout
 ```
 
 Or, from [crates.io](https://crates.io/crates/dugout):
@@ -70,7 +70,7 @@ cargo install dugout
 Or, from source:
 
 ```bash
-git clone https://github.com/usealtoal/dugout && cd dugout
+git clone https://github.com/usemantle/dugout && cd dugout
 cargo install --path .
 ```
 
@@ -186,7 +186,7 @@ open /System/Applications/Utilities/Keychain\ Access.app
 
 # Search for "dugout" in the search box
 # Look for items with:
-#   - Service: "com.usealtoal.dugout"
+#   - Service: "com.usemantle.dugout"
 #   - Account: "global" or your project ID
 ```
 
@@ -194,10 +194,10 @@ Or use the command line:
 
 ```bash
 # Check for global identity in Keychain
-security find-generic-password -s "com.usealtoal.dugout" -a "global"
+security find-generic-password -s "com.usemantle.dugout" -a "global"
 
 # Check for project-specific identity
-security find-generic-password -s "com.usealtoal.dugout" -a "<project-id>"
+security find-generic-password -s "com.usemantle.dugout" -a "<project-id>"
 ```
 
 If the key exists in Keychain, you'll see output like:
@@ -206,7 +206,7 @@ keychain: "/Users/you/Library/Keychains/login.keychain-db"
 class: "genp"
 attributes:
     "acct"<blob>="global"
-    "svce"<blob>="com.usealtoal.dugout"
+    "svce"<blob>="com.usemantle.dugout"
     ...
 ```
 
@@ -261,7 +261,7 @@ See the full [KMS Integration Guide](KMS.md) for AWS, GCP, IAM setup, and multi-
 ### GitHub Actions
 
 ```yaml
-- uses: usealtoal/setup-dugout@v1
+- uses: usemantle/setup-dugout@v1
   with:
     identity: ${{ secrets.DUGOUT_IDENTITY }}
   env:
@@ -272,7 +272,7 @@ See the full [KMS Integration Guide](KMS.md) for AWS, GCP, IAM setup, and multi-
     DUGOUT_NO_KEYCHAIN: "1"  # Required on macOS runners
 ```
 
-See [`usealtoal/setup-dugout`](https://github.com/usealtoal/setup-dugout) for version pinning, KMS-only mode, and more examples.
+See [`usemantle/setup-dugout`](https://github.com/usemantle/setup-dugout) for version pinning, KMS-only mode, and more examples.
 
 ### Other environments
 

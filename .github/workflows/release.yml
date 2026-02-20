@@ -132,7 +132,7 @@ jobs:
       - name: Checkout tap
         uses: actions/checkout@v4
         with:
-          repository: usealtoal/homebrew-tap
+          repository: usemantle/homebrew-tap
           token: ${{ secrets.TAP_TOKEN }}
 
       - name: Download sha256 files

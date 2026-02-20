@@ -22,9 +22,9 @@ The `knock`/`admit` workflow is what I'm most excited about — it turns access 
 
 Written in Rust, ~4k lines, MIT/Apache-2.0 dual licensed.
 
-GitHub: https://github.com/usealtoal/dugout
-Install: `curl -LsSf https://raw.githubusercontent.com/usealtoal/dugout/main/scripts/install.sh | sh`
-Homebrew: `brew install usealtoal/tap/dugout`
+GitHub: https://github.com/usemantle/dugout
+Install: `curl -LsSf https://raw.githubusercontent.com/usemantle/dugout/main/scripts/install.sh | sh`
+Homebrew: `brew install usemantle/tap/dugout`
 
 Would love feedback on the approach and any edge cases I'm missing!
 
@@ -65,7 +65,7 @@ bob$ dugout admit alice
 # No tokens, no dashboards, no rotation
 ```
 
-GitHub: https://github.com/usealtoal/dugout
+GitHub: https://github.com/usemantle/dugout
 
 Feedback welcome — especially on the encryption approach and any security concerns. This is early days and I want to get it right.
 
@@ -100,7 +100,7 @@ So I built **dugout** — secrets are encrypted and stored in your repo. Team ac
 
 Built in Rust, MIT/Apache-2.0. Feedback welcome.
 
-https://github.com/usealtoal/dugout
+https://github.com/usemantle/dugout
 
 ---
 
